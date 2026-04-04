@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.activityMobility.service;
+package com.example.padong_server.domain.activityMobility.service;
 
 import com.example.padongbe.domain.activityMobility.dto.IntersectedMobilityResponse;
 import com.example.padongbe.domain.activityMobility.dto.MobilityResponse;

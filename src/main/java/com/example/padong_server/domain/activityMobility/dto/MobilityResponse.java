@@ -1,7 +1,6 @@
-package com.example.padongbe.domain.activityMobility.dto;
+package com.example.padong_server.domain.activityMobility.dto;
 
 import com.example.padongbe.domain.dongne.dto.AdminDongDto;
-import com.example.padongbe.domain.dongne.entity.AdminDong;
 import lombok.Builder;
 import lombok.Getter;
 

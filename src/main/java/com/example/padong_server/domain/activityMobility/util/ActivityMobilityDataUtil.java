@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.activityMobility.util;
+package com.example.padong_server.domain.activityMobility.util;
 
 import com.example.padongbe.domain.activityMobility.entity.Mobility;
 import com.example.padongbe.domain.dongne.entity.AdminDong;

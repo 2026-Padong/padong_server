@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.activityMobility.dto;
+package com.example.padong_server.domain.activityMobility.dto;
 
 import lombok.Builder;
 import lombok.Getter;

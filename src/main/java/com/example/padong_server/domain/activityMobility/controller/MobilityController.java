@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.activityMobility.controller;
+package com.example.padong_server.domain.activityMobility.controller;
 
 import com.example.padongbe.domain.activityMobility.dto.MobilityResponse;
 import com.example.padongbe.domain.activityMobility.dto.MultiMobilityResponse;
@@ -9,12 +9,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

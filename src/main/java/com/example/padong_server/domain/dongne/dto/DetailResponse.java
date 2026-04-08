@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.dongne.dto;
+package com.example.padong_server.domain.dongne.dto;
 
 import com.example.padongbe.domain.rentPrice.dto.response.RentPriceDto;
 import lombok.Builder;

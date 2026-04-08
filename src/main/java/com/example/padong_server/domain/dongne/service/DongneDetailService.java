@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.dongne.service;
+package com.example.padong_server.domain.dongne.service;
 
 import com.example.padongbe.domain.activityMobility.entity.Mobility;
 import com.example.padongbe.domain.activityMobility.service.MobilityService;
@@ -9,7 +9,6 @@ import com.example.padongbe.domain.population.service.PopulationService;
 import com.example.padongbe.domain.rentPrice.dto.response.RentPriceDto;
 import com.example.padongbe.domain.rentPrice.service.RentPriceService;
 import com.example.padongbe.domain.safetyGrade.entity.SafetyGrade;
-import com.example.padongbe.domain.safetyGrade.service.SafetyGradeService;
 import com.example.padongbe.domain.score.service.ScoreCalculator;
 import com.example.padongbe.global.ResponseDTO;
 import com.fasterxml.jackson.databind.JsonNode;

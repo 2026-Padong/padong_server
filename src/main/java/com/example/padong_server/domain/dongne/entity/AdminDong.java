@@ -1,9 +1,11 @@
-package com.example.padongbe.domain.dongne.entity;
+package com.example.padong_server.domain.dongne.entity;
 
 import com.example.padongbe.domain.dongne.dto.DongMappingDto;
 import com.example.padongbe.domain.safetyGrade.entity.SafetyGrade;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;

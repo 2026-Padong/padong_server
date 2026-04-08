@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.dongne.repository;
+package com.example.padong_server.domain.dongne.repository;
 
 import com.example.padongbe.domain.dongne.entity.LegalDong;
 import org.springframework.data.jpa.repository.JpaRepository;

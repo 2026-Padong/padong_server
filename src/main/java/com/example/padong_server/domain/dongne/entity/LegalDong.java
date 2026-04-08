@@ -1,4 +1,4 @@
-package com.example.padongbe.domain.dongne.entity;
+package com.example.padong_server.domain.dongne.entity;
 
 import com.example.padongbe.domain.dongne.dto.DongMappingDto;
 import jakarta.persistence.*;

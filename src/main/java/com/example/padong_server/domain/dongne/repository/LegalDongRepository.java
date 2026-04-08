@@ -1,0 +1,10 @@
+package com.example.padongbe.domain.dongne.repository;
+
+import com.example.padongbe.domain.dongne.entity.LegalDong;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface LegalDongRepository extends JpaRepository<LegalDong, Long> {
+    Optional<LegalDong> findByLegalDongCode(String legalDongCode);
+}

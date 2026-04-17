@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: padong-be
+
+  datasource:
+    url: ${RDS_URL}
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+swagger-config:
+  server-url-https: "https://padong.site"
+  server-url-http: "http://padong.site"
+
+open-search:
+  url: ${OPEN_SEARCH_URL}
+  username: ${OPEN_SEARCH_USERNAME}
+  password: ${OPEN_SEARCH_PASSWORD}

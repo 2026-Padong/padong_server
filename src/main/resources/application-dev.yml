@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: padong-be
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/padong
+    username: root
+    password: pw
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+swagger-config:
+  server-url-http: "http://localhost:8080"
+  server-url-https: "http://localhost:8080"
+
+open-search:
+  url: ""
+  username: ""
+  password: ""

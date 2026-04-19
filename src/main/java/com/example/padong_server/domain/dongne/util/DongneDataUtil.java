@@ -1,74 +1,173 @@
 package com.example.padong_server.domain.dongne.util;
 
-import com.example.padongbe.domain.dongne.dto.DongMappingDto;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
+import com.example.padong_server.domain.dongne.dto.DongMappingCsvRow;
+import com.example.padong_server.domain.dongne.dto.LegalDongCsvRow;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 @Component
 public class DongneDataUtil {
 
-    private final String filePath = "data/dongne.xlsx";
+    private static final String ADMIN_DONG_PATH = "data/dongne/서울시_행정동_20260325.csv";
+    private static final String LEGAL_DONG_PATH = "data/dongne/서울시_법정동_20260325.csv";
+    private static final String MAPPING_PATH = "data/dongne/서울시_행정동_법정동_매핑_20260325.csv";
 
-    public List<DongMappingDto> readDongneFromExcel() {
-        ClassPathResource file = new ClassPathResource(filePath);
-        List<DongMappingDto> results = new ArrayList<>();
+    public List<AdminDongCsvRow> readAdminDongRows() {
+        return readCsv(
+                ADMIN_DONG_PATH,
+                List.of("admin_dong_code", "city_name", "district_name", "admin_dong_name", "latitude", "longitude", "source_date", "deleted_date"),
+                values -> new AdminDongCsvRow(
+                        values.get("admin_dong_code"),
+                        values.get("city_name"),
+                        values.get("district_name"),
+                        values.get("admin_dong_name"),
+                        parseDouble(values.get("latitude"), "latitude"),
+                        parseDouble(values.get("longitude"), "longitude"),
+                        values.get("source_date"),
+                        values.get("deleted_date")
+                )
+        );
+    }
 
-        try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
-            Sheet sheet = workbook.getSheetAt(0);
+    public List<LegalDongCsvRow> readLegalDongRows() {
+        return readCsv(
+                LEGAL_DONG_PATH,
+                List.of("legal_dong_code", "city_name", "district_name", "legal_dong_name", "legal_ri_name", "source_date", "deleted_date"),
+                values -> new LegalDongCsvRow(
+                        values.get("legal_dong_code"),
+                        values.get("city_name"),
+                        values.get("district_name"),
+                        values.get("legal_dong_name"),
+                        values.get("source_date"),
+                        values.get("deleted_date")
+                )
+        );
+    }
 
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null) continue;
+    public List<DongMappingCsvRow> readDongMappingRows() {
+        return readCsv(
+                MAPPING_PATH,
+                List.of("admin_dong_code", "city_name", "district_name", "admin_dong_name", "legal_dong_code", "legal_dong_name", "source_date", "deleted_date"),
+                values -> new DongMappingCsvRow(
+                        values.get("admin_dong_code"),
+                        values.get("city_name"),
+                        values.get("district_name"),
+                        values.get("admin_dong_name"),
+                        values.get("legal_dong_code"),
+                        values.get("legal_dong_name"),
+                        values.get("source_date"),
+                        values.get("deleted_date")
+                )
+        );
+    }
 
-                String city = getString(row.getCell(0));
-                String district = getString(row.getCell(1));
-                String adminAreaName = getString(row.getCell(2));
-                String adminDongName = getString(row.getCell(3));
-                String legalDongName = getString(row.getCell(4));
-                String adminTypeCode = getString(row.getCell(5));
-                String adminDongCode = getString(row.getCell(6));
-                String legalDongCode = getString(row.getCell(8));
+    private <T> List<T> readCsv(String path, List<String> expectedHeaders, Function<Map<String, String>, T> mapper) {
+        ClassPathResource resource = new ClassPathResource(path);
+        List<T> rows = new ArrayList<>();
 
-                if (!city.equals("서울특별시")) continue;
-                if(adminDongName.equals("서울특별시")) continue;
-                if(adminDongName.endsWith("구")) continue;
-                if (isDistrictOnly(adminDongName) && isDistrictOnly(legalDongName)) {
-                    System.out.println(adminDongName + " " + legalDongName);
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) {
+                throw new IllegalArgumentException("CSV header is missing: " + path);
+            }
+
+            List<String> headers = parseCsvLine(headerLine).stream()
+                    .map(this::normalize)
+                    .toList();
+            validateHeaders(path, headers, expectedHeaders);
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank()) {
                     continue;
                 }
 
-                results.add(DongMappingDto.builder()
-                        .city(city)
-                        .district(district)
-                        .adminAreaName(adminAreaName)
-                        .adminDongName(adminDongName)
-                        .legalDongName(legalDongName)
-                        .adminTypeCode(adminTypeCode)
-                        .adminDongCode(adminDongCode)
-                        .legalDongCode(legalDongCode)
-                        .build());
+                List<String> values = parseCsvLine(line);
+                Map<String, String> row = toRowMap(headers, values);
+                if (!row.getOrDefault("deleted_date", "").isBlank()) {
+                    continue;
+                }
+                rows.add(mapper.apply(row));
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to read CSV: " + path, e);
+        }
+
+        return rows;
+    }
+
+    private void validateHeaders(String path, List<String> actualHeaders, List<String> expectedHeaders) {
+        if (!actualHeaders.equals(expectedHeaders)) {
+            throw new IllegalArgumentException(
+                    "Unexpected CSV headers for " + path + ". expected=" + expectedHeaders + ", actual=" + actualHeaders
+            );
+        }
+    }
+
+    private Map<String, String> toRowMap(List<String> headers, List<String> values) {
+        if (values.size() != headers.size()) {
+            throw new IllegalArgumentException("CSV column count mismatch. expected=" + headers.size() + ", actual=" + values.size());
+        }
+
+        Map<String, String> row = new LinkedHashMap<>();
+        for (int i = 0; i < headers.size(); i++) {
+            row.put(headers.get(i), normalize(values.get(i)));
+        }
+        return row;
+    }
+
+    private List<String> parseCsvLine(String line) {
+        List<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+
+            if (ch == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                    continue;
+                }
+                inQuotes = !inQuotes;
+                continue;
             }
 
-        } catch (Exception e) {
-            throw new RuntimeException("excel parsing error", e);
+            if (ch == ',' && !inQuotes) {
+                values.add(current.toString());
+                current.setLength(0);
+                continue;
+            }
+
+            current.append(ch);
         }
-        System.out.println(results.size());
-        return results;
+
+        values.add(current.toString());
+        return values;
     }
 
-    private static String getString(Cell cell) {
-        if (cell == null) return "";
-        cell.setCellType(CellType.STRING);
-        return cell.getStringCellValue().trim();
+    private String normalize(String value) {
+        return value.replace("\uFEFF", "").trim();
     }
 
-    private static boolean isDistrictOnly(String value) {
-        return value.endsWith("구") && !value.contains("동");
+    private Double parseDouble(String value, String label) {
+        try {
+            return Double.valueOf(normalize(value));
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Invalid decimal for " + label + ": " + value, exception);
+        }
     }
 }

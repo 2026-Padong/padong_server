@@ -1,4 +1,4 @@
-package com.example.padong_server.domian.population.util;
+package com.example.padong_server.domain.population.util;
 
 import com.example.padongbe.domain.dongne.entity.AdminDong;
 import com.example.padongbe.domain.dongne.service.DongneService;

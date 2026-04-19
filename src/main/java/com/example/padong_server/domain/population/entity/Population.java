@@ -1,4 +1,4 @@
-package com.example.padong_server.domian.population.entity;
+package com.example.padong_server.domain.population.entity;
 
 import com.example.padongbe.domain.dongne.entity.AdminDong;
 import jakarta.persistence.*;

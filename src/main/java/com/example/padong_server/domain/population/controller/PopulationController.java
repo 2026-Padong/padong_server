@@ -1,4 +1,4 @@
-package com.example.padong_server.domian.population.controller;
+package com.example.padong_server.domain.population.controller;
 
 import com.example.padongbe.domain.population.service.PopulationService;
 import io.swagger.v3.oas.annotations.Operation;

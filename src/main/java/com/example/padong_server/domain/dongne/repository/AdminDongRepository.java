@@ -8,4 +8,10 @@ import java.util.Optional;
 public interface AdminDongRepository extends JpaRepository<AdminDong, Long> {
 
     Optional<AdminDong> findByAdminDongCode(String adminDongCode);
+
+    Optional<AdminDong> findByCityNameAndDistrictNameAndAdminDongName(
+            String cityName,
+            String districtName,
+            String adminDongName
+    );
 }

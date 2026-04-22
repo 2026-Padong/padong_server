@@ -6,8 +6,8 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class LocationResponse {
-  private String address;
-  private String type;
-  private double lat;
-  private double lng;
+    private String address;
+    private String type;
+    private double lat;
+    private double lng;
 }

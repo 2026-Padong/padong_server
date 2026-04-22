@@ -1,23 +1,8 @@
 package com.example.padong_server.domain.dongne.dto;
 
-import com.example.padongbe.domain.rentPrice.dto.response.RentPriceDto;
-import lombok.Builder;
-import lombok.Getter;
+/*
+기존 상세조회 응답 DTO.
 
-@Getter
-@Builder
-public class DetailResponse {
-
-  private String adminDongCode;
-  private double score;
-  private double totalMobility;
-  private double avgTime;
-  private double density;
-  private double trafficAccidents;
-  private double fires;
-  private double crimes;
-  private double publicSafety;
-  private RentPriceDto[] rentPrice;
-  private LocationResponse[] location;
-
-}
+현재 저장소에는 rentPrice 도메인의 RentPriceDto가 없어서 컴파일 대상에서 제외한다.
+해당 도메인이 합쳐지면 기존 DetailResponse 구조를 다시 활성화한다.
+*/

@@ -5,14 +5,15 @@ import com.example.padong_server.domain.subway.repository.SubwayRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@WebMvcTest
+@DataJpaTest
+@Import(SubwayCsvLoader.class)
 class SubwayCsvLoaderTest {
 
     @Autowired
@@ -24,14 +25,14 @@ class SubwayCsvLoaderTest {
     @Test
     @DisplayName("CSV 로드 후 지하철 데이터 저장")
     void load_and_save() {
-            subwayRepository.deleteAll();
+        subwayRepository.deleteAll();
 
-            subwayCsvLoader.loadCsv("data/test_subway.csv");
+        subwayCsvLoader.loadCsv("data/test_subway.csv");
 
-            List<Subway> subways = subwayRepository.findAll();
+        List<Subway> subways = subwayRepository.findAll();
 
-            // 1. 개수 확인
-            assertThat(subways).hasSize(10);
+        // 1. 개수 확인
+        assertThat(subways).hasSize(10);
 
         assertThat(subways).isNotEmpty();
 
@@ -46,5 +47,5 @@ class SubwayCsvLoaderTest {
 
         assertThat(first.getLatitude()).isNotNull();
         assertThat(first.getLongitude()).isNotNull();
-        }
+    }
 }

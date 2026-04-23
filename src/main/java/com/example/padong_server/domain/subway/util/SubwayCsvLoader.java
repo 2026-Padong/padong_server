@@ -53,13 +53,13 @@ public class SubwayCsvLoader {
                 String[] tokens = line.split(",");
 
                 Subway subway = Subway.builder()
-                        .line(tokens[1])
-                        .stationCode(tokens[2])
-                        .stationName(tokens[3])
-                        .morningCongestion(Integer.parseInt(tokens[4]))
-                        .eveningCongestion(Integer.parseInt(tokens[5]))
-                        .latitude(Double.parseDouble(tokens[6]))
-                        .longitude(Double.parseDouble(tokens[7]))
+                        .line(tokens[1].trim())
+                        .stationCode(tokens[2].trim())
+                        .stationName(tokens[3].trim())
+                        .latitude(Double.parseDouble(tokens[4].trim()))
+                        .longitude(Double.parseDouble(tokens[5].trim()))
+                        .morningCongestion(Double.parseDouble(tokens[6].trim()))
+                        .eveningCongestion(Double.parseDouble(tokens[7].trim()))
                         .build();
 
                 subways.add(subway);

@@ -1,7 +1,7 @@
 package com.example.padong_server.domain.activityMobility.repository;
 
-import com.example.padongbe.domain.activityMobility.entity.Mobility;
-import com.example.padongbe.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.activityMobility.entity.Mobility;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

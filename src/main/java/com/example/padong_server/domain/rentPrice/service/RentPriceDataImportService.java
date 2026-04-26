@@ -5,11 +5,11 @@ import com.example.padong_server.domain.dongne.entity.DongMapping;
 import com.example.padong_server.domain.dongne.entity.LegalDong;
 import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
 import com.example.padong_server.domain.dongne.repository.LegalDongRepository;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.RentRow;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.RentType;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.SaleRow;
-import com.example.padong_server.domain.rentPrice.dto.response.ResidencePriceImportResult;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceImportResponse;
 import com.example.padong_server.domain.rentPrice.entity.AdminRentPrice;
 import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import com.example.padong_server.domain.rentPrice.repository.AdminRentPriceRepository;
@@ -40,8 +40,8 @@ public class RentPriceDataImportService {
     private final AdminRentPriceRepository adminRentPriceRepository;
 
     @Transactional
-    public ResidencePriceImportResult importData() {
-        ResidencePriceRawData rawData = rentPriceDataUtil.readRows();
+    public RentPriceImportResponse importData() {
+        RentPriceRawData rawData = rentPriceDataUtil.readRows();
         MappingIndex mappingIndex = loadMappingIndex();
 
         Map<LegalStatKey, StatAccumulator> legalAccumulators = aggregateLegal(rawData);
@@ -55,7 +55,7 @@ public class RentPriceDataImportService {
         rentPriceRepository.saveAll(legalStats);
         adminRentPriceRepository.saveAll(adminStats);
 
-        return new ResidencePriceImportResult(
+        return new RentPriceImportResponse(
                 legalStats.size(),
                 rawData.sourceRowCount(),
                 rawData.saleRows().size(),
@@ -87,7 +87,7 @@ public class RentPriceDataImportService {
         return new MappingIndex(immutableMap, adminByCode);
     }
 
-    private Map<LegalStatKey, StatAccumulator> aggregateLegal(ResidencePriceRawData rawData) {
+    private Map<LegalStatKey, StatAccumulator> aggregateLegal(RentPriceRawData rawData) {
         Map<LegalStatKey, StatAccumulator> accumulators = new HashMap<>();
         for (SaleRow row : rawData.saleRows()) {
             accumulatorForLegal(accumulators, row.legalDongCode(), row.buildingType())
@@ -105,7 +105,7 @@ public class RentPriceDataImportService {
     }
 
     private Map<AdminStatKey, StatAccumulator> aggregateAdmin(
-            ResidencePriceRawData rawData,
+            RentPriceRawData rawData,
             Map<String, List<AdminDong>> adminDongsByLegalCode
     ) {
         Map<AdminStatKey, StatAccumulator> accumulators = new HashMap<>();

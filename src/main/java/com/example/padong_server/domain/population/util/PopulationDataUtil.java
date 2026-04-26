@@ -1,8 +1,8 @@
 package com.example.padong_server.domain.population.util;
 
-import com.example.padongbe.domain.dongne.entity.AdminDong;
-import com.example.padongbe.domain.dongne.service.DongneService;
-import com.example.padongbe.domain.population.entity.Population;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.service.DongneService;
+import com.example.padong_server.domain.population.entity.Population;
 import com.opencsv.CSVReader;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;

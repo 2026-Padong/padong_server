@@ -1,8 +1,8 @@
 package com.example.padong_server.domain.activityMobility.util;
 
-import com.example.padongbe.domain.activityMobility.entity.Mobility;
-import com.example.padongbe.domain.dongne.entity.AdminDong;
-import com.example.padongbe.domain.dongne.service.DongneService;
+import com.example.padong_server.domain.activityMobility.entity.Mobility;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.service.DongneService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;

@@ -29,7 +29,6 @@ public class DongneService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 행정동 코드입니다."));
     }
 
-    /*
     public AdminDong findAdminDongByTypeCode(String adminTypeCode) {
         switch (adminTypeCode) {
             case "11160640" -> adminTypeCode = "11160751";
@@ -40,10 +39,9 @@ public class DongneService {
             case "11250520" -> adminTypeCode = "11250760";
         }
         String finalAdminTypeCode = adminTypeCode;
-        return adminDongRepository.findByAdminTypeCode(adminTypeCode)
+        return adminDongRepository.findFirstByAdminDongCodeStartingWith(adminTypeCode)
                 .orElseThrow(() -> new IllegalArgumentException(finalAdminTypeCode + ": 존재하지 않는 행정분류 코드입니다."));
     }
-    */
 
     public LegalDong findLegalDongByCode(String legalDongCode) {
         return legalDongRepository.findByLegalDongCode(legalDongCode)
@@ -73,15 +71,5 @@ public class DongneService {
         return mappings.get(0).getLegalDong();
     }
 
-    /*
-    @Transactional
-    public void addDongneSafetyGradeData() {
-        List<AdminDong> adminDongList = adminDongRepository.findAll();
-        Map<String, SafetyGrade> safetyGradeMap = safetyGradeService.getSafetyGradeMap();
-        adminDongList.forEach(adminDong -> {
-            SafetyGrade safetyGrade = safetyGradeMap.get(adminDong.getDistrict());
-            adminDong.setSafetyGrade(safetyGrade);
-        });
-    }
-    */
+    /* legacy */
 }

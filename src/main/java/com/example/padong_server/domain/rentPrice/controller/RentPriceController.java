@@ -1,9 +1,9 @@
 package com.example.padong_server.domain.rentPrice.controller;
 
 import com.example.padong_server.domain.rentPrice.dto.request.RentPriceSummaryRequest;
-import com.example.padong_server.domain.rentPrice.dto.response.AdminResidencePriceDetailResponse;
-import com.example.padong_server.domain.rentPrice.dto.response.AdminResidencePriceSummaryItemResponse;
-import com.example.padong_server.domain.rentPrice.dto.response.ResidencePriceImportResult;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceSummaryResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceImportResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.RentPriceErrorResponse;
 import com.example.padong_server.domain.rentPrice.service.RentPriceDataImportService;
 import com.example.padong_server.domain.rentPrice.service.RentPriceService;
@@ -27,19 +27,23 @@ public class RentPriceController {
     private final RentPriceDataImportService rentPriceDataImportService;
 
     @PostMapping("/data")
-    public ResponseEntity<ResidencePriceImportResult> importResidencePriceData() {
+    public ResponseEntity<RentPriceImportResponse> importRentPriceData() {
         return ResponseEntity.ok(rentPriceDataImportService.importData());
     }
 
     @PostMapping("/summary")
-    public ResponseEntity<List<AdminResidencePriceSummaryItemResponse>> getAdminSummaries(
+    public ResponseEntity<List<AdminDongRentPriceSummaryResponse>> getAdminDongSummaries(
             @RequestBody RentPriceSummaryRequest request
     ) {
-        return ResponseEntity.ok(rentPriceService.getSummaries(request.adminDongCodes()));
+        return ResponseEntity.ok(rentPriceService.getSummaries(
+                request.adminDongCodes(),
+                request.buildingTypeLabel(),
+                request.tradeTypeLabel()
+        ));
     }
 
     @GetMapping("/{adminDongCode}")
-    public ResponseEntity<AdminResidencePriceDetailResponse> getAdminDetail(
+    public ResponseEntity<AdminDongRentPriceDetailResponse> getAdminDongDetail(
             @PathVariable String adminDongCode
     ) {
         return ResponseEntity.ok(rentPriceService.getDetail(adminDongCode));

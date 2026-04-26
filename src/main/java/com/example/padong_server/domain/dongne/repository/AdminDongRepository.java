@@ -10,6 +10,8 @@ public interface AdminDongRepository extends JpaRepository<AdminDong, Long> {
 
     Optional<AdminDong> findByAdminDongCode(String adminDongCode);
 
+    Optional<AdminDong> findFirstByAdminDongCodeStartingWith(String adminDongCodePrefix);
+
     List<AdminDong> findAllByAdminDongCodeIn(Collection<String> adminDongCodes);
 
     Optional<AdminDong> findByCityNameAndDistrictNameAndAdminDongName(

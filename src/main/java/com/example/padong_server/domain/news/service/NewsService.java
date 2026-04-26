@@ -1,7 +1,7 @@
 package com.example.padong_server.domain.news.service;
 
-import com.example.padongbe.domain.news.dto.NewsResponse;
-import com.example.padongbe.global.ResponseDTO;
+import com.example.padong_server.domain.news.dto.NewsResponse;
+import com.example.padong_server.global.ResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;

@@ -14,11 +14,11 @@ import com.example.padong_server.domain.dongne.entity.DongMapping;
 import com.example.padong_server.domain.dongne.entity.LegalDong;
 import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
 import com.example.padong_server.domain.dongne.repository.LegalDongRepository;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.RentRow;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.RentType;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.SaleRow;
-import com.example.padong_server.domain.rentPrice.dto.response.ResidencePriceImportResult;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceImportResponse;
 import com.example.padong_server.domain.rentPrice.entity.AdminRentPrice;
 import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import com.example.padong_server.domain.rentPrice.repository.AdminRentPriceRepository;
@@ -61,7 +61,7 @@ class RentPriceDataImportServiceTest {
         LegalDong legalDong = legalDong("1111010100");
         AdminDong firstAdminDong = adminDong("1111051500", "청운효자동");
         AdminDong secondAdminDong = adminDong("1111053000", "사직동");
-        ResidencePriceRawData rawData = new ResidencePriceRawData(
+        RentPriceRawData rawData = new RentPriceRawData(
                 List.of(
                         new SaleRow("1111010100", "아파트", 100L, new BigDecimal("10")),
                         new SaleRow("1111010100", "아파트", 201L, new BigDecimal("20"))
@@ -84,7 +84,7 @@ class RentPriceDataImportServiceTest {
         when(adminRentPriceRepository.saveAll(org.mockito.ArgumentMatchers.anyList()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        ResidencePriceImportResult result = rentPriceDataImportService.importData();
+        RentPriceImportResponse result = rentPriceDataImportService.importData();
 
         ArgumentCaptor<List<RentPrice>> legalCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<AdminRentPrice>> adminCaptor = ArgumentCaptor.forClass(List.class);
@@ -129,7 +129,7 @@ class RentPriceDataImportServiceTest {
     void selectsMonthlyRentPairClosestToDepositAndRentMedians() {
         LegalDong legalDong = legalDong("1111010100");
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
-        ResidencePriceRawData rawData = new ResidencePriceRawData(
+        RentPriceRawData rawData = new RentPriceRawData(
                 List.of(),
                 List.of(
                         new RentRow("1111010100", "아파트", RentType.MONTHLY_RENT, 500L, 60L, new BigDecimal("10")),
@@ -167,7 +167,7 @@ class RentPriceDataImportServiceTest {
     void breaksMonthlyRentPairTiesByLowerRentThenLowerDeposit() {
         LegalDong legalDong = legalDong("1111010100");
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
-        ResidencePriceRawData rawData = new ResidencePriceRawData(
+        RentPriceRawData rawData = new RentPriceRawData(
                 List.of(),
                 List.of(
                         new RentRow("1111010100", "아파트", RentType.MONTHLY_RENT, 1_000L, 70L, new BigDecimal("10")),
@@ -200,7 +200,7 @@ class RentPriceDataImportServiceTest {
     void selectsOnlyMonthlyRentPairWhenSingleMonthlyRentExists() {
         LegalDong legalDong = legalDong("1111010100");
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
-        ResidencePriceRawData rawData = new ResidencePriceRawData(
+        RentPriceRawData rawData = new RentPriceRawData(
                 List.of(),
                 List.of(new RentRow(
                         "1111010100",
@@ -239,7 +239,7 @@ class RentPriceDataImportServiceTest {
     void storesNullMonthlyRentPairWhenMonthlyRentDoesNotExist() {
         LegalDong legalDong = legalDong("1111010100");
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
-        ResidencePriceRawData rawData = new ResidencePriceRawData(
+        RentPriceRawData rawData = new RentPriceRawData(
                 List.of(new SaleRow("1111010100", "아파트", 100L, new BigDecimal("10"))),
                 List.of(),
                 1L,
@@ -269,14 +269,13 @@ class RentPriceDataImportServiceTest {
     @Test
     @DisplayName("행정동 매핑이 없는 법정동 코드가 있으면 기존 데이터를 삭제하지 않는다")
     void failsBeforeReplacingWhenAdminMappingIsMissing() {
-        ResidencePriceRawData rawData = new ResidencePriceRawData(
+        RentPriceRawData rawData = new RentPriceRawData(
                 List.of(new SaleRow("1111010100", "아파트", 100L, new BigDecimal("10"))),
                 List.of(),
                 1L,
                 0L
         );
         when(rentPriceDataUtil.readRows()).thenReturn(rawData);
-        when(legalDongRepository.findAll()).thenReturn(List.of(legalDong("1111010100")));
         when(dongMappingRepository.findAllWithAdminAndLegal()).thenReturn(List.of());
 
         assertThatThrownBy(() -> rentPriceDataImportService.importData())
@@ -289,7 +288,7 @@ class RentPriceDataImportServiceTest {
     @Test
     @DisplayName("존재하지 않는 법정동 코드가 있으면 기존 데이터를 삭제하지 않는다")
     void failsBeforeReplacingWhenLegalDongCodeIsUnknown() {
-        ResidencePriceRawData rawData = new ResidencePriceRawData(
+        RentPriceRawData rawData = new RentPriceRawData(
                 List.of(new SaleRow("9999999999", "아파트", 100L, new BigDecimal("10"))),
                 List.of(),
                 1L,

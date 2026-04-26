@@ -1,9 +1,9 @@
 package com.example.padong_server.domain.boundary.service;
 
-import com.example.padongbe.domain.boundary.dto.BoundaryResponse;
-import com.example.padongbe.domain.dongne.entity.LegalDong;
-import com.example.padongbe.domain.dongne.service.DongneService;
-import com.example.padongbe.global.ResponseDTO;
+import com.example.padong_server.domain.boundary.dto.BoundaryResponse;
+import com.example.padong_server.domain.dongne.entity.LegalDong;
+import com.example.padong_server.domain.dongne.service.DongneService;
+import com.example.padong_server.global.ResponseDTO;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

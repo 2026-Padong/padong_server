@@ -1,9 +1,9 @@
 package com.example.padong_server.domain.rentPrice.util;
 
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.RentRow;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.RentType;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.SaleRow;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -42,7 +42,7 @@ public class RentPriceDataUtil {
             rentFile("row_multifamily", "연립다세대", "연립다세대(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv", "전용면적(㎡)")
     );
 
-    public ResidencePriceRawData readRows() {
+    public RentPriceRawData readRows() {
         RawDataBuilder builder = new RawDataBuilder();
         for (RentPriceCsvFile file : DEFAULT_FILES) {
             readClasspathFile(file, builder);
@@ -50,7 +50,7 @@ public class RentPriceDataUtil {
         return builder.toRawData();
     }
 
-    ResidencePriceRawData readRows(RentPriceCsvFile file, List<String> lines) {
+    RentPriceRawData readRows(RentPriceCsvFile file, List<String> lines) {
         RawDataBuilder builder = new RawDataBuilder();
         readLines(file, lines.iterator(), builder);
         return builder.toRawData();
@@ -306,8 +306,8 @@ public class RentPriceDataUtil {
         private long sourceRowCount;
         private long skippedRowCount;
 
-        private ResidencePriceRawData toRawData() {
-            return new ResidencePriceRawData(
+        private RentPriceRawData toRawData() {
+            return new RentPriceRawData(
                     List.copyOf(saleRows),
                     List.copyOf(rentRows),
                     sourceRowCount,

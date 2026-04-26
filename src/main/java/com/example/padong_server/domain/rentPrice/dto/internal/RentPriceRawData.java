@@ -3,7 +3,7 @@ package com.example.padong_server.domain.rentPrice.dto.internal;
 import java.math.BigDecimal;
 import java.util.List;
 
-public record ResidencePriceRawData(
+public record RentPriceRawData(
         List<SaleRow> saleRows,
         List<RentRow> rentRows,
         long sourceRowCount,

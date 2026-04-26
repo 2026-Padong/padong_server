@@ -2,15 +2,17 @@ package com.example.padong_server.domain.rentPrice.service;
 
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
-import com.example.padong_server.domain.rentPrice.dto.response.AdminResidencePriceDetailResponse;
-import com.example.padong_server.domain.rentPrice.dto.response.AdminResidencePriceSummaryItemResponse;
-import com.example.padong_server.domain.rentPrice.dto.response.BuildingTypeResidencePriceResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceSummaryResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceBuildingTypeResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.MonthlyRentDisplayValueResponse;
-import com.example.padong_server.domain.rentPrice.dto.response.ResidenceDisplayValueResponse;
-import com.example.padong_server.domain.rentPrice.dto.response.ResidenceTypeResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceDisplayValueResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceTradeTypeResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.ResidenceBuildingTypeResponse;
 import com.example.padong_server.domain.rentPrice.entity.AdminRentPrice;
 import com.example.padong_server.domain.rentPrice.entity.ResidenceBuildingType;
 import com.example.padong_server.domain.rentPrice.entity.RentPrice;
+import com.example.padong_server.domain.rentPrice.entity.RentPriceTradeType;
 import com.example.padong_server.domain.rentPrice.policy.RentPriceDisplayPolicy;
 import com.example.padong_server.domain.rentPrice.repository.AdminRentPriceRepository;
 import java.util.ArrayList;
@@ -35,10 +37,16 @@ public class RentPriceService {
     private final AdminRentPriceRepository adminRentPriceRepository;
     private final RentPriceDisplayPolicy rentPriceDisplayPolicy;
 
-    public List<AdminResidencePriceSummaryItemResponse> getSummaries(List<String> requestedAdminDongCodes) {
+    public List<AdminDongRentPriceSummaryResponse> getSummaries(
+            List<String> requestedAdminDongCodes,
+            String buildingTypeLabel,
+            String tradeTypeLabel
+    ) {
         if (requestedAdminDongCodes == null) {
             throw new IllegalArgumentException("행정동 코드는 비어 있을 수 없습니다.");
         }
+        ResidenceBuildingType buildingType = selectedBuildingType(buildingTypeLabel);
+        RentPriceTradeType tradeType = selectedTradeType(tradeTypeLabel);
         List<String> adminDongCodes = sanitizeAdminDongCodes(requestedAdminDongCodes);
         if (adminDongCodes.isEmpty()) {
             return List.of();
@@ -48,15 +56,34 @@ public class RentPriceService {
         Map<String, Map<ResidenceBuildingType, AdminRentPrice>> statsByAdminDongCode =
                 groupByAdminDongCode(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(adminDongCodes));
 
-        List<AdminResidencePriceSummaryItemResponse> responses = new ArrayList<>();
+        List<AdminDongRentPriceSummaryResponse> responses = new ArrayList<>();
         for (String adminDongCode : adminDongCodes) {
             AdminDong adminDong = adminDongByCode.get(adminDongCode);
-            responses.add(buildSummary(adminDong, statsByAdminDongCode.getOrDefault(adminDongCode, Map.of())));
+            responses.add(buildFilteredSummary(
+                    adminDong,
+                    buildingType,
+                    tradeType,
+                    statsByAdminDongCode.getOrDefault(adminDongCode, Map.of())
+            ));
         }
         return responses;
     }
 
-    public AdminResidencePriceDetailResponse getDetail(String adminDongCode) {
+    private ResidenceBuildingType selectedBuildingType(String buildingTypeLabel) {
+        if (buildingTypeLabel == null || buildingTypeLabel.trim().isEmpty()) {
+            return ResidenceBuildingType.DETACHED_MULTIFAMILY;
+        }
+        return ResidenceBuildingType.from(buildingTypeLabel);
+    }
+
+    private RentPriceTradeType selectedTradeType(String tradeTypeLabel) {
+        if (tradeTypeLabel == null || tradeTypeLabel.trim().isEmpty()) {
+            return RentPriceTradeType.MONTHLY_RENT;
+        }
+        return RentPriceTradeType.from(tradeTypeLabel);
+    }
+
+    public AdminDongRentPriceDetailResponse getDetail(String adminDongCode) {
         String sanitizedCode = sanitizeAdminDongCode(adminDongCode);
         AdminDong adminDong = adminDongRepository.findByAdminDongCode(sanitizedCode)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 행정동 코드입니다: " + sanitizedCode));
@@ -64,23 +91,23 @@ public class RentPriceService {
         Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType =
                 mapByBuildingType(adminRentPriceRepository.findAllByAdminDongAdminDongCode(sanitizedCode));
 
-        List<BuildingTypeResidencePriceResponse> buildingTypes = new ArrayList<>();
+        List<AdminDongRentPriceBuildingTypeResponse> buildingTypes = new ArrayList<>();
         for (ResidenceBuildingType buildingType : ResidenceBuildingType.values()) {
-            BuildingTypeResidencePriceResponse response = buildBuildingTypeResponse(
+            AdminDongRentPriceBuildingTypeResponse response = buildBuildingTypeResponse(
                     buildingType,
                     statsByBuildingType.get(buildingType)
             );
             buildingTypes.add(response);
         }
 
-        ResidenceBuildingType dominantResidenceType = determineDominantResidenceType(statsByBuildingType);
-        return new AdminResidencePriceDetailResponse(
+        ResidenceBuildingType dominantBuildingType = determineDominantBuildingType(statsByBuildingType);
+        return new AdminDongRentPriceDetailResponse(
                 adminDong.getAdminDongCode(),
                 PERIOD_LABEL,
                 CONTRACT_PERIOD_START,
                 CONTRACT_PERIOD_END,
                 true,
-                toTypeResponse(dominantResidenceType),
+                toTypeResponse(dominantBuildingType),
                 List.copyOf(buildingTypes)
         );
     }
@@ -132,28 +159,31 @@ public class RentPriceService {
         return mapped;
     }
 
-    private AdminResidencePriceSummaryItemResponse buildSummary(
+    private AdminDongRentPriceSummaryResponse buildFilteredSummary(
             AdminDong adminDong,
+            ResidenceBuildingType buildingType,
+            RentPriceTradeType tradeType,
             Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType
     ) {
-        ResidenceBuildingType dominantResidenceType = determineDominantResidenceType(statsByBuildingType);
-        AdminRentPrice dominantStat = dominantResidenceType == null ? null : statsByBuildingType.get(dominantResidenceType);
-
-        return new AdminResidencePriceSummaryItemResponse(
+        AdminRentPrice selectedStat = statsByBuildingType.get(buildingType);
+        return new AdminDongRentPriceSummaryResponse(
                 adminDong.getAdminDongCode(),
                 PERIOD_LABEL,
-                toTypeResponse(dominantResidenceType),
-                toSaleResponse(dominantStat),
-                toJeonseResponse(dominantStat),
-                toMonthlyRentResponse(dominantStat)
+                toTypeResponse(buildingType),
+                toTradeTypeResponse(tradeType),
+                tradeType == RentPriceTradeType.SALE ? toSaleResponse(selectedStat) : new RentPriceDisplayValueResponse(null),
+                tradeType == RentPriceTradeType.JEONSE ? toJeonseResponse(selectedStat) : new RentPriceDisplayValueResponse(null),
+                tradeType == RentPriceTradeType.MONTHLY_RENT
+                        ? toMonthlyRentResponse(selectedStat)
+                        : new MonthlyRentDisplayValueResponse(null, null)
         );
     }
 
-    private BuildingTypeResidencePriceResponse buildBuildingTypeResponse(
+    private AdminDongRentPriceBuildingTypeResponse buildBuildingTypeResponse(
             ResidenceBuildingType buildingType,
             AdminRentPrice stat
     ) {
-        return new BuildingTypeResidencePriceResponse(
+        return new AdminDongRentPriceBuildingTypeResponse(
                 toTypeResponse(buildingType),
                 toSaleResponse(stat),
                 toJeonseResponse(stat),
@@ -161,20 +191,20 @@ public class RentPriceService {
         );
     }
 
-    private ResidenceBuildingType determineDominantResidenceType(
+    private ResidenceBuildingType determineDominantBuildingType(
             Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType
     ) {
-        ResidenceBuildingType dominantResidenceType = null;
+        ResidenceBuildingType dominantBuildingType = null;
         int dominantCount = 0;
         for (ResidenceBuildingType buildingType : ResidenceBuildingType.values()) {
             AdminRentPrice stat = statsByBuildingType.get(buildingType);
             int totalCount = totalCount(stat);
             if (totalCount > dominantCount) {
-                dominantResidenceType = buildingType;
+                dominantBuildingType = buildingType;
                 dominantCount = totalCount;
             }
         }
-        return dominantCount == 0 ? null : dominantResidenceType;
+        return dominantCount == 0 ? null : dominantBuildingType;
     }
 
     private int totalCount(AdminRentPrice stat) {
@@ -188,16 +218,16 @@ public class RentPriceService {
         return count == null ? 0 : count;
     }
 
-    private ResidenceDisplayValueResponse toSaleResponse(AdminRentPrice stat) {
+    private RentPriceDisplayValueResponse toSaleResponse(AdminRentPrice stat) {
         if (stat == null) {
-            return new ResidenceDisplayValueResponse(null);
+            return new RentPriceDisplayValueResponse(null);
         }
         return toDisplayValueResponse(rentPriceDisplayPolicy.decideSale(convertToRentPrice(stat)));
     }
 
-    private ResidenceDisplayValueResponse toJeonseResponse(AdminRentPrice stat) {
+    private RentPriceDisplayValueResponse toJeonseResponse(AdminRentPrice stat) {
         if (stat == null) {
-            return new ResidenceDisplayValueResponse(null);
+            return new RentPriceDisplayValueResponse(null);
         }
         return toDisplayValueResponse(rentPriceDisplayPolicy.decideJeonse(convertToRentPrice(stat)));
     }
@@ -217,18 +247,22 @@ public class RentPriceService {
         );
     }
 
-    private ResidenceDisplayValueResponse toDisplayValueResponse(RentPriceDisplayPolicy.PriceDecision decision) {
+    private RentPriceDisplayValueResponse toDisplayValueResponse(RentPriceDisplayPolicy.PriceDecision decision) {
         if (decision.source() == RentPriceDisplayPolicy.MetricSource.NONE) {
-            return new ResidenceDisplayValueResponse(null);
+            return new RentPriceDisplayValueResponse(null);
         }
-        return new ResidenceDisplayValueResponse(decision.amount());
+        return new RentPriceDisplayValueResponse(decision.amount());
     }
 
-    private ResidenceTypeResponse toTypeResponse(ResidenceBuildingType buildingType) {
+    private RentPriceTradeTypeResponse toTradeTypeResponse(RentPriceTradeType tradeType) {
+        return new RentPriceTradeTypeResponse(tradeType.code(), tradeType.label());
+    }
+
+    private ResidenceBuildingTypeResponse toTypeResponse(ResidenceBuildingType buildingType) {
         if (buildingType == null) {
             return null;
         }
-        return new ResidenceTypeResponse(buildingType.code(), buildingType.label());
+        return new ResidenceBuildingTypeResponse(buildingType.code(), buildingType.label());
     }
 
     private RentPrice convertToRentPrice(AdminRentPrice stat) {

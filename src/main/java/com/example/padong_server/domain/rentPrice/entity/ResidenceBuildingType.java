@@ -23,9 +23,17 @@ public enum ResidenceBuildingType {
     }
 
     public static ResidenceBuildingType fromLabel(String label) {
+        return from(label);
+    }
+
+    public static ResidenceBuildingType from(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("건물유형은 비어 있을 수 없습니다.");
+        }
+        String normalizedLabel = value.trim();
         return Arrays.stream(values())
-                .filter(type -> type.label.equals(label))
+                .filter(type -> type.name().equalsIgnoreCase(normalizedLabel) || type.label.equals(normalizedLabel))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("지원하지 않는 건물유형입니다: " + label));
+                .orElseThrow(() -> new IllegalArgumentException("지원하지 않는 건물유형입니다: " + value));
     }
 }

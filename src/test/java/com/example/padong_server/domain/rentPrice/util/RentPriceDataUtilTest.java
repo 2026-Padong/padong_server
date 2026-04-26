@@ -2,8 +2,8 @@ package com.example.padong_server.domain.rentPrice.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData;
-import com.example.padong_server.domain.rentPrice.dto.internal.ResidencePriceRawData.RentType;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ class RentPriceDataUtilTest {
                 "전용면적(㎡)"
         );
 
-        ResidencePriceRawData rawData = rentPriceDataUtil.readRows(file, linesWithMetadata(
+        RentPriceRawData rawData = rentPriceDataUtil.readRows(file, linesWithMetadata(
                 "NO,시군구,전용면적(㎡),거래금액(만원),해제사유발생일,법정동코드",
                 "1,서울,84.5,\"123,456\",-,1111010100",
                 "2,서울,59.9,\"100,000\",20250101,1111010100",
@@ -54,7 +54,7 @@ class RentPriceDataUtilTest {
                 "전용면적(㎡)"
         );
 
-        ResidencePriceRawData rawData = rentPriceDataUtil.readRows(file, linesWithMetadata(
+        RentPriceRawData rawData = rentPriceDataUtil.readRows(file, linesWithMetadata(
                 "NO,시군구,전월세구분,전용면적(㎡),보증금(만원),월세금(만원),법정동코드",
                 "1,서울,전세,40.0,\"30,000\",-,1111010100",
                 "2,서울,월세,25.0,\"1,000\",80,1111010100",

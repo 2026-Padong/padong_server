@@ -20,19 +20,5 @@ public class DongneController {
         return ResponseEntity.ok("동네 데이터 추가 완료");
     }
 
-    /*
-    @PostMapping("/data/safety-grade")
-    public ResponseEntity<String> addDongneSafetyGradeData() {
-        dongneService.addDongneSafetyGradeData();
-        return ResponseEntity.ok("동네 안전등급 데이터 추가 완료");
-    }
-
-    @GetMapping("/detail")
-    public ResponseEntity<ResponseDTO<DetailResponse>> getDongneDetail(
-            @RequestParam String arrivalCode,
-            @RequestParam String departureCode
-    ) {
-        return ResponseEntity.ok(dongneDetailService.getDongneDetail(arrivalCode, departureCode));
-    }
-    */
+    /* legacy */
 }

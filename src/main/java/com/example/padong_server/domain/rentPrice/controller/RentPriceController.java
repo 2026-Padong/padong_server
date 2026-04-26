@@ -1,34 +1,56 @@
 package com.example.padong_server.domain.rentPrice.controller;
 
-import com.example.padongbe.domain.rentPrice.dto.response.RentPriceDto;
-import com.example.padongbe.domain.rentPrice.service.RentPriceService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.example.padong_server.domain.rentPrice.dto.request.RentPriceSummaryRequest;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceSummaryResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceImportResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceErrorResponse;
+import com.example.padong_server.domain.rentPrice.service.RentPriceDataImportService;
+import com.example.padong_server.domain.rentPrice.service.RentPriceService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/rent-price")
-@Tag(name = "RentPrice", description = "전월세가 관련 API")
 public class RentPriceController {
+
     private final RentPriceService rentPriceService;
+    private final RentPriceDataImportService rentPriceDataImportService;
 
     @PostMapping("/data")
-    @Operation(summary = "전월세가 데이터 저장")
-    public ResponseEntity<String> uploadRentPriceData() {
-        rentPriceService.uploadRentPriceData();
-        return ResponseEntity.ok("Success to save rent price data");
+    public ResponseEntity<RentPriceImportResponse> importRentPriceData() {
+        return ResponseEntity.ok(rentPriceDataImportService.importData());
     }
 
-    @GetMapping("/{buildingType}/{adminDongCode}")
-    @Operation(summary = "행정동 코드로 건물유형별 전월세가 조회")
-    @Parameter(name = "buildingType", description = "건물 유형 (예: apartment, officetel, villa)")
-    @Parameter(name = "adminDongCode", description = "행정동 코드 10자리 (예:1141069000)")
-    public ResponseEntity<RentPriceDto> getRentPriceByAdminDongCode(@PathVariable String buildingType, @PathVariable String adminDongCode) {
-        return ResponseEntity.ok(rentPriceService.getRentPriceByAdminDongCode(adminDongCode, buildingType));
+    @PostMapping("/summary")
+    public ResponseEntity<List<AdminDongRentPriceSummaryResponse>> getAdminDongSummaries(
+            @RequestBody RentPriceSummaryRequest request
+    ) {
+        return ResponseEntity.ok(rentPriceService.getSummaries(
+                request.adminDongCodes(),
+                request.buildingTypeLabel(),
+                request.tradeTypeLabel()
+        ));
     }
 
+    @GetMapping("/{adminDongCode}")
+    public ResponseEntity<AdminDongRentPriceDetailResponse> getAdminDongDetail(
+            @PathVariable String adminDongCode
+    ) {
+        return ResponseEntity.ok(rentPriceService.getDetail(adminDongCode));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<RentPriceErrorResponse> handleIllegalArgument(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(new RentPriceErrorResponse(exception.getMessage()));
+    }
 }

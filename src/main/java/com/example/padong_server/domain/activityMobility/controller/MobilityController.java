@@ -1,10 +1,10 @@
 package com.example.padong_server.domain.activityMobility.controller;
 
-import com.example.padongbe.domain.activityMobility.dto.MobilityResponse;
-import com.example.padongbe.domain.activityMobility.dto.MultiMobilityResponse;
-import com.example.padongbe.domain.activityMobility.entity.Mobility;
-import com.example.padongbe.domain.activityMobility.service.MobilityService;
-import com.example.padongbe.global.ResponseDTO;
+import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
+import com.example.padong_server.domain.activityMobility.dto.MultiMobilityResponse;
+import com.example.padong_server.domain.activityMobility.entity.Mobility;
+import com.example.padong_server.domain.activityMobility.service.MobilityService;
+import com.example.padong_server.global.ResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,8 +1,8 @@
 package com.example.padong_server.domain.news.controller;
 
-import com.example.padongbe.domain.news.dto.NewsResponse;
-import com.example.padongbe.domain.news.service.NewsService;
-import com.example.padongbe.global.ResponseDTO;
+import com.example.padong_server.domain.news.dto.NewsResponse;
+import com.example.padong_server.domain.news.service.NewsService;
+import com.example.padong_server.global.ResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

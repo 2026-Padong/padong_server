@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.population.controller;
 
-import com.example.padongbe.domain.population.service.PopulationService;
+import com.example.padong_server.domain.population.service.PopulationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

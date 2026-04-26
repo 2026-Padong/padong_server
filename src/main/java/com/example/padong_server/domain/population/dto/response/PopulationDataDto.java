@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.population.dto.response;
 
-import com.example.padongbe.domain.population.entity.Population;
+import com.example.padong_server.domain.population.entity.Population;
 import lombok.Getter;
 
 @Getter

@@ -1,19 +1,28 @@
 package com.example.padong_server.domain.activityMobility.service;
 
-import com.example.padongbe.domain.activityMobility.dto.IntersectedMobilityResponse;
-import com.example.padongbe.domain.activityMobility.dto.MobilityResponse;
-import com.example.padongbe.domain.activityMobility.dto.MultiMobilityResponse;
-import com.example.padongbe.domain.activityMobility.entity.Mobility;
-import com.example.padongbe.domain.activityMobility.repository.MobilityRepository;
-import com.example.padongbe.domain.activityMobility.util.ActivityMobilityDataUtil;
-import com.example.padongbe.domain.dongne.dto.AdminDongDto;
-import com.example.padongbe.domain.dongne.entity.AdminDong;
-import com.example.padongbe.domain.dongne.service.DongneService;
-import com.example.padongbe.domain.population.service.PopulationService;
-import com.example.padongbe.domain.rentPrice.dto.response.RentPriceDto;
-import com.example.padongbe.domain.rentPrice.service.RentPriceService;
-import com.example.padongbe.domain.score.service.ScoreCalculator;
-import com.example.padongbe.global.ResponseDTO;
+import com.example.padong_server.domain.activityMobility.dto.IntersectedMobilityResponse;
+import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
+import com.example.padong_server.domain.activityMobility.dto.MultiMobilityResponse;
+import com.example.padong_server.domain.activityMobility.entity.Mobility;
+import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
+import com.example.padong_server.domain.activityMobility.util.ActivityMobilityDataUtil;
+import com.example.padong_server.domain.dongne.dto.AdminDongDto;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.service.DongneService;
+import com.example.padong_server.domain.population.service.PopulationService;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceSummaryResponse;
+import com.example.padong_server.domain.rentPrice.service.RentPriceService;
+import com.example.padong_server.domain.score.service.ScoreCalculator;
+import com.example.padong_server.global.ResponseDTO;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,10 +30,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,28 +43,47 @@ public class MobilityService {
     private final ActivityMobilityDataUtil activityMobilityDataUtil;
 
     public List<MobilityResponse> mapFromEntities(Collection<Mobility> mobilities) {
+        Map<String, AdminDongRentPriceSummaryResponse> rentPriceSummaryByAdminDongCode =
+                rentPriceService.getSummaries(mobilities.stream()
+                                .map(Mobility::getDepartureDong)
+                                .map(AdminDong::getAdminDongCode)
+                                .distinct()
+                                .toList(), null, null)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                AdminDongRentPriceSummaryResponse::adminDongCode,
+                                Function.identity(),
+                                (a, b) -> a
+                        ));
+
         List<MobilityResponse> responses = new ArrayList<>();
         for (Mobility mobility : mobilities) {
             AdminDong departureDong = mobility.getDepartureDong();
-            double safety = departureDong.getSafetyGrade().getAvgGrade();
+            // legacy
+            // double safety = departureDong.getSafetyGrade().getAvgGrade();
+            double safety = 0.0;
             double density = populationService.getPopulationByAdmin(departureDong).getDensity();
             double avgTime = mobility.getAvgTime();
             double totalMobility = mobility.getTotalMobility();
-            RentPriceDto rentPriceDto = rentPriceService.getRentPriceByAdminDongCode(departureDong.getAdminDongCode());
-            double score = scoreCalculator.calculateScore(totalMobility, avgTime, density, safety, rentPriceDto);
+            AdminDongRentPriceSummaryResponse rentPriceSummary =
+                    rentPriceSummaryByAdminDongCode.get(departureDong.getAdminDongCode());
+            double avgJeonseDeposit = avgJeonseDeposit(rentPriceSummary);
+            double avgMonthlyDeposit = avgMonthlyDeposit(rentPriceSummary);
+            double avgMonthlyRent = avgMonthlyRent(rentPriceSummary);
+            double score = scoreCalculator.calculateScore(totalMobility, avgTime, density, safety);
 
             responses.add(MobilityResponse.builder()
                     .departureDong(AdminDongDto.builder()
                             .adminDongCode(departureDong.getAdminDongCode())
-                            .address(departureDong.getCity() + " " + departureDong.getDistrict() + " " + departureDong.getAdminAreaName())
+                            .address(departureDong.getCityName() + " " + departureDong.getDistrictName() + " " + departureDong.getAdminDongName())
                             .build())
                     .totalMobility(Math.round(totalMobility * 100) / 100.0)
                     .avgTime(Math.round(avgTime * 100) / 100.0)
                     .density(Math.round(density * 100) / 100.0)
                     .safety(Math.round(safety * 100) / 100.0)
-                    .avgJeonseDeposit(Math.round(rentPriceDto.getAvgJeonseDeposit() * 100) / 100.0)
-                    .avgMonthlyDeposit(Math.round(rentPriceDto.getAvgMonthlyDeposit() * 100) / 100.0)
-                    .avgMonthlyRent(Math.round(rentPriceDto.getAvgMonthlyRent() * 100) / 100.0)
+                    .avgJeonseDeposit(Math.round(avgJeonseDeposit * 100) / 100.0)
+                    .avgMonthlyDeposit(Math.round(avgMonthlyDeposit * 100) / 100.0)
+                    .avgMonthlyRent(Math.round(avgMonthlyRent * 100) / 100.0)
                     .score(score)
                     .build());
         }
@@ -195,4 +219,28 @@ public class MobilityService {
         return Collections.emptyList();
     }
 
+    private double toDouble(Long value) {
+        return value == null ? 0.0 : value.doubleValue();
+    }
+
+    private double avgJeonseDeposit(AdminDongRentPriceSummaryResponse rentPriceSummary) {
+        if (rentPriceSummary == null || rentPriceSummary.jeonse() == null) {
+            return 0.0;
+        }
+        return toDouble(rentPriceSummary.jeonse().amount());
+    }
+
+    private double avgMonthlyDeposit(AdminDongRentPriceSummaryResponse rentPriceSummary) {
+        if (rentPriceSummary == null || rentPriceSummary.monthlyRent() == null) {
+            return 0.0;
+        }
+        return toDouble(rentPriceSummary.monthlyRent().deposit());
+    }
+
+    private double avgMonthlyRent(AdminDongRentPriceSummaryResponse rentPriceSummary) {
+        if (rentPriceSummary == null || rentPriceSummary.monthlyRent() == null) {
+            return 0.0;
+        }
+        return toDouble(rentPriceSummary.monthlyRent().monthlyRent());
+    }
 }

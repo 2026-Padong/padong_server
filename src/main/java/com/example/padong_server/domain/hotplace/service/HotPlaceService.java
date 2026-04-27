@@ -20,4 +20,13 @@ public class HotPlaceService {
         hotPlaceRepository.saveAll(hotPlaces);
         return hotPlaces.size();
     }
+
+    public List<HotPlace> getHotPlacesByGuName(String guName) {
+        return hotPlaceRepository.findByGuName(guName);
+    }
+
+    public HotPlace getHotPlaceByAreaNm(String areaNm) {
+        return hotPlaceRepository.findByAreaNm(areaNm)
+                .orElseThrow(() -> new IllegalArgumentException("HotPlace not found. areaNm=" + areaNm));
+    }
 }

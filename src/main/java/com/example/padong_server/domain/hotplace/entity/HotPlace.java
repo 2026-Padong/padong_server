@@ -1,6 +1,9 @@
 package com.example.padong_server.domain.hotplace.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -19,7 +22,7 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "hot_place",
         indexes = {
-                @Index(name = "idx_realtime_place_area_code", columnList = "areaCode"),
+                @Index(name = "idx_hot_place_area_nm", columnList = "areaNm"),
                 @Index(name = "idx_realtime_place_gu_name", columnList = "guName"),
                 @Index(name = "idx_realtime_place_category", columnList = "category")
         }
@@ -30,10 +33,19 @@ public class HotPlace {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String category;
-    private Integer placeNumber;
-    private String areaCode;
-    private String areaName;
-    private String englishName;
+    @Column(nullable = false, unique = true, length = 100)
+    private String areaNm;
+
+    @Column(nullable = false, length = 30)
     private String guName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private Category category;
+
+    @Column(nullable = false, precision = 10)
+    private Double latitude;
+
+    @Column(nullable = false, precision = 10)
+    private Double longitude;
 }

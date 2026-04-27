@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.hotplace.util;
 
+import com.example.padong_server.domain.hotplace.entity.Category;
 import com.example.padong_server.domain.hotplace.entity.HotPlace;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -61,12 +62,11 @@ public class HotPlaceDataUtil {
                 }
 
                 result.add(HotPlace.builder()
-                        .category(columns.get(0))
-                        .placeNumber(parseInteger(columns.get(1)))
-                        .areaCode(columns.get(2))
-                        .areaName(columns.get(3))
-                        .englishName(columns.get(4))
+                        .category(Category.from(columns.get(0)))
+                        .areaNm(columns.get(3))
                         .guName(columns.get(5))
+                        .latitude(0.0)
+                        .longitude(0.0)
                         .build());
             }
         }
@@ -107,13 +107,6 @@ public class HotPlaceDataUtil {
 
     private boolean isEmptyRow(String line) {
         return line.replace(",", "").replace("\"", "").isBlank();
-    }
-
-    private Integer parseInteger(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return Integer.parseInt(value.replace(",", ""));
     }
 
     private void logElapsed(int size, long start) {

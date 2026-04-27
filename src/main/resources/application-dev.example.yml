@@ -3,27 +3,27 @@ spring:
     name: padong-be
 
   datasource:
-    url: ${RDS_URL}
-    username: ${RDS_USERNAME}
-    password: ${RDS_PASSWORD}
+    url: ${PADONG_DB_URL:jdbc:mysql://localhost:3306/padong}
+    username: ${PADONG_DB_USERNAME:root}
+    password: ${PADONG_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
 
 swagger-config:
-  server-url-https: "https://padong.site"
-  server-url-http: "http://padong.site"
+  server-url-http: "http://localhost:8080"
+  server-url-https: "http://localhost:8080"
 
 open-search:
-  url: ${OPEN_SEARCH_URL}
-  username: ${OPEN_SEARCH_USERNAME}
-  password: ${OPEN_SEARCH_PASSWORD}
+  url: ${OPEN_SEARCH_URL:}
+  username: ${OPEN_SEARCH_USERNAME:}
+  password: ${OPEN_SEARCH_PASSWORD:}
 
 seoul-open-api:
   base-url: ${SEOUL_OPEN_API_BASE_URL:http://openapi.seoul.go.kr:8088}

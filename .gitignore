@@ -35,6 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Local Workspace ###
 .omx/
 .codex/
 src/main/resources/data/

@@ -25,6 +25,10 @@ open-search:
   username: ${OPEN_SEARCH_USERNAME}
   password: ${OPEN_SEARCH_PASSWORD}
 
+seoul-open-api:
+  base-url: ${SEOUL_OPEN_API_BASE_URL}
+  api-key: ${SEOUL_OPEN_API_KEY}
+
 naver:
   news:
     client-id: ${NAVER_NEWS_CLIENT_ID}

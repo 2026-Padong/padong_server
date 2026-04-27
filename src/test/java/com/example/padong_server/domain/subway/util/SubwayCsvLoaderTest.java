@@ -26,7 +26,7 @@ class SubwayCsvLoaderTest {
     void load_and_save() {
             subwayRepository.deleteAll();
 
-            subwayCsvLoader.loadCsv("data/test_subway.csv");
+            subwayCsvLoader.loadCsv("data/subway/test_subway.csv");
 
             List<Subway> subways = subwayRepository.findAll();
 

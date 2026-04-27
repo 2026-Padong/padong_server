@@ -11,11 +11,14 @@ import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
 import com.example.padong_server.domain.dongne.repository.LegalDongRepository;
 import com.example.padong_server.domain.dongne.util.DongneDataUtil;
+import com.example.padong_server.domain.subway.entity.Subway;
+import com.example.padong_server.domain.subway.repository.SubwayRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -28,6 +31,7 @@ public class DongneImportService {
     private final LegalDongRepository legalDongRepository;
     private final DongMappingRepository dongMappingRepository;
     private final DongneDataUtil dongneDataUtil;
+    private final SubwayRepository subwayRepository;
 
     @Transactional
     public DongneImportResult importData() {
@@ -38,12 +42,24 @@ public class DongneImportService {
         validateUnique(adminRows, AdminDongCsvRow::adminDongCode, "행정동 코드");
         validateUnique(legalRows, LegalDongCsvRow::legalDongCode, "법정동 코드");
 
+        Map<Long, Subway> subwayById = indexBy(
+                subwayRepository.findAllById(
+                        adminRows.stream()
+                                .map(AdminDongCsvRow::stationId)
+                                .collect(LinkedHashSet::new, LinkedHashSet::add, LinkedHashSet::addAll)
+                ),
+                Subway::getId,
+                "지하철 역 ID"
+        );
+
         dongMappingRepository.deleteAllInBatch();
         legalDongRepository.deleteAllInBatch();
         adminDongRepository.deleteAllInBatch();
 
         List<AdminDong> savedAdmins = adminDongRepository.saveAll(
-                adminRows.stream().map(AdminDong::new).toList()
+                adminRows.stream()
+                        .map(row -> new AdminDong(row, requireSubway(subwayById, row.stationId())))
+                        .toList()
         );
         List<LegalDong> savedLegals = legalDongRepository.saveAll(
                 legalRows.stream().map(LegalDong::new).toList()
@@ -69,10 +85,10 @@ public class DongneImportService {
         indexBy(rows, keyExtractor, label);
     }
 
-    private <T> Map<String, T> indexBy(List<T> rows, Function<T, String> keyExtractor, String label) {
-        Map<String, T> result = new LinkedHashMap<>();
+    private <K, T> Map<K, T> indexBy(List<T> rows, Function<T, K> keyExtractor, String label) {
+        Map<K, T> result = new LinkedHashMap<>();
         for (T row : rows) {
-            String key = keyExtractor.apply(row);
+            K key = keyExtractor.apply(row);
             T existing = result.putIfAbsent(key, row);
             if (existing != null) {
                 throw new IllegalArgumentException("중복된 " + label + "가 있습니다: " + key);
@@ -95,5 +111,13 @@ public class DongneImportService {
             throw new IllegalArgumentException("매핑 대상 법정동 코드가 없습니다: " + legalDongCode);
         }
         return legalDong;
+    }
+
+    private Subway requireSubway(Map<Long, Subway> subwayById, Long stationId) {
+        Subway subway = subwayById.get(stationId);
+        if (subway == null) {
+            throw new IllegalArgumentException("행정동에 연결할 지하철 역 ID가 없습니다: " + stationId);
+        }
+        return subway;
     }
 }

@@ -5,12 +5,8 @@ import java.util.List;
 
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
+import com.example.padong_server.domain.subway.entity.Subway;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -41,15 +37,24 @@ public class AdminDong {
     @Column(nullable = false)
     private Double longitude;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "station_id")
+    private Subway subway;
+
     @OneToMany(mappedBy = "adminDong")
     private List<DongMapping> mappings = new ArrayList<>();
 
     public AdminDong(AdminDongCsvRow row) {
+        this(row, null);
+    }
+
+    public AdminDong(AdminDongCsvRow row, Subway subway) {
         this.cityName = row.cityName();
         this.districtName = row.districtName();
         this.adminDongName = row.adminDongName();
         this.adminDongCode = row.adminDongCode();
         this.latitude = row.latitude();
         this.longitude = row.longitude();
+        this.subway = subway;
     }
 }

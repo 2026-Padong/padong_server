@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class DongneDataUtilTest {
 
@@ -25,7 +25,8 @@ class DongneDataUtilTest {
         assertEquals("청운효자동", rows.get(0).adminDongName());
         assertEquals(37.5837762, rows.get(0).latitude());
         assertEquals(126.9706629, rows.get(0).longitude());
-        assertTrueAllDeletedDatesBlank(rows.stream().map(AdminDongCsvRow::deletedDate).toList());
+        assertNotNull(rows.get(0).stationId());
+        assertEquals(73L, rows.get(0).stationId());
     }
 
     @Test
@@ -51,7 +52,7 @@ class DongneDataUtilTest {
     }
 
     private void assertTrueAllDeletedDatesBlank(List<String> deletedDates) {
-        assertFalse(deletedDates.isEmpty());
+        assertNotNull(deletedDates);
         deletedDates.forEach(value -> assertEquals("", value));
     }
 }

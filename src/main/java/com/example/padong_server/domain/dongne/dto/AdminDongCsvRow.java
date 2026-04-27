@@ -7,7 +7,6 @@ public record AdminDongCsvRow(
         String adminDongName,
         Double latitude,
         Double longitude,
-        String sourceDate,
-        String deletedDate
+        Long stationId
 ) {
 }

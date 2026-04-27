@@ -21,7 +21,7 @@ public class SubwayCsvLoader {
     // 운영용 (기본 CSV)
     @Transactional
     public void loadCsv() {
-        loadCsv("data/subway.csv");
+        loadCsv("data/subway/subway.csv");
     }
 
     // 테스트/확장용

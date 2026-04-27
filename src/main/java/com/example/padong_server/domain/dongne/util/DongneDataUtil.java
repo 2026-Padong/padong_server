@@ -26,7 +26,7 @@ public class DongneDataUtil {
     public List<AdminDongCsvRow> readAdminDongRows() {
         return readCsv(
                 ADMIN_DONG_PATH,
-                List.of("admin_dong_code", "city_name", "district_name", "admin_dong_name", "latitude", "longitude", "source_date", "deleted_date"),
+                List.of("admin_dong_code", "city_name", "district_name", "admin_dong_name", "address", "latitude", "longitude", "station_id", "distance_km"),
                 values -> new AdminDongCsvRow(
                         values.get("admin_dong_code"),
                         values.get("city_name"),
@@ -34,8 +34,7 @@ public class DongneDataUtil {
                         values.get("admin_dong_name"),
                         parseDouble(values.get("latitude"), "latitude"),
                         parseDouble(values.get("longitude"), "longitude"),
-                        values.get("source_date"),
-                        values.get("deleted_date")
+                        parseLong(values.get("station_id"), "station_id")
                 )
         );
     }
@@ -168,6 +167,14 @@ public class DongneDataUtil {
             return Double.valueOf(normalize(value));
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Invalid decimal for " + label + ": " + value, exception);
+        }
+    }
+
+    private Long parseLong(String value, String label) {
+        try {
+            return Long.valueOf(normalize(value));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid long for " + label + ": " + value, e);
         }
     }
 }

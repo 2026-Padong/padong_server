@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
+import com.example.padong_server.domain.news.entity.NewsArticle;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,6 +44,9 @@ public class AdminDong {
 
     @OneToMany(mappedBy = "adminDong")
     private List<DongMapping> mappings = new ArrayList<>();
+
+    @OneToMany(mappedBy = "adminDong")
+    private List<NewsArticle> newsArticles = new ArrayList<>();
 
     public AdminDong(AdminDongCsvRow row) {
         this.cityName = row.cityName();

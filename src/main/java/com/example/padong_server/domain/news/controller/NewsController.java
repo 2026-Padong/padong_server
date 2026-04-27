@@ -7,8 +7,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,15 +21,14 @@ public class NewsController {
 
     private final NewsService newsService;
 
-    @GetMapping("/search/youth-house")
-    @Operation(summary = "청년주택 뉴스 조회")
-    public ResponseEntity<ResponseDTO<NewsResponse>> getYouthHouseNews() {
-        return ResponseEntity.ok(newsService.getNews("청년 주택"));
+    @GetMapping("/search")
+    @Operation(summary = "동 이름으로 저장된 뉴스 20건 조회")
+    public ResponseEntity<ResponseDTO<NewsResponse>> getNews(@RequestParam String dongne) {
+        return ResponseEntity.ok(newsService.getNews(dongne));
     }
 
-    @GetMapping("/search/house-price")
-    @Operation(summary = "주택가격 뉴스 조회")
-    public ResponseEntity<ResponseDTO<NewsResponse>> getHousePriceNews() {
-        return ResponseEntity.ok(newsService.getNews("주택 가격"));
-    }
+//    @ExceptionHandler(IllegalArgumentException.class)
+//    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException exception) {
+//        return ResponseEntity.badRequest().body(exception.getMessage());
+//    }
 }

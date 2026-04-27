@@ -24,3 +24,8 @@ open-search:
   url: ${OPEN_SEARCH_URL}
   username: ${OPEN_SEARCH_USERNAME}
   password: ${OPEN_SEARCH_PASSWORD}
+
+naver:
+  news:
+    client-id: ${NAVER_NEWS_CLIENT_ID}
+    client-secret: ${NAVER_NEWS_CLIENT_SECRET}

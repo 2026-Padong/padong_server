@@ -40,9 +40,3 @@ out/
 .omx/
 .codex/
 src/main/resources/data/
-
-### Local Secrets ###
-.env
-.env.local
-src/main/resources/application-local.yml
-src/main/resources/application-secret.yml

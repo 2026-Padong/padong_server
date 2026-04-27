@@ -19,7 +19,7 @@ import java.util.List;
 @Component
 public class HotPlaceDataUtil {
 
-    private static final String FILE_PATH = "data/realtimePlaceData.csv";
+    private static final String FILE_PATH = "data/store/realtimePlaceData.csv";
     private static final int EXPECTED_COLUMN_COUNT = 6;
 
     public List<HotPlace> readHotPlacesFromCsv() {

@@ -19,4 +19,6 @@ public interface AdminDongRepository extends JpaRepository<AdminDong, Long> {
             String districtName,
             String adminDongName
     );
+
+    Optional<AdminDong> findFirstByAdminDongNameContainingOrderByIdAsc(String adminDongName);
 }

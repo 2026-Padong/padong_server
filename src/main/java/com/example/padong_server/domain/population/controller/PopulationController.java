@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/population")
-@Tag(name = "Population", description = "?숇꽕蹂??멸뎄??愿??API")
+@Tag(name = "Population", description = "동네별 인구 관련 API")
 public class PopulationController {
 
     private final PopulationService populationService;
@@ -38,13 +37,13 @@ public class PopulationController {
     }
 
 //    @GetMapping("/{dongneCode}")
-//    @Operation(summary = "?숇꽕蹂??멸뎄諛??議고쉶")
+//    @Operation(summary = "동네별 인구밀도 조회")
 //    public ResponseEntity<ResponseDTO<PopulationDataDto>> getPopulationByDongneCode(@PathVariable String dongneCode) {
 //        return ResponseEntity.ok(populationService.getPopulationByAdmin(dongneCode));
 //    }
 
     @GetMapping("/detail")
-    @Operation(summary = "?됱젙??肄붾뱶濡??멸뎄 ?뺣낫 議고쉶")
+    @Operation(summary = "행정동 코드로 인구 정보 조회")
     public ResponseEntity<ResponseDTO<PopulationDetailDto>> getPopulationDetail(@RequestParam String dongneCode) {
         return ResponseEntity.ok(populationService.getPopulationDetailByAdminDongCode(dongneCode));
     }

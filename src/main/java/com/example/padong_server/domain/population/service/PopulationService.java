@@ -36,8 +36,8 @@ public class PopulationService {
     }
 
     public PopulationDataDto getPopulationByAdmin(AdminDong adminDong) {
-        Optional<Population> optional= populationRepository.findByAdminDong(adminDong);
-      return optional.map(PopulationDataDto::new).orElse(null);
+        Optional<Population> optional = populationRepository.findByAdminDong(adminDong);
+        return optional.map(PopulationDataDto::new).orElse(null);
     }
 
     public ResponseDTO<PopulationDetailDto> getPopulationDetailByAdminDongCode(String adminDongCode) {

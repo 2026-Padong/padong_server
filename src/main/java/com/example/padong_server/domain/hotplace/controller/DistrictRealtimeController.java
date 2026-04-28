@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "District Realtime", description = "\uC790\uCE58\uAD6C \uAE30\uC900 \uC2E4\uC2DC\uAC04 \uB3C4\uC2DC\uB370\uC774\uD130 \uC870\uD68C API")
+@Tag(name = "District Realtime", description = "자치구 기준 실시간 도시데이터 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/realtime/districts")
@@ -27,43 +27,43 @@ public class DistrictRealtimeController {
     private final HotplaceRealtimeService hotplaceRealtimeService;
 
     @Operation(
-            summary = "\uC790\uCE58\uAD6C \uC2E4\uC2DC\uAC04 \uB370\uC774\uD130 \uC870\uD68C",
-            description = "query parameter guName\uC5D0 \uD574\uB2F9\uD558\uB294 \uC790\uCE58\uAD6C\uC758 \uD56B\uD50C\uB808\uC774\uC2A4 \uBAA9\uB85D\uC744 \uC870\uD68C\uD558\uACE0, \uB300\uD45C \uD56B\uD50C\uB808\uC774\uC2A4\uC758 \uB0A0\uC528 \uC694\uC57D\uACFC \uC804\uCCB4 \uD56B\uD50C\uB808\uC774\uC2A4 \uD63C\uC7A1\uB3C4 \uBAA9\uB85D\uC744 \uBC18\uD658\uD569\uB2C8\uB2E4."
+            summary = "자치구 실시간 데이터 조회",
+            description = "query parameter guName에 해당하는 자치구의 핫플레이스 목록을 조회하고, 대표 핫플레이스의 날씨 요약과 전체 핫플레이스 혼잡도 목록을 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "\uC2E4\uC2DC\uAC04 \uB370\uC774\uD130 \uC870\uD68C \uC131\uACF5",
+                    description = "실시간 데이터 조회 성공",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = DistrictRealtimeResponse.class),
                             examples = @ExampleObject(
-                                    name = "\uC6A9\uC0B0\uAD6C \uC870\uD68C \uC608\uC2DC",
+                                    name = "용산구 조회 예시",
                                     value = """
                                             {
-                                              "guName": "\uC6A9\uC0B0\uAD6C",
-                                              "selectedAreaNm": "\uAD6D\uB9BD \uC911\uC559\uBC15\uBB3C\uAD00",
+                                              "districtName": "용산구",
+                                              "selectedAreaName": "국립중앙박물관",
                                               "summary": {
-                                                "weatherStatus": "\uB9D1\uC74C",
+                                                "weatherStatus": "맑음",
                                                 "temperature": "21.3",
                                                 "sensibleTemperature": "22.0",
                                                 "humidity": "55%",
-                                                "pm10Status": "\uC88B\uC74C",
+                                                "pm10Status": "좋음",
                                                 "pm10": "18.0",
                                                 "precipitationProbability": "10%"
                                               },
                                               "hotplaces": [
                                                 {
-                                                  "areaNm": "\uAD6D\uB9BD \uC911\uC559\uBC15\uBB3C\uAD00",
+                                                  "areaName": "국립중앙박물관",
                                                   "thumbnail": "https://example.com/museum.jpg",
-                                                  "roadAddr": "\uC11C\uC6B8 \uC6A9\uC0B0\uAD6C \uC11C\uBE59\uACE0\uB85C 137",
-                                                  "areaPpltnMin": "12000",
-                                                  "areaPpltnMax": "18000",
-                                                  "congestionLevel": "\uC5EC\uC720",
-                                                  "dominantAgeGroup": "20\uB300",
+                                                  "roadAddress": "서울 용산구 서빙고로 137",
+                                                  "minPopulation": "12000",
+                                                  "maxPopulation": "18000",
+                                                  "congestionLevel": "여유",
+                                                  "dominantAgeGroup": "20대",
                                                   "dominantAgeRate": "31.2%",
-                                                  "roadTrafficIdx": "\uC6D0\uD65C",
-                                                  "roadTrafficSpd": "42.5"
+                                                  "roadTrafficStatus": "원활",
+                                                  "roadTrafficSpeed": "42.5"
                                                 }
                                               ]
                                             }
@@ -71,12 +71,12 @@ public class DistrictRealtimeController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "\uD574\uB2F9 \uC790\uCE58\uAD6C\uC758 \uD56B\uD50C\uB808\uC774\uC2A4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC74C"),
-            @ApiResponse(responseCode = "500", description = "\uC11C\uC6B8\uC2DC \uC2E4\uC2DC\uAC04 API \uD638\uCD9C \uB610\uB294 \uB0B4\uBD80 \uCC98\uB9AC \uC2E4\uD328")
+            @ApiResponse(responseCode = "404", description = "해당 자치구의 핫플레이스를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서울시 실시간 API 호출 또는 내부 처리 실패")
     })
     @GetMapping
     public ResponseEntity<DistrictRealtimeResponse> getDistrictRealtime(
-            @Parameter(description = "\uC870\uD68C\uD560 \uC790\uCE58\uAD6C \uC774\uB984", example = "\uC6A9\uC0B0\uAD6C")
+            @Parameter(description = "조회할 자치구 이름", example = "용산구")
             @RequestParam String guName
     ) {
         return ResponseEntity.ok(hotplaceRealtimeService.getDistrictRealtime(guName));

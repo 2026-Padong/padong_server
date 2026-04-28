@@ -26,16 +26,15 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class HotplaceRealtimeService {
 
-    private static final String DEFAULT_CONGESTION_LEVEL = "\uC815\uBCF4 \uC5C6\uC74C";
-    private static final String DEFAULT_CONGESTION_MESSAGE = "\uC815\uBCF4 \uC5C6\uC74C";
-    private static final String DEFAULT_WEATHER_STATUS = "\uC815\uBCF4 \uC5C6\uC74C";
-    private static final String DEFAULT_NUMERIC_TEXT = "\uC815\uBCF4 \uC5C6\uC74C";
+    private static final String DEFAULT_CONGESTION_LEVEL = "정보 없음";
+    private static final String DEFAULT_WEATHER_STATUS = "정보 없음";
+    private static final String DEFAULT_NUMERIC_TEXT = "정보 없음";
     private static final Set<String> VALID_GU_NAMES = new HashSet<>(Arrays.asList(
-            "\uAC15\uB0A8\uAD6C", "\uAC15\uB3D9\uAD6C", "\uAC15\uBD81\uAD6C", "\uAC15\uC11C\uAD6C", "\uAD00\uC545\uAD6C",
-            "\uAD11\uC9C4\uAD6C", "\uAD6C\uB85C\uAD6C", "\uAE08\uCC9C\uAD6C", "\uB178\uC6D0\uAD6C", "\uB3C4\uBD09\uAD6C",
-            "\uB3D9\uB300\uBB38\uAD6C", "\uB3D9\uC791\uAD6C", "\uB9C8\uD3EC\uAD6C", "\uC11C\uB300\uBB38\uAD6C", "\uC11C\uCD08\uAD6C",
-            "\uC131\uB3D9\uAD6C", "\uC131\uBD81\uAD6C", "\uC1A1\uD30C\uAD6C", "\uC591\uCC9C\uAD6C", "\uC601\uB4F1\uD3EC\uAD6C",
-            "\uC6A9\uC0B0\uAD6C", "\uC740\uD3C9\uAD6C", "\uC885\uB85C\uAD6C", "\uC911\uAD6C", "\uC911\uB791\uAD6C"
+            "강남구", "강동구", "강북구", "강서구", "관악구",
+            "광진구", "구로구", "금천구", "노원구", "도봉구",
+            "동대문구", "동작구", "마포구", "서대문구", "서초구",
+            "성동구", "성북구", "송파구", "양천구", "영등포구",
+            "용산구", "은평구", "종로구", "중구", "중랑구"
     ));
 
     private final HotPlaceRepository hotPlaceRepository;
@@ -58,8 +57,8 @@ public class HotplaceRealtimeService {
                 .toList();
 
         return DistrictRealtimeResponse.builder()
-                .guName(guName)
-                .selectedAreaNm(selectedHotPlace.getAreaNm())
+                .districtName(guName)
+                .selectedAreaName(selectedHotPlace.getAreaNm())
                 .summary(toWeatherSummary(selectedRealtimeData))
                 .hotplaces(hotplaceItems)
                 .build();
@@ -86,16 +85,16 @@ public class HotplaceRealtimeService {
         AgePeak agePeak = resolveDominantAge(realtimeData);
 
         return HotplaceRealtimeItem.builder()
-                .areaNm(hotPlace.getAreaNm())
+                .areaName(hotPlace.getAreaNm())
                 .thumbnail(realtimeData.getThumbnail())
-                .roadAddr(defaultText(realtimeData.getRoadAddr(), DEFAULT_NUMERIC_TEXT))
-                .areaPpltnMin(formatWholeNumber(realtimeData.getAreaPpltnMin()))
-                .areaPpltnMax(formatWholeNumber(realtimeData.getAreaPpltnMax()))
+                .roadAddress(defaultText(realtimeData.getRoadAddr(), DEFAULT_NUMERIC_TEXT))
+                .minPopulation(formatWholeNumber(realtimeData.getAreaPpltnMin()))
+                .maxPopulation(formatWholeNumber(realtimeData.getAreaPpltnMax()))
                 .congestionLevel(defaultText(realtimeData.getAreaCongestLvl(), DEFAULT_CONGESTION_LEVEL))
                 .dominantAgeGroup(agePeak.ageGroup())
                 .dominantAgeRate(agePeak.rate())
-                .roadTrafficIdx(defaultText(realtimeData.getRoadTrafficIdx(), DEFAULT_NUMERIC_TEXT))
-                .roadTrafficSpd(formatSpeed(realtimeData.getRoadTrafficSpd()))
+                .roadTrafficStatus(defaultText(realtimeData.getRoadTrafficIdx(), DEFAULT_NUMERIC_TEXT))
+                .roadTrafficSpeed(formatSpeed(realtimeData.getRoadTrafficSpd()))
                 .build();
     }
 

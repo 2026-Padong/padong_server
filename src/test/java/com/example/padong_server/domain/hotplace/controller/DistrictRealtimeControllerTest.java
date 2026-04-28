@@ -47,52 +47,71 @@ class DistrictRealtimeControllerTest {
     @DisplayName("자치구 실시간 조회 성공 시 응답 DTO를 반환한다")
     void getDistrictRealtime_returnsResponse() throws Exception {
         DistrictRealtimeResponse response = DistrictRealtimeResponse.builder()
-                .guName("\uC6A9\uC0B0\uAD6C")
-                .selectedAreaNm("\uAD6D\uB9BD \uC911\uC559\uBC15\uBB3C\uAD00")
+                .guName("용산구")
+                .selectedAreaNm("국립 중앙박물관")
                 .summary(WeatherSummary.builder()
-                        .weatherStatus("\uB9D1\uC74C")
+                        .weatherStatus("맑음")
                         .temperature("21.3")
-                        .pm10("\uC88B\uC74C")
+                        .sensibleTemperature("22.0")
+                        .humidity("55%")
+                        .pm10Status("좋음")
+                        .pm10("18.0")
                         .precipitationProbability("10%")
                         .build())
                 .hotplaces(List.of(
                         HotplaceRealtimeItem.builder()
-                                .category("\uBB38\uD654\uC720\uC0B0")
-                                .areaNm("\uAD6D\uB9BD \uC911\uC559\uBC15\uBB3C\uAD00")
-                                .congestionLevel("\uC5EC\uC720")
-                                .congestionMessage("\uC0AC\uB78C\uC774 \uBAB0\uB824\uC788\uC744 \uAC00\uB2A5\uC131\uC774 \uB0AE\uACE0 \uBD90\uBE54\uC740 \uAC70\uC758 \uB290\uAEF4\uC9C0\uC9C0 \uC54A\uC544\uC694.")
+                                .areaNm("국립 중앙박물관")
+                                .thumbnail("https://example.com/museum.jpg")
+                                .roadAddr("서울 용산구 서빙고로 137")
+                                .areaPpltnMin("12000")
+                                .areaPpltnMax("18000")
+                                .congestionLevel("여유")
+                                .dominantAgeGroup("20대")
+                                .dominantAgeRate("31.2%")
+                                .roadTrafficIdx("원활")
+                                .roadTrafficSpd("42.5")
                                 .build()
                 ))
                 .build();
 
-        given(hotplaceRealtimeService.getDistrictRealtime("\uC6A9\uC0B0\uAD6C")).willReturn(response);
+        given(hotplaceRealtimeService.getDistrictRealtime("용산구")).willReturn(response);
 
-        mockMvc.perform(get("/api/realtime/districts/{guName}", "\uC6A9\uC0B0\uAD6C")
+        mockMvc.perform(get("/api/realtime/districts")
+                        .param("guName", "용산구")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.guName").value("\uC6A9\uC0B0\uAD6C"))
-                .andExpect(jsonPath("$.selectedAreaNm").value("\uAD6D\uB9BD \uC911\uC559\uBC15\uBB3C\uAD00"))
-                .andExpect(jsonPath("$.summary.weatherStatus").value("\uB9D1\uC74C"))
+                .andExpect(jsonPath("$.guName").value("용산구"))
+                .andExpect(jsonPath("$.selectedAreaNm").value("국립 중앙박물관"))
+                .andExpect(jsonPath("$.summary.weatherStatus").value("맑음"))
                 .andExpect(jsonPath("$.summary.temperature").value("21.3"))
-                .andExpect(jsonPath("$.summary.pm10").value("\uC88B\uC74C"))
+                .andExpect(jsonPath("$.summary.sensibleTemperature").value("22.0"))
+                .andExpect(jsonPath("$.summary.humidity").value("55%"))
+                .andExpect(jsonPath("$.summary.pm10Status").value("좋음"))
+                .andExpect(jsonPath("$.summary.pm10").value("18.0"))
                 .andExpect(jsonPath("$.summary.precipitationProbability").value("10%"))
-                .andExpect(jsonPath("$.hotplaces[0].category").value("\uBB38\uD654\uC720\uC0B0"))
-                .andExpect(jsonPath("$.hotplaces[0].areaNm").value("\uAD6D\uB9BD \uC911\uC559\uBC15\uBB3C\uAD00"))
-                .andExpect(jsonPath("$.hotplaces[0].congestionLevel").value("\uC5EC\uC720"))
-                .andExpect(jsonPath("$.hotplaces[0].congestionMessage")
-                        .value("\uC0AC\uB78C\uC774 \uBAB0\uB824\uC788\uC744 \uAC00\uB2A5\uC131\uC774 \uB0AE\uACE0 \uBD90\uBE54\uC740 \uAC70\uC758 \uB290\uAEF4\uC9C0\uC9C0 \uC54A\uC544\uC694."));
+                .andExpect(jsonPath("$.hotplaces[0].areaNm").value("국립 중앙박물관"))
+                .andExpect(jsonPath("$.hotplaces[0].thumbnail").value("https://example.com/museum.jpg"))
+                .andExpect(jsonPath("$.hotplaces[0].roadAddr").value("서울 용산구 서빙고로 137"))
+                .andExpect(jsonPath("$.hotplaces[0].areaPpltnMin").value("12000"))
+                .andExpect(jsonPath("$.hotplaces[0].areaPpltnMax").value("18000"))
+                .andExpect(jsonPath("$.hotplaces[0].congestionLevel").value("여유"))
+                .andExpect(jsonPath("$.hotplaces[0].dominantAgeGroup").value("20대"))
+                .andExpect(jsonPath("$.hotplaces[0].dominantAgeRate").value("31.2%"))
+                .andExpect(jsonPath("$.hotplaces[0].roadTrafficIdx").value("원활"))
+                .andExpect(jsonPath("$.hotplaces[0].roadTrafficSpd").value("42.5"));
     }
 
     @Test
     @DisplayName("핫플레이스가 없으면 공통 에러 응답을 반환한다")
     void getDistrictRealtime_returnsErrorResponse() throws Exception {
-        given(hotplaceRealtimeService.getDistrictRealtime("\uC6A9\uC0B0\uAD6C"))
+        given(hotplaceRealtimeService.getDistrictRealtime("용산구"))
                 .willThrow(new CustomException(ErrorCode.HOTPLACE_NOT_FOUND));
 
-        mockMvc.perform(get("/api/realtime/districts/{guName}", "\uC6A9\uC0B0\uAD6C")
+        mockMvc.perform(get("/api/realtime/districts")
+                        .param("guName", "용산구")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("HOTPLACE_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value("\uD574\uB2F9 \uAD6C\uC5D0 \uB4F1\uB85D\uB41C \uD56B\uD50C\uB808\uC774\uC2A4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4."));
+                .andExpect(jsonPath("$.message").value("해당 구에 등록된 핫플레이스가 없습니다."));
     }
 }

@@ -46,15 +46,24 @@ public class DistrictRealtimeController {
                                               "summary": {
                                                 "weatherStatus": "\uB9D1\uC74C",
                                                 "temperature": "21.3",
-                                                "pm10": "\uC88B\uC74C",
+                                                "sensibleTemperature": "22.0",
+                                                "humidity": "55%",
+                                                "pm10Status": "\uC88B\uC74C",
+                                                "pm10": "18.0",
                                                 "precipitationProbability": "10%"
                                               },
                                               "hotplaces": [
                                                 {
-                                                  "category": "\uBB38\uD654\uC720\uC0B0",
                                                   "areaNm": "\uAD6D\uB9BD \uC911\uC559\uBC15\uBB3C\uAD00",
+                                                  "thumbnail": "https://example.com/museum.jpg",
+                                                  "roadAddr": "\uC11C\uC6B8 \uC6A9\uC0B0\uAD6C \uC11C\uBE59\uACE0\uB85C 137",
+                                                  "areaPpltnMin": "12000",
+                                                  "areaPpltnMax": "18000",
                                                   "congestionLevel": "\uC5EC\uC720",
-                                                  "congestionMessage": "\uC0AC\uB78C\uC774 \uBAB0\uB824\uC788\uC744 \uAC00\uB2A5\uC131\uC774 \uB0AE\uACE0 \uBD90\uBE54\uC740 \uAC70\uC758 \uB290\uAEF4\uC9C0\uC9C0 \uC54A\uC544\uC694."
+                                                  "dominantAgeGroup": "20\uB300",
+                                                  "dominantAgeRate": "31.2%",
+                                                  "roadTrafficIdx": "\uC6D0\uD65C",
+                                                  "roadTrafficSpd": "42.5"
                                                 }
                                               ]
                                             }

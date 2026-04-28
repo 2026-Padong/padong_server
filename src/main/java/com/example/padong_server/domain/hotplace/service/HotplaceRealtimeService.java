@@ -26,6 +26,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class HotplaceRealtimeService {
 
+    private static final String HOTPLACE_THUMBNAIL_BASE_URL = "https://data.seoul.go.kr/resources/img/guide/hotspot/";
     private static final String DEFAULT_CONGESTION_LEVEL = "정보 없음";
     private static final String DEFAULT_WEATHER_STATUS = "정보 없음";
     private static final String DEFAULT_NUMERIC_TEXT = "정보 없음";
@@ -86,7 +87,7 @@ public class HotplaceRealtimeService {
 
         return HotplaceRealtimeItem.builder()
                 .areaName(hotPlace.getAreaNm())
-                .thumbnail(realtimeData.getThumbnail())
+                .thumbnail(buildThumbnailUrl(hotPlace.getAreaNm()))
                 .roadAddress(defaultText(realtimeData.getRoadAddr(), DEFAULT_NUMERIC_TEXT))
                 .minPopulation(formatWholeNumber(realtimeData.getAreaPpltnMin()))
                 .maxPopulation(formatWholeNumber(realtimeData.getAreaPpltnMax()))
@@ -96,6 +97,13 @@ public class HotplaceRealtimeService {
                 .roadTrafficStatus(defaultText(realtimeData.getRoadTrafficIdx(), DEFAULT_NUMERIC_TEXT))
                 .roadTrafficSpeed(formatSpeed(realtimeData.getRoadTrafficSpd()))
                 .build();
+    }
+
+    private String buildThumbnailUrl(String areaName) {
+        if (!StringUtils.hasText(areaName)) {
+            return null;
+        }
+        return HOTPLACE_THUMBNAIL_BASE_URL + areaName + ".jpg";
     }
 
     private String formatTemperature(Double temperature) {

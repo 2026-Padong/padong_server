@@ -62,11 +62,12 @@ public class SeoulRealtimeClient {
 
             JsonNode weatherNode = extractWeatherNode(targetNode);
             JsonNode forecastNode = extractForecastNode(weatherNode);
+            String resolvedAddress = resolveAddress(targetNode);
 
             return SeoulRealtimeData.builder()
                     .areaNm(readText(targetNode, "AREA_NM", areaNm))
                     .thumbnail(readText(targetNode, "THUMBNAIL", null))
-                    .roadAddr(readText(targetNode, "ROAD_ADDR", null))
+                    .roadAddr(resolvedAddress)
                     .areaPpltnMin(readDouble(targetNode, "AREA_PPLTN_MIN"))
                     .areaPpltnMax(readDouble(targetNode, "AREA_PPLTN_MAX"))
                     .areaCongestLvl(readText(targetNode, "AREA_CONGEST_LVL", DEFAULT_CONGEST_LEVEL))
@@ -149,6 +150,26 @@ public class SeoulRealtimeClient {
         JsonNode fieldNode = findField(targetNode, fieldName);
         String value = asText(fieldNode);
         return StringUtils.hasText(value) ? value : defaultValue;
+    }
+
+    private String resolveAddress(JsonNode targetNode) {
+        String areaRoadAddress = readText(targetNode, "ROAD_ADDR", null);
+        if (StringUtils.hasText(areaRoadAddress)) {
+            return areaRoadAddress;
+        }
+
+        JsonNode parkingStatusNode = targetNode.get("PRK_STTS");
+        if (parkingStatusNode != null && parkingStatusNode.isArray() && !parkingStatusNode.isEmpty()) {
+            JsonNode firstParkingNode = parkingStatusNode.get(0);
+            String parkingRoadAddress = readText(firstParkingNode, "ROAD_ADDR", null);
+            if (StringUtils.hasText(parkingRoadAddress)) {
+                return parkingRoadAddress;
+            }
+
+            return readText(firstParkingNode, "ADDRESS", null);
+        }
+
+        return null;
     }
 
     private JsonNode extractWeatherNode(JsonNode targetNode) {

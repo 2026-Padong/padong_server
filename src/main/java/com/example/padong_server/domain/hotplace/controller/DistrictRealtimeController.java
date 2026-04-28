@@ -55,7 +55,7 @@ public class DistrictRealtimeController {
                                               "hotplaces": [
                                                 {
                                                   "areaName": "국립중앙박물관",
-                                                  "thumbnail": "https://example.com/museum.jpg",
+                                                  "thumbnail": "https://data.seoul.go.kr/resources/img/guide/hotspot/국립중앙박물관.jpg",
                                                   "roadAddress": "서울 용산구 서빙고로 137",
                                                   "minPopulation": "12000",
                                                   "maxPopulation": "18000",

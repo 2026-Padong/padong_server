@@ -10,11 +10,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class SeoulRealtimeClientConfig {
 
     @Bean
-    public WebClient.Builder webClientBuilder() {
-        return WebClient.builder();
-    }
-
-    @Bean
     public WebClient seoulRealtimeWebClient(WebClient.Builder webClientBuilder,
                                             SeoulRealtimeProperties properties) {
         return webClientBuilder

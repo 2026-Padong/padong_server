@@ -75,8 +75,8 @@ public class HotplaceRealtimeService {
                 .temperature(formatTemperature(realtimeData.getTemperature()))
                 .sensibleTemperature(formatTemperature(realtimeData.getSensibleTemperature()))
                 .humidity(formatHumidity(realtimeData.getHumidity()))
-                .pm10Status(defaultText(realtimeData.getPm10Status(), DEFAULT_NUMERIC_TEXT))
-                .pm10(formatPm10Value(realtimeData.getPm10()))
+                .fineDustStatus(defaultText(realtimeData.getPm10Status(), DEFAULT_NUMERIC_TEXT))
+                .fineDust(formatPm10Value(realtimeData.getPm10()))
                 .precipitationProbability(formatPrecipitationProbability(realtimeData.getRainChance()))
                 .build();
     }

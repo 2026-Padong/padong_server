@@ -96,8 +96,8 @@ class HotplaceRealtimeServiceTest {
         assertThat(response.getSummary().getTemperature()).isEqualTo("21.3");
         assertThat(response.getSummary().getSensibleTemperature()).isEqualTo("22.0");
         assertThat(response.getSummary().getHumidity()).isEqualTo("55%");
-        assertThat(response.getSummary().getPm10Status()).isEqualTo("좋음");
-        assertThat(response.getSummary().getPm10()).isEqualTo("18.0");
+        assertThat(response.getSummary().getFineDustStatus()).isEqualTo("좋음");
+        assertThat(response.getSummary().getFineDust()).isEqualTo("18.0");
         assertThat(response.getSummary().getPrecipitationProbability()).isEqualTo("10%");
         assertThat(response.getHotplaces()).hasSize(2);
         assertThat(response.getHotplaces().get(0).getAreaNm()).isEqualTo("국립 중앙박물관");
@@ -215,8 +215,8 @@ class HotplaceRealtimeServiceTest {
         assertThat(response.getSummary().getTemperature()).isEqualTo("정보 없음");
         assertThat(response.getSummary().getSensibleTemperature()).isEqualTo("정보 없음");
         assertThat(response.getSummary().getHumidity()).isEqualTo("정보 없음");
-        assertThat(response.getSummary().getPm10Status()).isEqualTo("정보 없음");
-        assertThat(response.getSummary().getPm10()).isEqualTo("정보 없음");
+        assertThat(response.getSummary().getFineDustStatus()).isEqualTo("정보 없음");
+        assertThat(response.getSummary().getFineDust()).isEqualTo("정보 없음");
         assertThat(response.getSummary().getPrecipitationProbability()).isEqualTo("정보 없음");
         assertThat(response.getHotplaces().get(0).getCongestionLevel()).isEqualTo("정보 없음");
         assertThat(response.getHotplaces().get(0).getRoadAddr()).isEqualTo("정보 없음");

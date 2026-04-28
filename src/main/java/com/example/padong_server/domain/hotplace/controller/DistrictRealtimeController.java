@@ -48,8 +48,8 @@ public class DistrictRealtimeController {
                                                 "temperature": "21.3",
                                                 "sensibleTemperature": "22.0",
                                                 "humidity": "55%",
-                                                "pm10Status": "좋음",
-                                                "pm10": "18.0",
+                                                "fineDustStatus": "좋음",
+                                                "fineDust": "18.0",
                                                 "precipitationProbability": "10%"
                                               },
                                               "hotplaces": [

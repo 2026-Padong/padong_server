@@ -7,4 +7,10 @@ import java.util.Optional;
 
 public interface LegalDongRepository extends JpaRepository<LegalDong, Long> {
     Optional<LegalDong> findByLegalDongCode(String legalDongCode);
+
+    Optional<LegalDong> findByCityNameAndDistrictNameAndLegalDongName(
+            String cityName,
+            String districtName,
+            String legalDongName
+    );
 }

@@ -43,8 +43,8 @@ public class User {
     @Column(nullable = false, length = 255)
     private String email;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "admin_dong_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_dong_id")
     private AdminDong adminDong;
 
     @Builder
@@ -56,10 +56,23 @@ public class User {
         this.adminDong = adminDong;
     }
 
+    public static User createKakaoMember(Long kakaoId, String email, String nickname, String picture) {
+        return User.builder()
+                .kakaoId(kakaoId)
+                .email(email)
+                .nickname(nickname)
+                .picture(picture)
+                .build();
+    }
+
     public void updateProfile(String nickname, String picture, String email, AdminDong adminDong) {
         this.nickname = nickname;
         this.picture = picture;
         this.email = email;
+        this.adminDong = adminDong;
+    }
+
+    public void updateAdminDong(AdminDong adminDong) {
         this.adminDong = adminDong;
     }
 }

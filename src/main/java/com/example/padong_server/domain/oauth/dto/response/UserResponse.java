@@ -22,17 +22,21 @@ public class UserResponse {
 
     public static UserResponse from(User user) {
         AdminDong adminDong = user.getAdminDong();
-        return UserResponse.builder()
+        UserResponseBuilder builder = UserResponse.builder()
                 .id(user.getId())
                 .kakaoId(user.getKakaoId())
                 .nickname(user.getNickname())
                 .picture(user.getPicture())
-                .email(user.getEmail())
-                .adminDongId(adminDong.getId())
-                .adminDongCode(adminDong.getAdminDongCode())
-                .cityName(adminDong.getCityName())
-                .districtName(adminDong.getDistrictName())
-                .adminDongName(adminDong.getAdminDongName())
-                .build();
+                .email(user.getEmail());
+
+        if (adminDong != null) {
+            builder.adminDongId(adminDong.getId())
+                    .adminDongCode(adminDong.getAdminDongCode())
+                    .cityName(adminDong.getCityName())
+                    .districtName(adminDong.getDistrictName())
+                    .adminDongName(adminDong.getAdminDongName());
+        }
+
+        return builder.build();
     }
 }

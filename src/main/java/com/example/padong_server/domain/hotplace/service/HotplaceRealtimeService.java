@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -25,16 +26,16 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class HotplaceRealtimeService {
 
-    private static final String DEFAULT_CONGESTION_LEVEL = "\uC815\uBCF4 \uC5C6\uC74C";
-    private static final String DEFAULT_CONGESTION_MESSAGE = "\uC815\uBCF4 \uC5C6\uC74C";
-    private static final String DEFAULT_WEATHER_STATUS = "\uC815\uBCF4 \uC5C6\uC74C";
-    private static final String DEFAULT_NUMERIC_TEXT = "\uC815\uBCF4 \uC5C6\uC74C";
+    private static final String HOTPLACE_THUMBNAIL_BASE_URL = "https://data.seoul.go.kr/resources/img/guide/hotspot/";
+    private static final String DEFAULT_CONGESTION_LEVEL = "정보 없음";
+    private static final String DEFAULT_WEATHER_STATUS = "정보 없음";
+    private static final String DEFAULT_NUMERIC_TEXT = "정보 없음";
     private static final Set<String> VALID_GU_NAMES = new HashSet<>(Arrays.asList(
-            "\uAC15\uB0A8\uAD6C", "\uAC15\uB3D9\uAD6C", "\uAC15\uBD81\uAD6C", "\uAC15\uC11C\uAD6C", "\uAD00\uC545\uAD6C",
-            "\uAD11\uC9C4\uAD6C", "\uAD6C\uB85C\uAD6C", "\uAE08\uCC9C\uAD6C", "\uB178\uC6D0\uAD6C", "\uB3C4\uBD09\uAD6C",
-            "\uB3D9\uB300\uBB38\uAD6C", "\uB3D9\uC791\uAD6C", "\uB9C8\uD3EC\uAD6C", "\uC11C\uB300\uBB38\uAD6C", "\uC11C\uCD08\uAD6C",
-            "\uC131\uB3D9\uAD6C", "\uC131\uBD81\uAD6C", "\uC1A1\uD30C\uAD6C", "\uC591\uCC9C\uAD6C", "\uC601\uB4F1\uD3EC\uAD6C",
-            "\uC6A9\uC0B0\uAD6C", "\uC740\uD3C9\uAD6C", "\uC885\uB85C\uAD6C", "\uC911\uAD6C", "\uC911\uB791\uAD6C"
+            "강남구", "강동구", "강북구", "강서구", "관악구",
+            "광진구", "구로구", "금천구", "노원구", "도봉구",
+            "동대문구", "동작구", "마포구", "서대문구", "서초구",
+            "성동구", "성북구", "송파구", "양천구", "영등포구",
+            "용산구", "은평구", "종로구", "중구", "중랑구"
     ));
 
     private final HotPlaceRepository hotPlaceRepository;
@@ -57,8 +58,8 @@ public class HotplaceRealtimeService {
                 .toList();
 
         return DistrictRealtimeResponse.builder()
-                .guName(guName)
-                .selectedAreaNm(selectedHotPlace.getAreaNm())
+                .districtName(guName)
+                .selectedAreaName(selectedHotPlace.getAreaNm())
                 .summary(toWeatherSummary(selectedRealtimeData))
                 .hotplaces(hotplaceItems)
                 .build();
@@ -73,18 +74,36 @@ public class HotplaceRealtimeService {
         return WeatherSummary.builder()
                 .weatherStatus(defaultText(realtimeData.getWeatherStatus(), DEFAULT_WEATHER_STATUS))
                 .temperature(formatTemperature(realtimeData.getTemperature()))
-                .pm10(resolvePm10(realtimeData))
+                .sensibleTemperature(formatTemperature(realtimeData.getSensibleTemperature()))
+                .humidity(formatHumidity(realtimeData.getHumidity()))
+                .fineDustStatus(defaultText(realtimeData.getPm10Status(), DEFAULT_NUMERIC_TEXT))
+                .fineDust(formatPm10Value(realtimeData.getPm10()))
                 .precipitationProbability(formatPrecipitationProbability(realtimeData.getRainChance()))
                 .build();
     }
 
     private HotplaceRealtimeItem toHotplaceRealtimeItem(HotPlace hotPlace, SeoulRealtimeData realtimeData) {
+        AgePeak agePeak = resolveDominantAge(realtimeData);
+
         return HotplaceRealtimeItem.builder()
-                .category(hotPlace.getCategory().getDescription())
-                .areaNm(hotPlace.getAreaNm())
+                .areaName(hotPlace.getAreaNm())
+                .thumbnail(buildThumbnailUrl(hotPlace.getAreaNm()))
+                .roadAddress(defaultText(realtimeData.getRoadAddr(), DEFAULT_NUMERIC_TEXT))
+                .minPopulation(formatWholeNumber(realtimeData.getAreaPpltnMin()))
+                .maxPopulation(formatWholeNumber(realtimeData.getAreaPpltnMax()))
                 .congestionLevel(defaultText(realtimeData.getAreaCongestLvl(), DEFAULT_CONGESTION_LEVEL))
-                .congestionMessage(defaultText(realtimeData.getAreaCongestMsg(), DEFAULT_CONGESTION_MESSAGE))
+                .dominantAgeGroup(agePeak.ageGroup())
+                .dominantAgeRate(agePeak.rate())
+                .roadTrafficStatus(defaultText(realtimeData.getRoadTrafficIdx(), DEFAULT_NUMERIC_TEXT))
+                .roadTrafficSpeed(formatSpeed(realtimeData.getRoadTrafficSpd()))
                 .build();
+    }
+
+    private String buildThumbnailUrl(String areaName) {
+        if (!StringUtils.hasText(areaName)) {
+            return null;
+        }
+        return HOTPLACE_THUMBNAIL_BASE_URL + areaName + ".jpg";
     }
 
     private String formatTemperature(Double temperature) {
@@ -94,27 +113,11 @@ public class HotplaceRealtimeService {
         return String.format(Locale.US, "%.1f", temperature);
     }
 
-    private String formatPm10(Double pm10) {
+    private String formatPm10Value(Double pm10) {
         if (pm10 == null) {
             return DEFAULT_NUMERIC_TEXT;
         }
-        if (pm10 <= 30) {
-            return "\uC88B\uC74C";
-        }
-        if (pm10 <= 80) {
-            return "\uBCF4\uD1B5";
-        }
-        if (pm10 <= 150) {
-            return "\uB098\uC068";
-        }
-        return "\uB9E4\uC6B0\uB098\uC068";
-    }
-
-    private String resolvePm10(SeoulRealtimeData realtimeData) {
-        if (StringUtils.hasText(realtimeData.getPm10Status()) && !DEFAULT_NUMERIC_TEXT.equals(realtimeData.getPm10Status())) {
-            return realtimeData.getPm10Status();
-        }
-        return formatPm10(realtimeData.getPm10());
+        return String.format(Locale.US, "%.1f", pm10);
     }
 
     private String formatPrecipitationProbability(Double rainChance) {
@@ -125,6 +128,61 @@ public class HotplaceRealtimeService {
         return value + "%";
     }
 
+    private String formatHumidity(Double humidity) {
+        if (humidity == null) {
+            return DEFAULT_NUMERIC_TEXT;
+        }
+        int value = (int) Math.round(humidity);
+        return value + "%";
+    }
+
+    private String formatWholeNumber(Double value) {
+        if (value == null) {
+            return DEFAULT_NUMERIC_TEXT;
+        }
+        return String.valueOf((int) Math.round(value));
+    }
+
+    private String formatPercent(Double value) {
+        if (value == null) {
+            return DEFAULT_NUMERIC_TEXT;
+        }
+        return String.format(Locale.US, "%.1f%%", value);
+    }
+
+    private String formatSpeed(Double speed) {
+        if (speed == null) {
+            return DEFAULT_NUMERIC_TEXT;
+        }
+        return String.format(Locale.US, "%.1f", speed);
+    }
+
+    private AgePeak resolveDominantAge(SeoulRealtimeData realtimeData) {
+        Map<String, Double> ageRates = new LinkedHashMap<>();
+        ageRates.put("10대", realtimeData.getPpltnRate10());
+        ageRates.put("20대", realtimeData.getPpltnRate20());
+        ageRates.put("30대", realtimeData.getPpltnRate30());
+        ageRates.put("40대", realtimeData.getPpltnRate40());
+        ageRates.put("50대", realtimeData.getPpltnRate50());
+        ageRates.put("60대", realtimeData.getPpltnRate60());
+
+        String dominantAgeGroup = DEFAULT_NUMERIC_TEXT;
+        Double dominantAgeRate = null;
+
+        for (Map.Entry<String, Double> entry : ageRates.entrySet()) {
+            Double value = entry.getValue();
+            if (value == null) {
+                continue;
+            }
+            if (dominantAgeRate == null || value > dominantAgeRate) {
+                dominantAgeGroup = entry.getKey();
+                dominantAgeRate = value;
+            }
+        }
+
+        return new AgePeak(dominantAgeGroup, formatPercent(dominantAgeRate));
+    }
+
     private String defaultText(String value, String defaultValue) {
         return StringUtils.hasText(value) ? value : defaultValue;
     }
@@ -133,5 +191,8 @@ public class HotplaceRealtimeService {
         if (!StringUtils.hasText(guName) || !VALID_GU_NAMES.contains(guName)) {
             throw new CustomException(ErrorCode.INVALID_GU_NAME);
         }
+    }
+
+    private record AgePeak(String ageGroup, String rate) {
     }
 }

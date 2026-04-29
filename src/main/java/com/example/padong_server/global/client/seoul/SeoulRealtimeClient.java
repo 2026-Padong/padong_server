@@ -62,13 +62,28 @@ public class SeoulRealtimeClient {
 
             JsonNode weatherNode = extractWeatherNode(targetNode);
             JsonNode forecastNode = extractForecastNode(weatherNode);
+            String resolvedAddress = resolveAddress(targetNode);
 
             return SeoulRealtimeData.builder()
                     .areaNm(readText(targetNode, "AREA_NM", areaNm))
+                    .thumbnail(readText(targetNode, "THUMBNAIL", null))
+                    .roadAddr(resolvedAddress)
+                    .areaPpltnMin(readDouble(targetNode, "AREA_PPLTN_MIN"))
+                    .areaPpltnMax(readDouble(targetNode, "AREA_PPLTN_MAX"))
                     .areaCongestLvl(readText(targetNode, "AREA_CONGEST_LVL", DEFAULT_CONGEST_LEVEL))
                     .areaCongestMsg(readText(targetNode, "AREA_CONGEST_MSG", DEFAULT_CONGEST_MESSAGE))
-                    .weatherStatus(extractWeatherStatus(weatherNode, forecastNode))
+                    .ppltnRate10(readDouble(targetNode, "PPLTN_RATE_10"))
+                    .ppltnRate20(readDouble(targetNode, "PPLTN_RATE_20"))
+                    .ppltnRate30(readDouble(targetNode, "PPLTN_RATE_30"))
+                    .ppltnRate40(readDouble(targetNode, "PPLTN_RATE_40"))
+                    .ppltnRate50(readDouble(targetNode, "PPLTN_RATE_50"))
+                    .ppltnRate60(readDouble(targetNode, "PPLTN_RATE_60"))
+                    .roadTrafficIdx(readText(targetNode, "ROAD_TRAFFIC_IDX", null))
+                    .roadTrafficSpd(readDouble(targetNode, "ROAD_TRAFFIC_SPD"))
+                    .weatherStatus(readText(forecastNode, "SKY_STTS", DEFAULT_WEATHER_STATUS))
                     .temperature(readDouble(weatherNode, "TEMP"))
+                    .sensibleTemperature(readDouble(weatherNode, "SENSIBLE_TEMP"))
+                    .humidity(readDouble(weatherNode, "HUMIDITY"))
                     .pm10(readDouble(weatherNode, "PM10"))
                     .pm10Status(readText(weatherNode, "PM10_INDEX", DEFAULT_CONGEST_LEVEL))
                     .rainChance(readDouble(forecastNode, "RAIN_CHANCE"))
@@ -135,6 +150,26 @@ public class SeoulRealtimeClient {
         JsonNode fieldNode = findField(targetNode, fieldName);
         String value = asText(fieldNode);
         return StringUtils.hasText(value) ? value : defaultValue;
+    }
+
+    private String resolveAddress(JsonNode targetNode) {
+        String areaRoadAddress = readText(targetNode, "ROAD_ADDR", null);
+        if (StringUtils.hasText(areaRoadAddress)) {
+            return areaRoadAddress;
+        }
+
+        JsonNode parkingStatusNode = targetNode.get("PRK_STTS");
+        if (parkingStatusNode != null && parkingStatusNode.isArray() && !parkingStatusNode.isEmpty()) {
+            JsonNode firstParkingNode = parkingStatusNode.get(0);
+            String parkingRoadAddress = readText(firstParkingNode, "ROAD_ADDR", null);
+            if (StringUtils.hasText(parkingRoadAddress)) {
+                return parkingRoadAddress;
+            }
+
+            return readText(firstParkingNode, "ADDRESS", null);
+        }
+
+        return null;
     }
 
     private JsonNode extractWeatherNode(JsonNode targetNode) {

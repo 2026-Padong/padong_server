@@ -8,10 +8,24 @@ import lombok.Getter;
 public class SeoulRealtimeData {
 
     private final String areaNm;
+    private final String thumbnail;
+    private final String roadAddr;
+    private final Double areaPpltnMin;
+    private final Double areaPpltnMax;
     private final String areaCongestLvl;
     private final String areaCongestMsg;
+    private final Double ppltnRate10;
+    private final Double ppltnRate20;
+    private final Double ppltnRate30;
+    private final Double ppltnRate40;
+    private final Double ppltnRate50;
+    private final Double ppltnRate60;
+    private final String roadTrafficIdx;
+    private final Double roadTrafficSpd;
     private final String weatherStatus;
     private final Double temperature;
+    private final Double sensibleTemperature;
+    private final Double humidity;
     private final Double pm10;
     private final String pm10Status;
     private final Double rainChance;

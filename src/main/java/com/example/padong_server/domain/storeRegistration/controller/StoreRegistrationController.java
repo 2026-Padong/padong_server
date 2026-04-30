@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Store Registration", description = "사장님이 가게 정보를 등록하고 조회·수정·삭제하는 API")
+@Tag(name = "Store Registration", description = "사장님이 가게 정보를 등록, 조회, 수정, 삭제하는 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/stores")
@@ -34,7 +34,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 등록",
-            description = "사장님이 가게명, 주소, 전화번호, 운영시간을 쿼리파라미터로 전달해 가게 정보를 등록합니다."
+            description = "사장님이 가게명, 주소, 전화번호, 운영시간을 쿼리파라미터로 전달해 가게를 등록합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -86,7 +86,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 상세 조회",
-            description = "사장님이 수정 화면에 진입할 때 사용할 가게 상세 정보를 storeId 쿼리파라미터로 조회합니다."
+            description = "사장님이 수정 화면에 진입할 때 storeId 쿼리파라미터로 가게 정보를 조회합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "가게 상세 조회 성공"),
@@ -103,7 +103,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 기본 정보 수정",
-            description = "사장님이 상세 조회 화면에서 storeId와 함께 가게명, 주소, 전화번호, 운영시간을 쿼리파라미터로 전달해 수정합니다."
+            description = "사장님이 storeId와 가게 기본 정보를 쿼리파라미터로 전달해 수정합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "가게 수정 성공"),
@@ -135,7 +135,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 삭제",
-            description = "사장님이 storeId 쿼리파라미터로 등록한 가게 정보를 삭제합니다."
+            description = "사장님이 storeId 쿼리파라미터로 등록된 가게를 삭제합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "가게 삭제 성공"),

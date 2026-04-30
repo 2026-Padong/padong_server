@@ -5,6 +5,7 @@ import com.example.padong_server.domain.menu.dto.MenuResponse;
 import com.example.padong_server.domain.menu.dto.MenuUpdateRequest;
 import com.example.padong_server.domain.menu.entity.Menu;
 import com.example.padong_server.domain.menu.repository.MenuRepository;
+import com.example.padong_server.domain.orderFlow.service.OrderFlowService;
 import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
@@ -21,6 +22,7 @@ public class MenuService {
 
     private final MenuRepository menuRepository;
     private final StoreRegistrationRepository storeRegistrationRepository;
+    private final OrderFlowService orderFlowService;
 
     @Transactional
     public MenuResponse createMenu(MenuCreateRequest request) {
@@ -48,7 +50,9 @@ public class MenuService {
                 .currentParticipants(request.currentParticipants())
                 .build();
 
-        return toResponse(menuRepository.save(menu));
+        Menu savedMenu = menuRepository.save(menu);
+        orderFlowService.createOrderIfMenuIsFull(savedMenu);
+        return toResponse(savedMenu);
     }
 
     @Transactional(readOnly = true)
@@ -84,6 +88,7 @@ public class MenuService {
                 request.currentParticipants()
         );
 
+        orderFlowService.createOrderIfMenuIsFull(menu);
         return toResponse(menu);
     }
 

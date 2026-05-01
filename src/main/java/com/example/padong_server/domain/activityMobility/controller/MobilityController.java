@@ -3,6 +3,7 @@ package com.example.padong_server.domain.activityMobility.controller;
 import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MultiMobilityResponse;
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
+import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
 import com.example.padong_server.global.ResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +25,8 @@ import java.util.List;
 @Tag(name = "Mobility", description = "서울시 생활이동 데이터 관리 API")
 @RequiredArgsConstructor
 public class MobilityController {
-    private final   MobilityService mobilityService;
+    private final MobilityService mobilityService;
+    private final MobilityImportService mobilityImportService;
 
     @GetMapping("/address")
     @Operation(summary = "행정동 주소로 검색")
@@ -49,8 +52,9 @@ public class MobilityController {
 
     @PostMapping("/data")
     @Operation(summary = "서울시 생활이동 데이터 저장")
-    public void fetchData() {
-        mobilityService.fetchData();
+    public ResponseEntity<ResponseDTO<Void>> fetchData() {
+        String message = mobilityImportService.importData();
+        return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, message));
     }
 
 }

@@ -5,7 +5,6 @@ import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MultiMobilityResponse;
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
-import com.example.padong_server.domain.activityMobility.util.ActivityMobilityDataUtil;
 import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.service.DongneService;
@@ -40,7 +39,6 @@ public class MobilityService {
     private final PopulationService populationService;
     private final RentPriceService rentPriceService;
     private final ScoreCalculator scoreCalculator;
-    private final ActivityMobilityDataUtil activityMobilityDataUtil;
 
     public List<MobilityResponse> mapFromEntities(Collection<Mobility> mobilities) {
         Map<String, AdminDongRentPriceSummaryResponse> rentPriceSummaryByAdminDongCode =
@@ -88,10 +86,6 @@ public class MobilityService {
                     .build());
         }
         return responses;
-    }
-
-    public void fetchData() {
-        mobilityRepository.saveAll(activityMobilityDataUtil.readActivityMobilityFromExcel());
     }
 
     public ResponseDTO<List<MobilityResponse>> searchByAddress(String address, Pageable pageable) {

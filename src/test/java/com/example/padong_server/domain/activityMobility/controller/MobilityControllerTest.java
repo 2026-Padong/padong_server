@@ -1,20 +1,32 @@
 package com.example.padong_server.domain.activityMobility.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
+import com.example.padong_server.domain.dongne.dto.AdminDongDto;
+import com.example.padong_server.global.ResponseDTO;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -51,5 +63,41 @@ class MobilityControllerTest {
                 .andExpect(jsonPath("$.message").value(message));
 
         verify(mobilityImportService).importData();
+    }
+
+    @Test
+    @DisplayName("행정동 코드 단일 조회 endpoint는 생활이동 많은 순 단순 응답을 반환한다")
+    void searchByArrivalDongCodeReturnsSimpleResponses() throws Exception {
+        MobilitySimpleResponse responseItem = MobilitySimpleResponse.builder()
+                .departureDong(AdminDongDto.builder()
+                        .adminDongCode("1162069500")
+                        .address("서울특별시 관악구 신림동")
+                        .build())
+                .totalMobility(18432.27)
+                .avgTime(42.7)
+                .build();
+        given(mobilityService.searchByArrivalDongCode(eq("1168064000"), any(Pageable.class)))
+                .willReturn(ResponseDTO.res(HttpStatus.OK, "생활이동 많은 순 조회 성공", List.of(responseItem)));
+
+        mockMvc.perform(get("/mobility/arrival/{adminDongCode}", "1168064000")
+                        .param("page", "1")
+                        .param("size", "5")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCode").value("200"))
+                .andExpect(jsonPath("$.message").value("생활이동 많은 순 조회 성공"))
+                .andExpect(jsonPath("$.data[0].departureDong.adminDongCode").value("1162069500"))
+                .andExpect(jsonPath("$.data[0].departureDong.address").value("서울특별시 관악구 신림동"))
+                .andExpect(jsonPath("$.data[0].totalMobility").value(18432.27))
+                .andExpect(jsonPath("$.data[0].avgTime").value(42.7));
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(mobilityService).searchByArrivalDongCode(eq("1168064000"), pageableCaptor.capture());
+        Pageable pageable = pageableCaptor.getValue();
+        assertThat(pageable.getPageNumber()).isEqualTo(1);
+        assertThat(pageable.getPageSize()).isEqualTo(5);
+        assertThat(pageable.getSort().getOrderFor("totalMobility"))
+                .extracting(Sort.Order::getDirection)
+                .isEqualTo(Sort.Direction.DESC);
     }
 }

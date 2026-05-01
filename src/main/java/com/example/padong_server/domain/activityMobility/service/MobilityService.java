@@ -2,6 +2,7 @@ package com.example.padong_server.domain.activityMobility.service;
 
 import com.example.padong_server.domain.activityMobility.dto.IntersectedMobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
+import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.dto.MultiMobilityResponse;
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
@@ -95,6 +96,19 @@ public class MobilityService {
             return ResponseDTO.res(HttpStatus.NOT_FOUND, "해당 행정동이 존재하지 않습니다.");
 
         return ResponseDTO.res(HttpStatus.OK, "출발 행정동 조회 성공", mapFromEntities(mobilities.getContent()));
+    }
+
+    public ResponseDTO<List<MobilitySimpleResponse>> searchByArrivalDongCode(
+            String adminDongCode,
+            Pageable pageable
+    ) {
+        AdminDong adminDong = dongneService.findAdminDongByCode(adminDongCode);
+        Page<Mobility> mobilities = mobilityRepository.findByArrivalDong(adminDong, pageable);
+        if (mobilities.isEmpty()) {
+            return ResponseDTO.res(HttpStatus.NOT_FOUND, "해당 생활이동 데이터가 존재하지 않습니다.");
+        }
+
+        return ResponseDTO.res(HttpStatus.OK, "생활이동 많은 순 조회 성공", mapToSimpleResponses(mobilities.getContent()));
     }
 
     public Mobility findByGeoCodes(String arrivalCode, String departureCode){
@@ -211,6 +225,28 @@ public class MobilityService {
             return list.subList(fromIndex, toIndex);
         }
         return Collections.emptyList();
+    }
+
+    private List<MobilitySimpleResponse> mapToSimpleResponses(Collection<Mobility> mobilities) {
+        return mobilities.stream()
+                .map(this::toSimpleResponse)
+                .toList();
+    }
+
+    private MobilitySimpleResponse toSimpleResponse(Mobility mobility) {
+        AdminDong departureDong = mobility.getDepartureDong();
+        return MobilitySimpleResponse.builder()
+                .departureDong(AdminDongDto.builder()
+                        .adminDongCode(departureDong.getAdminDongCode())
+                        .address(departureDong.getCityName()
+                                + " "
+                                + departureDong.getDistrictName()
+                                + " "
+                                + departureDong.getAdminDongName())
+                        .build())
+                .totalMobility(Math.round(mobility.getTotalMobility() * 100) / 100.0)
+                .avgTime(Math.round(mobility.getAvgTime() * 100) / 100.0)
+                .build();
     }
 
     private double toDouble(Long value) {

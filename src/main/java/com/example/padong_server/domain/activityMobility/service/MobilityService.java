@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.activityMobility.service;
 
+import com.example.padong_server.domain.activityMobility.dto.CommonDepartureMobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.IntersectedMobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
@@ -18,9 +19,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -109,6 +113,31 @@ public class MobilityService {
         }
 
         return ResponseDTO.res(HttpStatus.OK, "생활이동 많은 순 조회 성공", mapToSimpleResponses(mobilities.getContent()));
+    }
+
+    public ResponseDTO<List<CommonDepartureMobilityResponse>> searchByArrivalDongCodes(
+            List<String> adminDongCodes,
+            Pageable pageable
+    ) {
+        List<String> distinctAdminDongCodes = normalizeAdminDongCodes(adminDongCodes);
+        if (distinctAdminDongCodes.size() < 2) {
+            return ResponseDTO.res(HttpStatus.BAD_REQUEST, "행정동 코드는 2개 이상 입력해야 합니다.");
+        }
+
+        List<AdminDong> arrivalDongs = distinctAdminDongCodes.stream()
+                .map(dongneService::findAdminDongByCode)
+                .toList();
+        List<Mobility> mobilities = mobilityRepository.findByArrivalDongIn(arrivalDongs);
+        List<CommonDepartureMobilityResponse> responses = mapToCommonDepartureResponses(
+                mobilities,
+                distinctAdminDongCodes.size(),
+                pageable
+        );
+        if (responses.isEmpty()) {
+            return ResponseDTO.res(HttpStatus.NOT_FOUND, "공통 생활이동 데이터가 존재하지 않습니다.");
+        }
+
+        return ResponseDTO.res(HttpStatus.OK, "다중 행정동 생활이동 많은 순 조회 성공", responses);
     }
 
     public Mobility findByGeoCodes(String arrivalCode, String departureCode){
@@ -227,26 +256,90 @@ public class MobilityService {
         return Collections.emptyList();
     }
 
+    private List<String> normalizeAdminDongCodes(List<String> adminDongCodes) {
+        if (adminDongCodes == null) {
+            return List.of();
+        }
+        return adminDongCodes.stream()
+                .map(code -> code == null ? "" : code.trim())
+                .filter(code -> !code.isBlank())
+                .distinct()
+                .toList();
+    }
+
     private List<MobilitySimpleResponse> mapToSimpleResponses(Collection<Mobility> mobilities) {
         return mobilities.stream()
                 .map(this::toSimpleResponse)
                 .toList();
     }
 
+    private List<CommonDepartureMobilityResponse> mapToCommonDepartureResponses(
+            List<Mobility> mobilities,
+            int requiredArrivalDongCount,
+            Pageable pageable
+    ) {
+        Map<String, MultiArrivalAccumulator> accumulatorByDepartureDongCode = new LinkedHashMap<>();
+        for (Mobility mobility : mobilities) {
+            String departureDongCode = mobility.getDepartureDong().getAdminDongCode();
+            accumulatorByDepartureDongCode.computeIfAbsent(
+                            departureDongCode,
+                            ignored -> new MultiArrivalAccumulator(mobility.getDepartureDong())
+                    )
+                    .add(mobility);
+        }
+
+        List<CommonDepartureMobilityResponse> responses = accumulatorByDepartureDongCode.values().stream()
+                .filter(accumulator -> accumulator.arrivalDongCount() == requiredArrivalDongCount)
+                .sorted(Comparator
+                        .comparingDouble(MultiArrivalAccumulator::totalMobility)
+                        .reversed()
+                        .thenComparing(accumulator -> accumulator.departureDong().getAdminDongCode()))
+                .map(this::toCommonDepartureResponse)
+                .toList();
+        return listToPage(responses, pageable);
+    }
+
+    private CommonDepartureMobilityResponse toCommonDepartureResponse(MultiArrivalAccumulator accumulator) {
+        AdminDong departureDong = accumulator.departureDong();
+        return CommonDepartureMobilityResponse.builder()
+                .departureDong(toAdminDongDto(departureDong))
+                .totalMobility(roundToSecondDecimal(accumulator.totalMobility()))
+                .build();
+    }
+
     private MobilitySimpleResponse toSimpleResponse(Mobility mobility) {
         AdminDong departureDong = mobility.getDepartureDong();
         return MobilitySimpleResponse.builder()
-                .departureDong(AdminDongDto.builder()
-                        .adminDongCode(departureDong.getAdminDongCode())
-                        .address(departureDong.getCityName()
-                                + " "
-                                + departureDong.getDistrictName()
-                                + " "
-                                + departureDong.getAdminDongName())
-                        .build())
-                .totalMobility(Math.round(mobility.getTotalMobility() * 100) / 100.0)
-                .avgTime(Math.round(mobility.getAvgTime() * 100) / 100.0)
+                .departureDong(toAdminDongDto(departureDong))
+                .totalMobility(roundToSecondDecimal(mobility.getTotalMobility()))
+                .avgTime(roundToSecondDecimal(mobility.getAvgTime()))
                 .build();
+    }
+
+    private <T> List<T> listToPage(List<T> list, Pageable pageable) {
+        int totalElements = list.size();
+        int fromIndex = Math.toIntExact(pageable.getOffset());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), totalElements);
+
+        if (fromIndex < totalElements) {
+            return list.subList(fromIndex, toIndex);
+        }
+        return Collections.emptyList();
+    }
+
+    private AdminDongDto toAdminDongDto(AdminDong adminDong) {
+        return AdminDongDto.builder()
+                .adminDongCode(adminDong.getAdminDongCode())
+                .address(adminDong.getCityName()
+                        + " "
+                        + adminDong.getDistrictName()
+                        + " "
+                        + adminDong.getAdminDongName())
+                .build();
+    }
+
+    private double roundToSecondDecimal(double value) {
+        return Math.round(value * 100) / 100.0;
     }
 
     private double toDouble(Long value) {
@@ -272,5 +365,32 @@ public class MobilityService {
             return 0.0;
         }
         return toDouble(rentPriceSummary.monthlyRent().monthlyRent());
+    }
+
+    private static class MultiArrivalAccumulator {
+        private final AdminDong departureDong;
+        private final Set<String> arrivalDongCodes = new HashSet<>();
+        private double totalMobility;
+
+        private MultiArrivalAccumulator(AdminDong departureDong) {
+            this.departureDong = departureDong;
+        }
+
+        private void add(Mobility mobility) {
+            arrivalDongCodes.add(mobility.getArrivalDong().getAdminDongCode());
+            totalMobility += mobility.getTotalMobility();
+        }
+
+        private AdminDong departureDong() {
+            return departureDong;
+        }
+
+        private int arrivalDongCount() {
+            return arrivalDongCodes.size();
+        }
+
+        private double totalMobility() {
+            return totalMobility;
+        }
     }
 }

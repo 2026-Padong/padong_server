@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.activityMobility.controller;
 
+import com.example.padong_server.domain.activityMobility.dto.CommonDepartureMobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.dto.MultiMobilityResponse;
@@ -37,6 +38,19 @@ public class MobilityController {
         ) {
         Pageable pageable = PageRequest.of(page, 10, Sort.by(Direction.DESC, "totalMobility"));
         ResponseDTO<List<MobilityResponse>> response = mobilityService.searchByAddress(address, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/arrival/multi")
+    @Operation(summary = "여러 행정동 코드로 공통 생활이동 많은 순 검색")
+    public ResponseEntity<ResponseDTO<List<CommonDepartureMobilityResponse>>> searchByArrivalDongCodes(
+            @RequestParam List<String> arrivalDongCodes,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+                mobilityService.searchByArrivalDongCodes(arrivalDongCodes, pageable);
         return ResponseEntity.ok(response);
     }
 

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.example.padong_server.domain.activityMobility.dto.CommonDepartureMobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
@@ -99,6 +100,88 @@ class MobilityServiceTest {
         assertThat(response.getMessage()).isEqualTo("해당 생활이동 데이터가 존재하지 않습니다.");
         assertThat(response.getData()).isNull();
         verify(mobilityRepository).findByArrivalDong(arrivalDong, pageable);
+        verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
+    }
+
+    @Test
+    @DisplayName("여러 행정동 코드 조회는 공통 출발동만 합산 생활이동 많은 순으로 반환한다")
+    void searchByArrivalDongCodesReturnsCommonDepartureResponses() {
+        AdminDong firstArrivalDong = adminDong("1168064000", "강남구", "역삼1동");
+        AdminDong secondArrivalDong = adminDong("1156054000", "영등포구", "여의동");
+        AdminDong firstCommonDepartureDong = adminDong("1162069500", "관악구", "신림동");
+        AdminDong secondCommonDepartureDong = adminDong("1121571000", "광진구", "화양동");
+        AdminDong notCommonDepartureDong = adminDong("1144066000", "마포구", "서교동");
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Mobility> mobilities = List.of(
+                mobility(firstArrivalDong, firstCommonDepartureDong, 100.123, 20.0),
+                mobility(secondArrivalDong, firstCommonDepartureDong, 300.456, 40.0),
+                mobility(firstArrivalDong, secondCommonDepartureDong, 120.0, 50.0),
+                mobility(secondArrivalDong, secondCommonDepartureDong, 80.0, 30.0),
+                mobility(firstArrivalDong, notCommonDepartureDong, 1000.0, 10.0)
+        );
+        when(dongneService.findAdminDongByCode("1168064000")).thenReturn(firstArrivalDong);
+        when(dongneService.findAdminDongByCode("1156054000")).thenReturn(secondArrivalDong);
+        when(mobilityRepository.findByArrivalDongIn(List.of(firstArrivalDong, secondArrivalDong)))
+                .thenReturn(mobilities);
+
+        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+                mobilityService.searchByArrivalDongCodes(
+                        List.of("1168064000", "1156054000"),
+                        pageable
+                );
+
+        assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.OK.value()));
+        assertThat(response.getMessage()).isEqualTo("다중 행정동 생활이동 많은 순 조회 성공");
+        assertThat(response.getData())
+                .hasSize(2)
+                .extracting(
+                        responseItem -> responseItem.getDepartureDong().getAdminDongCode(),
+                        CommonDepartureMobilityResponse::getTotalMobility
+                )
+                .containsExactly(
+                        tuple("1162069500", 400.58),
+                        tuple("1121571000", 200.0)
+                );
+        verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
+    }
+
+    @Test
+    @DisplayName("여러 행정동 코드 조회는 중복 제거 후 코드가 2개 미만이면 400 응답을 반환한다")
+    void searchByArrivalDongCodesReturnsBadRequestWhenCodeCountIsLessThanTwo() {
+        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+                mobilityService.searchByArrivalDongCodes(List.of("1168064000", "1168064000"), PageRequest.of(0, 10));
+
+        assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.BAD_REQUEST.value()));
+        assertThat(response.getMessage()).isEqualTo("행정동 코드는 2개 이상 입력해야 합니다.");
+        assertThat(response.getData()).isNull();
+        verifyNoInteractions(dongneService, mobilityRepository, populationService, rentPriceService, scoreCalculator);
+    }
+
+    @Test
+    @DisplayName("여러 행정동 코드 조회는 공통 출발동이 없으면 404 응답을 반환한다")
+    void searchByArrivalDongCodesReturnsNotFoundWhenCommonDepartureIsEmpty() {
+        AdminDong firstArrivalDong = adminDong("1168064000", "강남구", "역삼1동");
+        AdminDong secondArrivalDong = adminDong("1156054000", "영등포구", "여의동");
+        AdminDong firstOnlyDepartureDong = adminDong("1162069500", "관악구", "신림동");
+        AdminDong secondOnlyDepartureDong = adminDong("1121571000", "광진구", "화양동");
+        Pageable pageable = PageRequest.of(0, 10);
+        when(dongneService.findAdminDongByCode("1168064000")).thenReturn(firstArrivalDong);
+        when(dongneService.findAdminDongByCode("1156054000")).thenReturn(secondArrivalDong);
+        when(mobilityRepository.findByArrivalDongIn(List.of(firstArrivalDong, secondArrivalDong)))
+                .thenReturn(List.of(
+                        mobility(firstArrivalDong, firstOnlyDepartureDong, 100.0, 20.0),
+                        mobility(secondArrivalDong, secondOnlyDepartureDong, 300.0, 40.0)
+                ));
+
+        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+                mobilityService.searchByArrivalDongCodes(
+                        List.of("1168064000", "1156054000"),
+                        pageable
+                );
+
+        assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.NOT_FOUND.value()));
+        assertThat(response.getMessage()).isEqualTo("공통 생활이동 데이터가 존재하지 않습니다.");
+        assertThat(response.getData()).isNull();
         verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
     }
 

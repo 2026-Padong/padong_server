@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.padong_server.domain.activityMobility.dto.CommonDepartureMobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
@@ -99,5 +100,50 @@ class MobilityControllerTest {
         assertThat(pageable.getSort().getOrderFor("totalMobility"))
                 .extracting(Sort.Order::getDirection)
                 .isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    @DisplayName("여러 행정동 코드 조회 endpoint는 반복 쿼리 파라미터를 리스트로 받아 공통 결과를 반환한다")
+    void searchByArrivalDongCodesReturnsCommonSimpleResponses() throws Exception {
+        CommonDepartureMobilityResponse responseItem = CommonDepartureMobilityResponse.builder()
+                .departureDong(AdminDongDto.builder()
+                        .adminDongCode("1162069500")
+                        .address("서울특별시 관악구 신림동")
+                        .build())
+                .totalMobility(400.0)
+                .build();
+        given(mobilityService.searchByArrivalDongCodes(
+                        eq(List.of("1168064000", "1156054000")),
+                        any(Pageable.class)
+                ))
+                .willReturn(ResponseDTO.res(
+                        HttpStatus.OK,
+                        "다중 행정동 생활이동 많은 순 조회 성공",
+                        List.of(responseItem)
+                ));
+
+        mockMvc.perform(get("/mobility/arrival/multi")
+                        .param("arrivalDongCodes", "1168064000")
+                        .param("arrivalDongCodes", "1156054000")
+                        .param("page", "1")
+                        .param("size", "5")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCode").value("200"))
+                .andExpect(jsonPath("$.message").value("다중 행정동 생활이동 많은 순 조회 성공"))
+                .andExpect(jsonPath("$.data[0].departureDong.adminDongCode").value("1162069500"))
+                .andExpect(jsonPath("$.data[0].departureDong.address").value("서울특별시 관악구 신림동"))
+                .andExpect(jsonPath("$.data[0].totalMobility").value(400.0))
+                .andExpect(jsonPath("$.data[0].avgTime").doesNotExist());
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(mobilityService).searchByArrivalDongCodes(
+                eq(List.of("1168064000", "1156054000")),
+                pageableCaptor.capture()
+        );
+        Pageable pageable = pageableCaptor.getValue();
+        assertThat(pageable.getPageNumber()).isEqualTo(1);
+        assertThat(pageable.getPageSize()).isEqualTo(5);
+        assertThat(pageable.getSort().isUnsorted()).isTrue();
     }
 }

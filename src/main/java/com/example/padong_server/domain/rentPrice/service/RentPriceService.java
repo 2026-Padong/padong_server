@@ -9,12 +9,11 @@ import com.example.padong_server.domain.rentPrice.dto.response.MonthlyRentDispla
 import com.example.padong_server.domain.rentPrice.dto.response.RentPriceDisplayValueResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.RentPriceTradeTypeResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.ResidenceBuildingTypeResponse;
-import com.example.padong_server.domain.rentPrice.entity.AdminRentPrice;
 import com.example.padong_server.domain.rentPrice.entity.ResidenceBuildingType;
 import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import com.example.padong_server.domain.rentPrice.entity.RentPriceTradeType;
 import com.example.padong_server.domain.rentPrice.policy.RentPriceDisplayPolicy;
-import com.example.padong_server.domain.rentPrice.repository.AdminRentPriceRepository;
+import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -34,7 +33,7 @@ public class RentPriceService {
     private static final String CONTRACT_PERIOD_END = "2026-04-17";
 
     private final AdminDongRepository adminDongRepository;
-    private final AdminRentPriceRepository adminRentPriceRepository;
+    private final RentPriceRepository rentPriceRepository;
     private final RentPriceDisplayPolicy rentPriceDisplayPolicy;
 
     public List<AdminDongRentPriceSummaryResponse> getSummaries(
@@ -53,8 +52,8 @@ public class RentPriceService {
         }
 
         Map<String, AdminDong> adminDongByCode = loadAdminDongByCode(adminDongCodes);
-        Map<String, Map<ResidenceBuildingType, AdminRentPrice>> statsByAdminDongCode =
-                groupByAdminDongCode(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(adminDongCodes));
+        Map<String, Map<ResidenceBuildingType, RentPrice>> statsByAdminDongCode =
+                groupByAdminDongCode(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(adminDongCodes));
 
         List<AdminDongRentPriceSummaryResponse> responses = new ArrayList<>();
         for (String adminDongCode : adminDongCodes) {
@@ -88,8 +87,8 @@ public class RentPriceService {
         AdminDong adminDong = adminDongRepository.findByAdminDongCode(sanitizedCode)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 행정동 코드입니다: " + sanitizedCode));
 
-        Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType =
-                mapByBuildingType(adminRentPriceRepository.findAllByAdminDongAdminDongCode(sanitizedCode));
+        Map<ResidenceBuildingType, RentPrice> statsByBuildingType =
+                mapByBuildingType(rentPriceRepository.findAllByAdminDongAdminDongCode(sanitizedCode));
 
         return buildDetailResponse(adminDong, statsByBuildingType);
     }
@@ -104,8 +103,8 @@ public class RentPriceService {
         }
 
         Map<String, AdminDong> adminDongByCode = loadAdminDongByCode(adminDongCodes);
-        Map<String, Map<ResidenceBuildingType, AdminRentPrice>> statsByAdminDongCode =
-                groupByAdminDongCode(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(adminDongCodes));
+        Map<String, Map<ResidenceBuildingType, RentPrice>> statsByAdminDongCode =
+                groupByAdminDongCode(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(adminDongCodes));
 
         List<AdminDongRentPriceDetailResponse> responses = new ArrayList<>();
         for (String adminDongCode : adminDongCodes) {
@@ -119,7 +118,7 @@ public class RentPriceService {
 
     private AdminDongRentPriceDetailResponse buildDetailResponse(
             AdminDong adminDong,
-            Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType
+            Map<ResidenceBuildingType, RentPrice> statsByBuildingType
     ) {
         List<AdminDongRentPriceBuildingTypeResponse> buildingTypes = new ArrayList<>();
         for (ResidenceBuildingType buildingType : ResidenceBuildingType.values()) {
@@ -170,20 +169,20 @@ public class RentPriceService {
         return adminDongByCode;
     }
 
-    private Map<String, Map<ResidenceBuildingType, AdminRentPrice>> groupByAdminDongCode(
-            List<AdminRentPrice> stats
+    private Map<String, Map<ResidenceBuildingType, RentPrice>> groupByAdminDongCode(
+            List<RentPrice> stats
     ) {
-        Map<String, Map<ResidenceBuildingType, AdminRentPrice>> grouped = new HashMap<>();
-        for (AdminRentPrice stat : stats) {
+        Map<String, Map<ResidenceBuildingType, RentPrice>> grouped = new HashMap<>();
+        for (RentPrice stat : stats) {
             grouped.computeIfAbsent(stat.getAdminDong().getAdminDongCode(), ignored -> new EnumMap<>(ResidenceBuildingType.class))
                     .put(ResidenceBuildingType.fromLabel(stat.getBuildingType()), stat);
         }
         return grouped;
     }
 
-    private Map<ResidenceBuildingType, AdminRentPrice> mapByBuildingType(List<AdminRentPrice> stats) {
-        Map<ResidenceBuildingType, AdminRentPrice> mapped = new EnumMap<>(ResidenceBuildingType.class);
-        for (AdminRentPrice stat : stats) {
+    private Map<ResidenceBuildingType, RentPrice> mapByBuildingType(List<RentPrice> stats) {
+        Map<ResidenceBuildingType, RentPrice> mapped = new EnumMap<>(ResidenceBuildingType.class);
+        for (RentPrice stat : stats) {
             mapped.put(ResidenceBuildingType.fromLabel(stat.getBuildingType()), stat);
         }
         return mapped;
@@ -193,9 +192,9 @@ public class RentPriceService {
             AdminDong adminDong,
             ResidenceBuildingType buildingType,
             RentPriceTradeType tradeType,
-            Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType
+            Map<ResidenceBuildingType, RentPrice> statsByBuildingType
     ) {
-        AdminRentPrice selectedStat = statsByBuildingType.get(buildingType);
+        RentPrice selectedStat = statsByBuildingType.get(buildingType);
         return new AdminDongRentPriceSummaryResponse(
                 adminDong.getAdminDongCode(),
                 PERIOD_LABEL,
@@ -211,7 +210,7 @@ public class RentPriceService {
 
     private AdminDongRentPriceBuildingTypeResponse buildBuildingTypeResponse(
             ResidenceBuildingType buildingType,
-            AdminRentPrice stat
+            RentPrice stat
     ) {
         return new AdminDongRentPriceBuildingTypeResponse(
                 toTypeResponse(buildingType),
@@ -222,12 +221,12 @@ public class RentPriceService {
     }
 
     private ResidenceBuildingType determineDominantBuildingType(
-            Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType
+            Map<ResidenceBuildingType, RentPrice> statsByBuildingType
     ) {
         ResidenceBuildingType dominantBuildingType = null;
         int dominantCount = 0;
         for (ResidenceBuildingType buildingType : ResidenceBuildingType.values()) {
-            AdminRentPrice stat = statsByBuildingType.get(buildingType);
+            RentPrice stat = statsByBuildingType.get(buildingType);
             int totalCount = totalCount(stat);
             if (totalCount > dominantCount) {
                 dominantBuildingType = buildingType;
@@ -237,7 +236,7 @@ public class RentPriceService {
         return dominantCount == 0 ? null : dominantBuildingType;
     }
 
-    private int totalCount(AdminRentPrice stat) {
+    private int totalCount(RentPrice stat) {
         if (stat == null) {
             return 0;
         }
@@ -248,26 +247,26 @@ public class RentPriceService {
         return count == null ? 0 : count;
     }
 
-    private RentPriceDisplayValueResponse toSaleResponse(AdminRentPrice stat) {
+    private RentPriceDisplayValueResponse toSaleResponse(RentPrice stat) {
         if (stat == null) {
             return new RentPriceDisplayValueResponse(null);
         }
-        return toDisplayValueResponse(rentPriceDisplayPolicy.decideSale(convertToRentPrice(stat)));
+        return toDisplayValueResponse(rentPriceDisplayPolicy.decideSale(stat));
     }
 
-    private RentPriceDisplayValueResponse toJeonseResponse(AdminRentPrice stat) {
+    private RentPriceDisplayValueResponse toJeonseResponse(RentPrice stat) {
         if (stat == null) {
             return new RentPriceDisplayValueResponse(null);
         }
-        return toDisplayValueResponse(rentPriceDisplayPolicy.decideJeonse(convertToRentPrice(stat)));
+        return toDisplayValueResponse(rentPriceDisplayPolicy.decideJeonse(stat));
     }
 
-    private MonthlyRentDisplayValueResponse toMonthlyRentResponse(AdminRentPrice stat) {
+    private MonthlyRentDisplayValueResponse toMonthlyRentResponse(RentPrice stat) {
         if (stat == null) {
             return new MonthlyRentDisplayValueResponse(null, null);
         }
         RentPriceDisplayPolicy.MonthlyRentDecision decision =
-                rentPriceDisplayPolicy.decideMonthlyRent(convertToRentPrice(stat));
+                rentPriceDisplayPolicy.decideMonthlyRent(stat);
         if (decision.source() == RentPriceDisplayPolicy.MetricSource.NONE) {
             return new MonthlyRentDisplayValueResponse(null, null);
         }
@@ -295,22 +294,4 @@ public class RentPriceService {
         return new ResidenceBuildingTypeResponse(buildingType.code(), buildingType.label());
     }
 
-    private RentPrice convertToRentPrice(AdminRentPrice stat) {
-        return RentPrice.builder()
-                .buildingType(stat.getBuildingType())
-                .avgSalePrice(stat.getAvgSalePrice())
-                .medianSalePrice(stat.getMedianSalePrice())
-                .avgSalePricePerSquareMeter(stat.getAvgSalePricePerSquareMeter())
-                .saleCount(stat.getSaleCount())
-                .avgJeonseDeposit(stat.getAvgJeonseDeposit())
-                .medianJeonseDeposit(stat.getMedianJeonseDeposit())
-                .avgJeonseDepositPerSquareMeter(stat.getAvgJeonseDepositPerSquareMeter())
-                .jeonseCount(stat.getJeonseCount())
-                .avgMonthlyDeposit(stat.getAvgMonthlyDeposit())
-                .medianMonthlyDeposit(stat.getMedianMonthlyDeposit())
-                .avgMonthlyRent(stat.getAvgMonthlyRent())
-                .medianMonthlyRent(stat.getMedianMonthlyRent())
-                .monthlyRentCount(stat.getMonthlyRentCount())
-                .build();
-    }
 }

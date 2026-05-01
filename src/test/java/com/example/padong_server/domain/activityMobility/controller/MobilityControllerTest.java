@@ -16,6 +16,7 @@ import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleRespo
 import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
 import com.example.padong_server.domain.dongne.dto.AdminDongDto;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,7 +84,11 @@ class MobilityControllerTest {
                         any(Pageable.class),
                         any(MobilityFilterRequest.class)
                 ))
-                .willReturn(ResponseDTO.res(HttpStatus.OK, "생활이동 많은 순 조회 성공", List.of(responseItem)));
+                .willReturn(ResponseDTO.res(
+                        HttpStatus.OK,
+                        "생활이동 많은 순 조회 성공",
+                        PageResponse.of(List.of(responseItem), 1, 5, 11)
+                ));
 
         mockMvc.perform(get("/mobility/arrival/{adminDongCode}", "1168064000")
                         .param("page", "1")
@@ -101,10 +106,16 @@ class MobilityControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value("200"))
                 .andExpect(jsonPath("$.message").value("생활이동 많은 순 조회 성공"))
-                .andExpect(jsonPath("$.data[0].departureDong.adminDongCode").value("1162069500"))
-                .andExpect(jsonPath("$.data[0].departureDong.address").value("서울특별시 관악구 신림동"))
-                .andExpect(jsonPath("$.data[0].totalMobility").value(18432.27))
-                .andExpect(jsonPath("$.data[0].avgTime").value(42.7));
+                .andExpect(jsonPath("$.data.content[0].departureDong.adminDongCode").value("1162069500"))
+                .andExpect(jsonPath("$.data.content[0].departureDong.address").value("서울특별시 관악구 신림동"))
+                .andExpect(jsonPath("$.data.content[0].totalMobility").value(18432.27))
+                .andExpect(jsonPath("$.data.content[0].avgTime").value(42.7))
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.size").value(5))
+                .andExpect(jsonPath("$.data.totalElements").value(11))
+                .andExpect(jsonPath("$.data.totalPages").value(3))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.hasPrevious").value(true));
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         ArgumentCaptor<MobilityFilterRequest> filterCaptor =
@@ -150,7 +161,7 @@ class MobilityControllerTest {
                 .willReturn(ResponseDTO.res(
                         HttpStatus.OK,
                         "다중 행정동 생활이동 많은 순 조회 성공",
-                        List.of(responseItem)
+                        PageResponse.of(List.of(responseItem), 1, 5, 11)
                 ));
 
         mockMvc.perform(get("/mobility/arrival/multi")
@@ -169,10 +180,16 @@ class MobilityControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value("200"))
                 .andExpect(jsonPath("$.message").value("다중 행정동 생활이동 많은 순 조회 성공"))
-                .andExpect(jsonPath("$.data[0].departureDong.adminDongCode").value("1162069500"))
-                .andExpect(jsonPath("$.data[0].departureDong.address").value("서울특별시 관악구 신림동"))
-                .andExpect(jsonPath("$.data[0].totalMobility").value(400.0))
-                .andExpect(jsonPath("$.data[0].avgTime").doesNotExist());
+                .andExpect(jsonPath("$.data.content[0].departureDong.adminDongCode").value("1162069500"))
+                .andExpect(jsonPath("$.data.content[0].departureDong.address").value("서울특별시 관악구 신림동"))
+                .andExpect(jsonPath("$.data.content[0].totalMobility").value(400.0))
+                .andExpect(jsonPath("$.data.content[0].avgTime").doesNotExist())
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.size").value(5))
+                .andExpect(jsonPath("$.data.totalElements").value(11))
+                .andExpect(jsonPath("$.data.totalPages").value(3))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.hasPrevious").value(true));
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         ArgumentCaptor<MobilityFilterRequest> filterCaptor =

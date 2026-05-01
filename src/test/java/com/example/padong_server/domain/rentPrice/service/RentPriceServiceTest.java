@@ -9,9 +9,9 @@ import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceSummaryResponse;
-import com.example.padong_server.domain.rentPrice.entity.AdminRentPrice;
+import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import com.example.padong_server.domain.rentPrice.policy.RentPriceDisplayPolicy;
-import com.example.padong_server.domain.rentPrice.repository.AdminRentPriceRepository;
+import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +28,7 @@ class RentPriceServiceTest {
     private AdminDongRepository adminDongRepository;
 
     @Mock
-    private AdminRentPriceRepository adminRentPriceRepository;
+    private RentPriceRepository rentPriceRepository;
 
     private RentPriceService rentPriceService;
 
@@ -36,7 +36,7 @@ class RentPriceServiceTest {
     void setUp() {
         rentPriceService = new RentPriceService(
                 adminDongRepository,
-                adminRentPriceRepository,
+                rentPriceRepository,
                 new RentPriceDisplayPolicy()
         );
     }
@@ -48,7 +48,7 @@ class RentPriceServiceTest {
         AdminDong second = adminDong("1111053000", "사직동");
         when(adminDongRepository.findAllByAdminDongCodeIn(List.of("1111053000", "1111051500")))
                 .thenReturn(List.of(first, second));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111053000", "1111051500")))
+        when(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111053000", "1111051500")))
                 .thenReturn(List.of(
                         adminStat(first, "아파트", 98_000L, 5, 50_000L, 8, 1_000L, 85L, 12),
                         adminStat(second, "오피스텔", 70_000L, 0, 35_000L, 4, 500L, 45L, 3),
@@ -78,7 +78,7 @@ class RentPriceServiceTest {
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
         when(adminDongRepository.findAllByAdminDongCodeIn(List.of("1111051500")))
                 .thenReturn(List.of(adminDong));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
+        when(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
                 .thenReturn(List.of(
                         adminStat(adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
                         adminStat(adminDong, "단독다가구", 55_000L, 2, 24_000L, 7, 500L, 45L, 30)
@@ -105,7 +105,7 @@ class RentPriceServiceTest {
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
         when(adminDongRepository.findAllByAdminDongCodeIn(List.of("1111051500")))
                 .thenReturn(List.of(adminDong));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
+        when(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
                 .thenReturn(List.of(
                         adminStat(adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
                         adminStat(adminDong, "단독다가구", 55_000L, 2, 24_000L, 7, 500L, 45L, 30)
@@ -127,7 +127,7 @@ class RentPriceServiceTest {
     void returnsDetailWithAllBuildingTypes() {
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
         when(adminDongRepository.findByAdminDongCode("1111051500")).thenReturn(java.util.Optional.of(adminDong));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCode("1111051500"))
+        when(rentPriceRepository.findAllByAdminDongAdminDongCode("1111051500"))
                 .thenReturn(List.of(
                         adminStat(adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
                         adminStat(adminDong, "오피스텔", 70_000L, 3, 35_000L, 2, 500L, 45L, 3)
@@ -181,7 +181,7 @@ class RentPriceServiceTest {
         ));
     }
 
-    private AdminRentPrice adminStat(
+    private RentPrice adminStat(
             AdminDong adminDong,
             String buildingType,
             Long medianSalePrice,
@@ -192,7 +192,7 @@ class RentPriceServiceTest {
             Long medianMonthlyRent,
             Integer monthlyRentCount
     ) {
-        return AdminRentPrice.builder()
+        return RentPrice.builder()
                 .adminDong(adminDong)
                 .buildingType(buildingType)
                 .medianSalePrice(medianSalePrice)

@@ -22,6 +22,7 @@ import com.example.padong_server.domain.rentPrice.dto.response.RentPriceDisplayV
 import com.example.padong_server.domain.rentPrice.dto.response.ResidenceBuildingTypeResponse;
 import com.example.padong_server.domain.rentPrice.service.RentPriceService;
 import com.example.padong_server.domain.score.service.ScoreCalculator;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -72,21 +73,29 @@ class MobilityServiceTest {
         when(mobilityRepository.findByArrivalDong(arrivalDong, pageable))
                 .thenReturn(new PageImpl<>(mobilities, pageable, mobilities.size()));
 
-        ResponseDTO<List<MobilitySimpleResponse>> response =
+        ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", pageable);
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.OK.value()));
         assertThat(response.getMessage()).isEqualTo("생활이동 많은 순 조회 성공");
-        assertThat(response.getData())
+        assertThat(response.getData().content())
                 .hasSize(2)
                 .extracting(MobilitySimpleResponse::getTotalMobility, MobilitySimpleResponse::getAvgTime)
                 .containsExactly(
                         tuple(18432.27, 42.75),
                         tuple(15231.89, 38.44)
                 );
-        assertThat(response.getData())
+        assertThat(response.getData().content())
                 .extracting(responseItem -> responseItem.getDepartureDong().getAdminDongCode())
                 .containsExactly("1162069500", "1121571000");
+        assertThat(response.getData().page()).isZero();
+        assertThat(response.getData().size()).isEqualTo(2);
+        assertThat(response.getData().totalElements()).isEqualTo(2);
+        assertThat(response.getData().totalPages()).isEqualTo(1);
+        assertThat(response.getData().first()).isTrue();
+        assertThat(response.getData().last()).isTrue();
+        assertThat(response.getData().hasNext()).isFalse();
+        assertThat(response.getData().hasPrevious()).isFalse();
         verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
     }
 
@@ -99,7 +108,7 @@ class MobilityServiceTest {
         when(mobilityRepository.findByArrivalDong(arrivalDong, pageable))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
-        ResponseDTO<List<MobilitySimpleResponse>> response =
+        ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", pageable);
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.NOT_FOUND.value()));
@@ -132,11 +141,11 @@ class MobilityServiceTest {
                         mobility(arrivalDong, secondMatchingDepartureDong, 200.0, 40.0)
                 ));
 
-        ResponseDTO<List<MobilitySimpleResponse>> response =
+        ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", pageable, filterRequest);
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.OK.value()));
-        assertThat(response.getData())
+        assertThat(response.getData().content())
                 .hasSize(1)
                 .extracting(
                         responseItem -> responseItem.getDepartureDong().getAdminDongCode(),
@@ -144,6 +153,11 @@ class MobilityServiceTest {
                         MobilitySimpleResponse::getAvgTime
                 )
                 .containsExactly(tuple("1162069500", 300.0, 42.7));
+        assertThat(response.getData().page()).isZero();
+        assertThat(response.getData().size()).isEqualTo(1);
+        assertThat(response.getData().totalElements()).isEqualTo(2);
+        assertThat(response.getData().totalPages()).isEqualTo(2);
+        assertThat(response.getData().hasNext()).isTrue();
         verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
     }
 
@@ -186,14 +200,16 @@ class MobilityServiceTest {
                         )
                 ));
 
-        ResponseDTO<List<MobilitySimpleResponse>> response =
+        ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", pageable, filterRequest);
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.OK.value()));
-        assertThat(response.getData())
+        assertThat(response.getData().content())
                 .hasSize(1)
                 .extracting(responseItem -> responseItem.getDepartureDong().getAdminDongCode())
                 .containsExactly("1162069500");
+        assertThat(response.getData().totalElements()).isEqualTo(1);
+        assertThat(response.getData().totalPages()).isEqualTo(1);
         verifyNoInteractions(populationService, scoreCalculator);
     }
 
@@ -218,7 +234,7 @@ class MobilityServiceTest {
         when(mobilityRepository.findByArrivalDongIn(List.of(firstArrivalDong, secondArrivalDong)))
                 .thenReturn(mobilities);
 
-        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+        ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> response =
                 mobilityService.searchByArrivalDongCodes(
                         List.of("1168064000", "1156054000"),
                         pageable
@@ -226,7 +242,7 @@ class MobilityServiceTest {
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.OK.value()));
         assertThat(response.getMessage()).isEqualTo("다중 행정동 생활이동 많은 순 조회 성공");
-        assertThat(response.getData())
+        assertThat(response.getData().content())
                 .hasSize(2)
                 .extracting(
                         responseItem -> responseItem.getDepartureDong().getAdminDongCode(),
@@ -236,6 +252,10 @@ class MobilityServiceTest {
                         tuple("1162069500", 400.58),
                         tuple("1121571000", 200.0)
                 );
+        assertThat(response.getData().page()).isZero();
+        assertThat(response.getData().size()).isEqualTo(10);
+        assertThat(response.getData().totalElements()).isEqualTo(2);
+        assertThat(response.getData().totalPages()).isEqualTo(1);
         verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
     }
 
@@ -265,7 +285,7 @@ class MobilityServiceTest {
                         mobility(secondArrivalDong, districtExcludedDepartureDong, 500.0, 40.0)
                 ));
 
-        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+        ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> response =
                 mobilityService.searchByArrivalDongCodes(
                         List.of("1168064000", "1156054000"),
                         pageable,
@@ -273,13 +293,15 @@ class MobilityServiceTest {
                 );
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.OK.value()));
-        assertThat(response.getData())
+        assertThat(response.getData().content())
                 .hasSize(1)
                 .extracting(
                         responseItem -> responseItem.getDepartureDong().getAdminDongCode(),
                         CommonDepartureMobilityResponse::getTotalMobility
                 )
                 .containsExactly(tuple("1162069500", 400.0));
+        assertThat(response.getData().totalElements()).isEqualTo(1);
+        assertThat(response.getData().totalPages()).isEqualTo(1);
         verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
     }
 
@@ -291,7 +313,7 @@ class MobilityServiceTest {
                 .minJeonseDeposit(10_000L)
                 .build();
 
-        ResponseDTO<List<MobilitySimpleResponse>> response =
+        ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", PageRequest.of(0, 10), filterRequest);
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.BAD_REQUEST.value()));
@@ -303,7 +325,7 @@ class MobilityServiceTest {
     @Test
     @DisplayName("여러 행정동 코드 조회는 중복 제거 후 코드가 2개 미만이면 400 응답을 반환한다")
     void searchByArrivalDongCodesReturnsBadRequestWhenCodeCountIsLessThanTwo() {
-        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+        ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> response =
                 mobilityService.searchByArrivalDongCodes(List.of("1168064000", "1168064000"), PageRequest.of(0, 10));
 
         assertThat(response.getStatusCode()).isEqualTo(String.valueOf(HttpStatus.BAD_REQUEST.value()));
@@ -328,7 +350,7 @@ class MobilityServiceTest {
                         mobility(secondArrivalDong, secondOnlyDepartureDong, 300.0, 40.0)
                 ));
 
-        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+        ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> response =
                 mobilityService.searchByArrivalDongCodes(
                         List.of("1168064000", "1156054000"),
                         pageable

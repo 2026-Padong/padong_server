@@ -8,6 +8,7 @@ import com.example.padong_server.domain.activityMobility.dto.MultiMobilityRespon
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,28 +45,28 @@ public class MobilityController {
 
     @GetMapping("/arrival/multi")
     @Operation(summary = "여러 행정동 코드로 공통 생활이동 많은 순 검색")
-    public ResponseEntity<ResponseDTO<List<CommonDepartureMobilityResponse>>> searchByArrivalDongCodes(
+    public ResponseEntity<ResponseDTO<PageResponse<CommonDepartureMobilityResponse>>> searchByArrivalDongCodes(
             @RequestParam List<String> arrivalDongCodes,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @ModelAttribute MobilityFilterRequest filterRequest
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        ResponseDTO<List<CommonDepartureMobilityResponse>> response =
+        ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> response =
                 mobilityService.searchByArrivalDongCodes(arrivalDongCodes, pageable, filterRequest);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/arrival/{adminDongCode}")
     @Operation(summary = "행정동 코드로 생활이동 많은 순 검색")
-    public ResponseEntity<ResponseDTO<List<MobilitySimpleResponse>>> searchByArrivalDongCode(
+    public ResponseEntity<ResponseDTO<PageResponse<MobilitySimpleResponse>>> searchByArrivalDongCode(
             @PathVariable String adminDongCode,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @ModelAttribute MobilityFilterRequest filterRequest
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Direction.DESC, "totalMobility"));
-        ResponseDTO<List<MobilitySimpleResponse>> response =
+        ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode(adminDongCode, pageable, filterRequest);
         return ResponseEntity.ok(response);
     }

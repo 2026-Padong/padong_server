@@ -21,6 +21,7 @@ import com.example.padong_server.domain.rentPrice.entity.RentPriceTradeType;
 import com.example.padong_server.domain.rentPrice.entity.ResidenceBuildingType;
 import com.example.padong_server.domain.rentPrice.service.RentPriceService;
 import com.example.padong_server.domain.score.service.ScoreCalculator;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -104,26 +105,31 @@ public class MobilityService {
     public ResponseDTO<List<MobilityResponse>> searchByAddress(String address, Pageable pageable) {
         AdminDong adminDong = dongneService.findAdminDongByAddress(address);
         Page<Mobility> mobilities = mobilityRepository.findByArrivalDong(adminDong, pageable);
-        if (mobilities.isEmpty())
+        if (mobilities.isEmpty()) {
             return ResponseDTO.res(HttpStatus.NOT_FOUND, "해당 행정동이 존재하지 않습니다.");
+        }
 
         return ResponseDTO.res(HttpStatus.OK, "출발 행정동 조회 성공", mapFromEntities(mobilities.getContent()));
     }
 
-    public ResponseDTO<List<MobilitySimpleResponse>> searchByArrivalDongCode(
+    public ResponseDTO<PageResponse<MobilitySimpleResponse>> searchByArrivalDongCode(
             String adminDongCode,
             Pageable pageable
     ) {
         AdminDong adminDong = dongneService.findAdminDongByCode(adminDongCode);
         Page<Mobility> mobilities = mobilityRepository.findByArrivalDong(adminDong, pageable);
-        if (mobilities.isEmpty()) {
+        if (mobilities.getTotalElements() == 0) {
             return ResponseDTO.res(HttpStatus.NOT_FOUND, "해당 생활이동 데이터가 존재하지 않습니다.");
         }
 
-        return ResponseDTO.res(HttpStatus.OK, "생활이동 많은 순 조회 성공", mapToSimpleResponses(mobilities.getContent()));
+        return ResponseDTO.res(
+                HttpStatus.OK,
+                "생활이동 많은 순 조회 성공",
+                PageResponse.from(mobilities, mapToSimpleResponses(mobilities.getContent()))
+        );
     }
 
-    public ResponseDTO<List<MobilitySimpleResponse>> searchByArrivalDongCode(
+    public ResponseDTO<PageResponse<MobilitySimpleResponse>> searchByArrivalDongCode(
             String adminDongCode,
             Pageable pageable,
             MobilityFilterRequest filterRequest
@@ -151,18 +157,22 @@ public class MobilityService {
         return ResponseDTO.res(
                 HttpStatus.OK,
                 "생활이동 많은 순 조회 성공",
-                mapToSimpleResponses(listToPage(filteredMobilities, pageable))
+                PageResponse.of(
+                        mapToSimpleResponses(listToPage(filteredMobilities, pageable)),
+                        pageable,
+                        filteredMobilities.size()
+                )
         );
     }
 
-    public ResponseDTO<List<CommonDepartureMobilityResponse>> searchByArrivalDongCodes(
+    public ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> searchByArrivalDongCodes(
             List<String> adminDongCodes,
             Pageable pageable
     ) {
         return searchByArrivalDongCodes(adminDongCodes, pageable, MobilityFilterRequest.empty());
     }
 
-    public ResponseDTO<List<CommonDepartureMobilityResponse>> searchByArrivalDongCodes(
+    public ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> searchByArrivalDongCodes(
             List<String> adminDongCodes,
             Pageable pageable,
             MobilityFilterRequest filterRequest
@@ -182,13 +192,13 @@ public class MobilityService {
                 .map(dongneService::findAdminDongByCode)
                 .toList();
         List<Mobility> mobilities = mobilityRepository.findByArrivalDongIn(arrivalDongs);
-        List<CommonDepartureMobilityResponse> responses = mapToCommonDepartureResponses(
+        PageResponse<CommonDepartureMobilityResponse> responses = mapToCommonDepartureResponses(
                 mobilities,
                 distinctAdminDongCodes.size(),
                 pageable,
                 filter
         );
-        if (responses.isEmpty()) {
+        if (responses.totalElements() == 0) {
             return ResponseDTO.res(HttpStatus.NOT_FOUND, "공통 생활이동 데이터가 존재하지 않습니다.");
         }
 
@@ -691,7 +701,7 @@ public class MobilityService {
                 .toList();
     }
 
-    private List<CommonDepartureMobilityResponse> mapToCommonDepartureResponses(
+    private PageResponse<CommonDepartureMobilityResponse> mapToCommonDepartureResponses(
             List<Mobility> mobilities,
             int requiredArrivalDongCount,
             Pageable pageable,
@@ -719,7 +729,7 @@ public class MobilityService {
                         .thenComparing(accumulator -> accumulator.departureDong().getAdminDongCode()))
                 .map(this::toCommonDepartureResponse)
                 .toList();
-        return listToPage(responses, pageable);
+        return PageResponse.of(listToPage(responses, pageable), pageable, responses.size());
     }
 
     private CommonDepartureMobilityResponse toCommonDepartureResponse(MultiArrivalAccumulator accumulator) {

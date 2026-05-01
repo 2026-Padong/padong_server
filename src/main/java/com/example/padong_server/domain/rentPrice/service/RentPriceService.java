@@ -91,6 +91,36 @@ public class RentPriceService {
         Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType =
                 mapByBuildingType(adminRentPriceRepository.findAllByAdminDongAdminDongCode(sanitizedCode));
 
+        return buildDetailResponse(adminDong, statsByBuildingType);
+    }
+
+    public List<AdminDongRentPriceDetailResponse> getDetails(List<String> requestedAdminDongCodes) {
+        if (requestedAdminDongCodes == null) {
+            throw new IllegalArgumentException("행정동 코드는 비어 있을 수 없습니다.");
+        }
+        List<String> adminDongCodes = sanitizeAdminDongCodes(requestedAdminDongCodes);
+        if (adminDongCodes.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, AdminDong> adminDongByCode = loadAdminDongByCode(adminDongCodes);
+        Map<String, Map<ResidenceBuildingType, AdminRentPrice>> statsByAdminDongCode =
+                groupByAdminDongCode(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(adminDongCodes));
+
+        List<AdminDongRentPriceDetailResponse> responses = new ArrayList<>();
+        for (String adminDongCode : adminDongCodes) {
+            responses.add(buildDetailResponse(
+                    adminDongByCode.get(adminDongCode),
+                    statsByAdminDongCode.getOrDefault(adminDongCode, Map.of())
+            ));
+        }
+        return responses;
+    }
+
+    private AdminDongRentPriceDetailResponse buildDetailResponse(
+            AdminDong adminDong,
+            Map<ResidenceBuildingType, AdminRentPrice> statsByBuildingType
+    ) {
         List<AdminDongRentPriceBuildingTypeResponse> buildingTypes = new ArrayList<>();
         for (ResidenceBuildingType buildingType : ResidenceBuildingType.values()) {
             AdminDongRentPriceBuildingTypeResponse response = buildBuildingTypeResponse(

@@ -2,6 +2,7 @@ package com.example.padong_server.domain.activityMobility.service;
 
 import com.example.padong_server.domain.activityMobility.dto.CommonDepartureMobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.IntersectedMobilityResponse;
+import com.example.padong_server.domain.activityMobility.dto.MobilityFilterRequest;
 import com.example.padong_server.domain.activityMobility.dto.MobilityResponse;
 import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.dto.MultiMobilityResponse;
@@ -11,7 +12,13 @@ import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.service.DongneService;
 import com.example.padong_server.domain.population.service.PopulationService;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceBuildingTypeResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceSummaryResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.MonthlyRentDisplayValueResponse;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceDisplayValueResponse;
+import com.example.padong_server.domain.rentPrice.entity.RentPriceTradeType;
+import com.example.padong_server.domain.rentPrice.entity.ResidenceBuildingType;
 import com.example.padong_server.domain.rentPrice.service.RentPriceService;
 import com.example.padong_server.domain.score.service.ScoreCalculator;
 import com.example.padong_server.global.ResponseDTO;
@@ -20,6 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -115,10 +123,56 @@ public class MobilityService {
         return ResponseDTO.res(HttpStatus.OK, "생활이동 많은 순 조회 성공", mapToSimpleResponses(mobilities.getContent()));
     }
 
+    public ResponseDTO<List<MobilitySimpleResponse>> searchByArrivalDongCode(
+            String adminDongCode,
+            Pageable pageable,
+            MobilityFilterRequest filterRequest
+    ) {
+        MobilityFilterRequest filter = filterOrEmpty(filterRequest);
+        String validationError = validateFilter(filter);
+        if (validationError != null) {
+            return ResponseDTO.res(HttpStatus.BAD_REQUEST, validationError);
+        }
+        if (!hasSingleFilter(filter)) {
+            return searchByArrivalDongCode(adminDongCode, pageable);
+        }
+
+        AdminDong adminDong = dongneService.findAdminDongByCode(adminDongCode);
+        List<Mobility> mobilities = mobilityRepository.findByArrivalDong(adminDong);
+        if (mobilities.isEmpty()) {
+            return ResponseDTO.res(HttpStatus.NOT_FOUND, "해당 생활이동 데이터가 존재하지 않습니다.");
+        }
+
+        List<Mobility> filteredMobilities = filterSingleMobilities(mobilities, filter);
+        if (filteredMobilities.isEmpty()) {
+            return ResponseDTO.res(HttpStatus.NOT_FOUND, "조건에 맞는 생활이동 데이터가 존재하지 않습니다.");
+        }
+
+        return ResponseDTO.res(
+                HttpStatus.OK,
+                "생활이동 많은 순 조회 성공",
+                mapToSimpleResponses(listToPage(filteredMobilities, pageable))
+        );
+    }
+
     public ResponseDTO<List<CommonDepartureMobilityResponse>> searchByArrivalDongCodes(
             List<String> adminDongCodes,
             Pageable pageable
     ) {
+        return searchByArrivalDongCodes(adminDongCodes, pageable, MobilityFilterRequest.empty());
+    }
+
+    public ResponseDTO<List<CommonDepartureMobilityResponse>> searchByArrivalDongCodes(
+            List<String> adminDongCodes,
+            Pageable pageable,
+            MobilityFilterRequest filterRequest
+    ) {
+        MobilityFilterRequest filter = filterOrEmpty(filterRequest);
+        String validationError = validateFilter(filter);
+        if (validationError != null) {
+            return ResponseDTO.res(HttpStatus.BAD_REQUEST, validationError);
+        }
+
         List<String> distinctAdminDongCodes = normalizeAdminDongCodes(adminDongCodes);
         if (distinctAdminDongCodes.size() < 2) {
             return ResponseDTO.res(HttpStatus.BAD_REQUEST, "행정동 코드는 2개 이상 입력해야 합니다.");
@@ -131,7 +185,8 @@ public class MobilityService {
         List<CommonDepartureMobilityResponse> responses = mapToCommonDepartureResponses(
                 mobilities,
                 distinctAdminDongCodes.size(),
-                pageable
+                pageable,
+                filter
         );
         if (responses.isEmpty()) {
             return ResponseDTO.res(HttpStatus.NOT_FOUND, "공통 생활이동 데이터가 존재하지 않습니다.");
@@ -267,6 +322,369 @@ public class MobilityService {
                 .toList();
     }
 
+    private MobilityFilterRequest filterOrEmpty(MobilityFilterRequest filterRequest) {
+        return filterRequest == null ? MobilityFilterRequest.empty() : filterRequest;
+    }
+
+    private String validateFilter(MobilityFilterRequest filter) {
+        String rangeValidationError = validateRanges(filter);
+        if (rangeValidationError != null) {
+            return rangeValidationError;
+        }
+
+        String contractType = trimToNull(filter.getContractType());
+        String houseType = trimToNull(filter.getHouseType());
+        if (contractType != null) {
+            try {
+                RentPriceTradeType.from(contractType);
+            } catch (IllegalArgumentException exception) {
+                return "지원하지 않는 거래 형태입니다: " + contractType;
+            }
+        }
+        if (houseType != null) {
+            try {
+                ResidenceBuildingType.from(houseType);
+            } catch (IllegalArgumentException exception) {
+                return "지원하지 않는 집 형태입니다: " + houseType;
+            }
+        }
+
+        boolean hasSalePriceFilter = hasRange(filter.getMinSalePrice(), filter.getMaxSalePrice());
+        boolean hasJeonsePriceFilter = hasRange(filter.getMinJeonseDeposit(), filter.getMaxJeonseDeposit());
+        boolean hasMonthlyPriceFilter = hasRange(filter.getMinMonthlyDeposit(), filter.getMaxMonthlyDeposit())
+                || hasRange(filter.getMinMonthlyRent(), filter.getMaxMonthlyRent());
+        if ((hasSalePriceFilter || hasJeonsePriceFilter || hasMonthlyPriceFilter) && contractType == null) {
+            return "가격 필터를 사용하려면 거래 형태를 선택해야 합니다.";
+        }
+
+        if (contractType == null) {
+            return null;
+        }
+        RentPriceTradeType tradeType = RentPriceTradeType.from(contractType);
+        if (tradeType == RentPriceTradeType.SALE && (hasJeonsePriceFilter || hasMonthlyPriceFilter)) {
+            return "매매 필터에는 전세/월세 가격 필터를 함께 사용할 수 없습니다.";
+        }
+        if (tradeType == RentPriceTradeType.JEONSE && (hasSalePriceFilter || hasMonthlyPriceFilter)) {
+            return "전세 필터에는 매매/월세 가격 필터를 함께 사용할 수 없습니다.";
+        }
+        if (tradeType == RentPriceTradeType.MONTHLY_RENT && (hasSalePriceFilter || hasJeonsePriceFilter)) {
+            return "월세 필터에는 매매/전세 가격 필터를 함께 사용할 수 없습니다.";
+        }
+        return null;
+    }
+
+    private String validateRanges(MobilityFilterRequest filter) {
+        String invalidRangeName = firstInvalidRangeName(filter);
+        if (invalidRangeName != null) {
+            return "필터 범위의 최소값은 최대값보다 클 수 없습니다: " + invalidRangeName;
+        }
+        if (hasNegative(filter.getMinAvgTime(), filter.getMaxAvgTime(),
+                filter.getMinEachAvgTime(), filter.getMaxEachAvgTime())) {
+            return "시간 범위 값은 0 이상이어야 합니다.";
+        }
+        if (hasNegative(filter.getMinSalePrice(), filter.getMaxSalePrice(),
+                filter.getMinJeonseDeposit(), filter.getMaxJeonseDeposit(),
+                filter.getMinMonthlyDeposit(), filter.getMaxMonthlyDeposit(),
+                filter.getMinMonthlyRent(), filter.getMaxMonthlyRent())) {
+            return "가격 범위 값은 0 이상이어야 합니다.";
+        }
+        return null;
+    }
+
+    private String firstInvalidRangeName(MobilityFilterRequest filter) {
+        if (isInvalidRange(filter.getMinAvgTime(), filter.getMaxAvgTime())) {
+            return "minAvgTime/maxAvgTime";
+        }
+        if (isInvalidRange(filter.getMinEachAvgTime(), filter.getMaxEachAvgTime())) {
+            return "minEachAvgTime/maxEachAvgTime";
+        }
+        if (isInvalidRange(filter.getMinSalePrice(), filter.getMaxSalePrice())) {
+            return "minSalePrice/maxSalePrice";
+        }
+        if (isInvalidRange(filter.getMinJeonseDeposit(), filter.getMaxJeonseDeposit())) {
+            return "minJeonseDeposit/maxJeonseDeposit";
+        }
+        if (isInvalidRange(filter.getMinMonthlyDeposit(), filter.getMaxMonthlyDeposit())) {
+            return "minMonthlyDeposit/maxMonthlyDeposit";
+        }
+        if (isInvalidRange(filter.getMinMonthlyRent(), filter.getMaxMonthlyRent())) {
+            return "minMonthlyRent/maxMonthlyRent";
+        }
+        return null;
+    }
+
+    private boolean hasSingleFilter(MobilityFilterRequest filter) {
+        return hasRange(filter.getMinAvgTime(), filter.getMaxAvgTime())
+                || !normalizeDistrictNames(filter.getDepartureDistrictNames()).isEmpty()
+                || hasRentPriceFilter(filter);
+    }
+
+    private boolean hasRentPriceFilter(MobilityFilterRequest filter) {
+        return trimToNull(filter.getContractType()) != null
+                || trimToNull(filter.getHouseType()) != null
+                || hasRange(filter.getMinSalePrice(), filter.getMaxSalePrice())
+                || hasRange(filter.getMinJeonseDeposit(), filter.getMaxJeonseDeposit())
+                || hasRange(filter.getMinMonthlyDeposit(), filter.getMaxMonthlyDeposit())
+                || hasRange(filter.getMinMonthlyRent(), filter.getMaxMonthlyRent());
+    }
+
+    private List<Mobility> filterSingleMobilities(
+            List<Mobility> mobilities,
+            MobilityFilterRequest filter
+    ) {
+        Set<String> districtNames = normalizeDistrictNames(filter.getDepartureDistrictNames());
+        List<Mobility> filteredMobilities = mobilities.stream()
+                .filter(mobility -> matchesRange(mobility.getAvgTime(), filter.getMinAvgTime(), filter.getMaxAvgTime()))
+                .filter(mobility -> districtNames.isEmpty()
+                        || districtNames.contains(mobility.getDepartureDong().getDistrictName()))
+                .sorted(Comparator
+                        .comparingDouble(Mobility::getTotalMobility)
+                        .reversed()
+                        .thenComparing(mobility -> mobility.getDepartureDong().getAdminDongCode()))
+                .toList();
+        return filterMobilitiesByRentPrice(filteredMobilities, filter);
+    }
+
+    private List<Mobility> filterMultiMobilities(
+            List<Mobility> mobilities,
+            MobilityFilterRequest filter
+    ) {
+        Set<String> districtNames = normalizeDistrictNames(filter.getDepartureDistrictNames());
+        return mobilities.stream()
+                .filter(mobility -> matchesRange(
+                        mobility.getAvgTime(),
+                        filter.getMinEachAvgTime(),
+                        filter.getMaxEachAvgTime()
+                ))
+                .filter(mobility -> districtNames.isEmpty()
+                        || districtNames.contains(mobility.getDepartureDong().getDistrictName()))
+                .toList();
+    }
+
+    private List<Mobility> filterMobilitiesByRentPrice(
+            List<Mobility> mobilities,
+            MobilityFilterRequest filter
+    ) {
+        if (!hasRentPriceFilter(filter) || mobilities.isEmpty()) {
+            return mobilities;
+        }
+        Set<String> matchedAdminDongCodes = findRentPriceMatchedAdminDongCodes(
+                mobilities.stream()
+                        .map(Mobility::getDepartureDong)
+                        .toList(),
+                filter
+        );
+        return mobilities.stream()
+                .filter(mobility -> matchedAdminDongCodes.contains(mobility.getDepartureDong().getAdminDongCode()))
+                .toList();
+    }
+
+    private List<MultiArrivalAccumulator> filterMultiAccumulatorsByRentPrice(
+            List<MultiArrivalAccumulator> accumulators,
+            MobilityFilterRequest filter
+    ) {
+        if (!hasRentPriceFilter(filter) || accumulators.isEmpty()) {
+            return accumulators;
+        }
+        Set<String> matchedAdminDongCodes = findRentPriceMatchedAdminDongCodes(
+                accumulators.stream()
+                        .map(MultiArrivalAccumulator::departureDong)
+                        .toList(),
+                filter
+        );
+        return accumulators.stream()
+                .filter(accumulator -> matchedAdminDongCodes.contains(
+                        accumulator.departureDong().getAdminDongCode()
+                ))
+                .toList();
+    }
+
+    private Set<String> findRentPriceMatchedAdminDongCodes(
+            Collection<AdminDong> departureDongs,
+            MobilityFilterRequest filter
+    ) {
+        List<String> adminDongCodes = departureDongs.stream()
+                .map(AdminDong::getAdminDongCode)
+                .distinct()
+                .toList();
+        Map<String, AdminDongRentPriceDetailResponse> rentPriceDetailByAdminDongCode =
+                rentPriceService.getDetails(adminDongCodes)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                AdminDongRentPriceDetailResponse::adminDongCode,
+                                Function.identity(),
+                                (a, b) -> a
+                        ));
+
+        Set<String> matchedAdminDongCodes = new LinkedHashSet<>();
+        for (String adminDongCode : adminDongCodes) {
+            AdminDongRentPriceDetailResponse detail = rentPriceDetailByAdminDongCode.get(adminDongCode);
+            if (matchesRentPrice(detail, filter)) {
+                matchedAdminDongCodes.add(adminDongCode);
+            }
+        }
+        return matchedAdminDongCodes;
+    }
+
+    private boolean matchesRentPrice(
+            AdminDongRentPriceDetailResponse detail,
+            MobilityFilterRequest filter
+    ) {
+        if (detail == null || detail.buildingTypes() == null) {
+            return false;
+        }
+        RentPriceTradeType contractType = parseContractTypeOrNull(filter.getContractType());
+        ResidenceBuildingType houseType = parseHouseTypeOrNull(filter.getHouseType());
+        return detail.buildingTypes().stream()
+                .filter(response -> matchesHouseType(response, houseType))
+                .anyMatch(response -> matchesContractTypeAndPrice(response, contractType, filter));
+    }
+
+    private boolean matchesHouseType(
+            AdminDongRentPriceBuildingTypeResponse response,
+            ResidenceBuildingType houseType
+    ) {
+        if (houseType == null) {
+            return true;
+        }
+        return response.buildingType() != null
+                && houseType.code().equals(response.buildingType().buildingTypeCode());
+    }
+
+    private boolean matchesContractTypeAndPrice(
+            AdminDongRentPriceBuildingTypeResponse response,
+            RentPriceTradeType contractType,
+            MobilityFilterRequest filter
+    ) {
+        if (contractType == null) {
+            return hasAnyRentPrice(response);
+        }
+        return switch (contractType) {
+            case SALE -> matchesSalePrice(response.sale(), filter);
+            case JEONSE -> matchesJeonseDeposit(response.jeonse(), filter);
+            case MONTHLY_RENT -> matchesMonthlyRent(response.monthlyRent(), filter);
+        };
+    }
+
+    private boolean hasAnyRentPrice(AdminDongRentPriceBuildingTypeResponse response) {
+        return response.sale() != null && response.sale().amount() != null
+                || response.jeonse() != null && response.jeonse().amount() != null
+                || response.monthlyRent() != null
+                && response.monthlyRent().deposit() != null
+                && response.monthlyRent().monthlyRent() != null;
+    }
+
+    private boolean matchesSalePrice(
+            RentPriceDisplayValueResponse sale,
+            MobilityFilterRequest filter
+    ) {
+        return sale != null
+                && matchesMoneyRange(sale.amount(), filter.getMinSalePrice(), filter.getMaxSalePrice());
+    }
+
+    private boolean matchesJeonseDeposit(
+            RentPriceDisplayValueResponse jeonse,
+            MobilityFilterRequest filter
+    ) {
+        return jeonse != null
+                && matchesMoneyRange(jeonse.amount(), filter.getMinJeonseDeposit(), filter.getMaxJeonseDeposit());
+    }
+
+    private boolean matchesMonthlyRent(
+            MonthlyRentDisplayValueResponse monthlyRent,
+            MobilityFilterRequest filter
+    ) {
+        return monthlyRent != null
+                && matchesMoneyRange(
+                        monthlyRent.deposit(),
+                        filter.getMinMonthlyDeposit(),
+                        filter.getMaxMonthlyDeposit()
+                )
+                && matchesMoneyRange(
+                        monthlyRent.monthlyRent(),
+                        filter.getMinMonthlyRent(),
+                        filter.getMaxMonthlyRent()
+                );
+    }
+
+    private boolean matchesMoneyRange(Long amountInManwon, Long minManwon, Long maxManwon) {
+        if (amountInManwon == null) {
+            return false;
+        }
+        if (minManwon != null && amountInManwon < minManwon) {
+            return false;
+        }
+        return maxManwon == null || amountInManwon <= maxManwon;
+    }
+
+    private boolean matchesRange(double value, Double min, Double max) {
+        if (min != null && value < min) {
+            return false;
+        }
+        return max == null || value <= max;
+    }
+
+    private boolean hasRange(Double min, Double max) {
+        return min != null || max != null;
+    }
+
+    private boolean hasRange(Long min, Long max) {
+        return min != null || max != null;
+    }
+
+    private boolean isInvalidRange(Double min, Double max) {
+        return min != null && max != null && min > max;
+    }
+
+    private boolean isInvalidRange(Long min, Long max) {
+        return min != null && max != null && min > max;
+    }
+
+    private boolean hasNegative(Double... values) {
+        for (Double value : values) {
+            if (value != null && value < 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasNegative(Long... values) {
+        for (Long value : values) {
+            if (value != null && value < 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Set<String> normalizeDistrictNames(List<String> districtNames) {
+        if (districtNames == null) {
+            return Set.of();
+        }
+        return districtNames.stream()
+                .map(this::trimToNull)
+                .filter(name -> name != null)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private RentPriceTradeType parseContractTypeOrNull(String contractType) {
+        String normalizedContractType = trimToNull(contractType);
+        return normalizedContractType == null ? null : RentPriceTradeType.from(normalizedContractType);
+    }
+
+    private ResidenceBuildingType parseHouseTypeOrNull(String houseType) {
+        String normalizedHouseType = trimToNull(houseType);
+        return normalizedHouseType == null ? null : ResidenceBuildingType.from(normalizedHouseType);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
+    }
+
     private List<MobilitySimpleResponse> mapToSimpleResponses(Collection<Mobility> mobilities) {
         return mobilities.stream()
                 .map(this::toSimpleResponse)
@@ -276,10 +694,11 @@ public class MobilityService {
     private List<CommonDepartureMobilityResponse> mapToCommonDepartureResponses(
             List<Mobility> mobilities,
             int requiredArrivalDongCount,
-            Pageable pageable
+            Pageable pageable,
+            MobilityFilterRequest filter
     ) {
         Map<String, MultiArrivalAccumulator> accumulatorByDepartureDongCode = new LinkedHashMap<>();
-        for (Mobility mobility : mobilities) {
+        for (Mobility mobility : filterMultiMobilities(mobilities, filter)) {
             String departureDongCode = mobility.getDepartureDong().getAdminDongCode();
             accumulatorByDepartureDongCode.computeIfAbsent(
                             departureDongCode,
@@ -288,8 +707,12 @@ public class MobilityService {
                     .add(mobility);
         }
 
-        List<CommonDepartureMobilityResponse> responses = accumulatorByDepartureDongCode.values().stream()
+        List<MultiArrivalAccumulator> accumulators = accumulatorByDepartureDongCode.values().stream()
                 .filter(accumulator -> accumulator.arrivalDongCount() == requiredArrivalDongCount)
+                .toList();
+        accumulators = filterMultiAccumulatorsByRentPrice(accumulators, filter);
+
+        List<CommonDepartureMobilityResponse> responses = accumulators.stream()
                 .sorted(Comparator
                         .comparingDouble(MultiArrivalAccumulator::totalMobility)
                         .reversed()

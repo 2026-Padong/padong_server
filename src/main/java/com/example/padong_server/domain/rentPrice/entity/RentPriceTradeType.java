@@ -1,5 +1,9 @@
 package com.example.padong_server.domain.rentPrice.entity;
 
+import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
+import com.example.padong_server.global.util.Preconditions;
+
 import java.util.Arrays;
 
 public enum RentPriceTradeType {
@@ -21,14 +25,40 @@ public enum RentPriceTradeType {
         return label;
     }
 
+    public static RentPriceTradeType fromNullable(String value) {
+        String normalizedValue = trimToNull(value);
+        return normalizedValue == null ? null : from(normalizedValue);
+    }
+
+    public static RentPriceTradeType fromNullableOrDefault(
+            String value, RentPriceTradeType defaultType) {
+        RentPriceTradeType tradeType = fromNullable(value);
+        return tradeType == null ? defaultType : tradeType;
+    }
+
     public static RentPriceTradeType from(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException("거래유형은 비어 있을 수 없습니다.");
-        }
-        String normalizedValue = value.trim();
+        String normalizedValue = trimToNull(value);
+        Preconditions.validate(
+                normalizedValue != null, ErrorCode.RENT_PRICE_TRADE_TYPE_REQUIRED.getMessage());
         return Arrays.stream(values())
-                .filter(type -> type.name().equalsIgnoreCase(normalizedValue) || type.label.equals(normalizedValue))
+                .filter(
+                        type ->
+                                type.name().equalsIgnoreCase(normalizedValue)
+                                        || type.label.equals(normalizedValue))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("지원하지 않는 거래유형입니다: " + value));
+                .orElseThrow(
+                        () ->
+                                new CustomException(
+                                        ErrorCode.INVALID_RENT_PRICE_TRADE_TYPE,
+                                        ErrorCode.INVALID_RENT_PRICE_TRADE_TYPE.getMessage()
+                                                + ": "
+                                                + value));
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
     }
 }

@@ -1,6 +1,13 @@
 package com.example.padong_server.domain.activityMobility.util;
 
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityCsvRow;
+import com.example.padong_server.global.util.Preconditions;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,30 +17,24 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 public class ActivityMobilityDataUtil {
 
-    private static final List<String> EXPECTED_CSV_HEADERS = List.of(
-            "기준년월",
-            "직장행정동코드",
-            "거주행정동코드",
-            "출퇴근가중치",
-            "출근인구",
-            "퇴근인구",
-            "평균이동시간"
-    );
+    private static final String CSV_READ_FAILURE_MESSAGE = "Failed to read activity mobility CSV";
 
-    private static final List<ActivityMobilityCsvFile> CSV_FILES = List.of(
-            new ActivityMobilityCsvFile("202601", "data/activity-mobility/202601_서울행정동간_생활이동.csv"),
-            new ActivityMobilityCsvFile("202602", "data/activity-mobility/202602_서울행정동간_생활이동.csv"),
-            new ActivityMobilityCsvFile("202603", "data/activity-mobility/202603_서울행정동간_생활이동.csv")
-    );
+    private static final List<String> EXPECTED_CSV_HEADERS =
+            List.of("기준년월", "직장행정동코드", "거주행정동코드", "출퇴근가중치", "출근인구", "퇴근인구", "평균이동시간");
 
+    private static final List<ActivityMobilityCsvFile> CSV_FILES =
+            List.of(
+                    new ActivityMobilityCsvFile(
+                            "202601", "data/activity-mobility/202601_서울행정동간_생활이동.csv"),
+                    new ActivityMobilityCsvFile(
+                            "202602", "data/activity-mobility/202602_서울행정동간_생활이동.csv"),
+                    new ActivityMobilityCsvFile(
+                            "202603", "data/activity-mobility/202603_서울행정동간_생활이동.csv"));
 
     public List<ActivityMobilityCsvRow> readMonthlyCsvRows() {
         long start = System.currentTimeMillis();
@@ -44,7 +45,8 @@ public class ActivityMobilityDataUtil {
             try (InputStream inputStream = resource.getInputStream()) {
                 rows.addAll(readCsvRows(csvFile.month(), inputStream, csvFile.path()));
             } catch (IOException exception) {
-                throw new IllegalStateException("Failed to read activity mobility CSV: " + csvFile.path(), exception);
+                throw new IllegalStateException(
+                        CSV_READ_FAILURE_MESSAGE + ": " + csvFile.path(), exception);
             }
         }
 
@@ -53,18 +55,19 @@ public class ActivityMobilityDataUtil {
         return rows;
     }
 
-    List<ActivityMobilityCsvRow> readCsvRows(String expectedMonth, InputStream inputStream, String sourceName) {
+    List<ActivityMobilityCsvRow> readCsvRows(
+            String expectedMonth, InputStream inputStream, String sourceName) {
         List<ActivityMobilityCsvRow> rows = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        try (BufferedReader reader =
+                new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
-            if (headerLine == null) {
-                throw new IllegalArgumentException("CSV header is missing: " + sourceName);
-            }
+            Preconditions.validate(headerLine != null, "CSV header is missing: " + sourceName);
 
-            List<String> headers = parseCsvLine(headerLine).stream()
-                    .map(ActivityMobilityDataUtil::normalize)
-                    .toList();
+            List<String> headers =
+                    parseCsvLine(headerLine).stream()
+                            .map(ActivityMobilityDataUtil::normalize)
+                            .toList();
             validateHeaders(sourceName, headers);
 
             String line;
@@ -80,25 +83,26 @@ public class ActivityMobilityDataUtil {
                 rows.add(toCsvRow(expectedMonth, sourceName, lineNumber, row));
             }
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to read activity mobility CSV: " + sourceName, exception);
+            throw new IllegalStateException(
+                    CSV_READ_FAILURE_MESSAGE + ": " + sourceName, exception);
         }
 
         return rows;
     }
 
     private ActivityMobilityCsvRow toCsvRow(
-            String expectedMonth,
-            String sourceName,
-            int lineNumber,
-            Map<String, String> row
-    ) {
+            String expectedMonth, String sourceName, int lineNumber, Map<String, String> row) {
         String month = requireNonBlank(row, "기준년월", sourceName, lineNumber);
-        if (!month.equals(expectedMonth)) {
-            throw new IllegalArgumentException(
-                    "Unexpected month in " + sourceName + " line " + lineNumber
-                            + ". expected=" + expectedMonth + ", actual=" + month
-            );
-        }
+        Preconditions.validate(
+                month.equals(expectedMonth),
+                "Unexpected month in "
+                        + sourceName
+                        + " line "
+                        + lineNumber
+                        + ". expected="
+                        + expectedMonth
+                        + ", actual="
+                        + month);
 
         return new ActivityMobilityCsvRow(
                 month,
@@ -107,27 +111,32 @@ public class ActivityMobilityDataUtil {
                 parseDouble(row.get("출퇴근가중치"), "출퇴근가중치", sourceName, lineNumber),
                 parseDouble(row.get("출근인구"), "출근인구", sourceName, lineNumber),
                 parseDouble(row.get("퇴근인구"), "퇴근인구", sourceName, lineNumber),
-                parseDouble(row.get("평균이동시간"), "평균이동시간", sourceName, lineNumber)
-        );
+                parseDouble(row.get("평균이동시간"), "평균이동시간", sourceName, lineNumber));
     }
 
     private void validateHeaders(String sourceName, List<String> actualHeaders) {
-        if (!actualHeaders.equals(EXPECTED_CSV_HEADERS)) {
-            throw new IllegalArgumentException(
-                    "Unexpected CSV headers for " + sourceName
-                            + ". expected=" + EXPECTED_CSV_HEADERS
-                            + ", actual=" + actualHeaders
-            );
-        }
+        Preconditions.validate(
+                actualHeaders.equals(EXPECTED_CSV_HEADERS),
+                "Unexpected CSV headers for "
+                        + sourceName
+                        + ". expected="
+                        + EXPECTED_CSV_HEADERS
+                        + ", actual="
+                        + actualHeaders);
     }
 
-    private Map<String, String> toRowMap(String sourceName, int lineNumber, List<String> headers, List<String> values) {
-        if (values.size() != headers.size()) {
-            throw new IllegalArgumentException(
-                    "CSV column count mismatch in " + sourceName + " line " + lineNumber
-                            + ". expected=" + headers.size() + ", actual=" + values.size()
-            );
-        }
+    private Map<String, String> toRowMap(
+            String sourceName, int lineNumber, List<String> headers, List<String> values) {
+        Preconditions.validate(
+                values.size() == headers.size(),
+                "CSV column count mismatch in "
+                        + sourceName
+                        + " line "
+                        + lineNumber
+                        + ". expected="
+                        + headers.size()
+                        + ", actual="
+                        + values.size());
 
         Map<String, String> row = new LinkedHashMap<>();
         for (int i = 0; i < headers.size(); i++) {
@@ -171,33 +180,45 @@ public class ActivityMobilityDataUtil {
         return value == null ? "" : value.replace("\uFEFF", "").trim();
     }
 
-    private String requireNonBlank(Map<String, String> row, String column, String sourceName, int lineNumber) {
+    private String requireNonBlank(
+            Map<String, String> row, String column, String sourceName, int lineNumber) {
         String value = normalize(row.get(column));
-        if (value.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Required CSV value is blank in " + sourceName + " line " + lineNumber + ": " + column
-            );
-        }
+        Preconditions.validate(
+                !value.isBlank(),
+                "Required CSV value is blank in "
+                        + sourceName
+                        + " line "
+                        + lineNumber
+                        + ": "
+                        + column);
         return value;
     }
 
     private double parseDouble(String value, String column, String sourceName, int lineNumber) {
         String normalized = normalize(value).replace(",", "");
-        if (normalized.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Required decimal is blank in " + sourceName + " line " + lineNumber + ": " + column
-            );
-        }
+        Preconditions.validate(
+                !normalized.isBlank(),
+                "Required decimal is blank in "
+                        + sourceName
+                        + " line "
+                        + lineNumber
+                        + ": "
+                        + column);
         try {
             return Double.parseDouble(normalized);
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException(
-                    "Invalid decimal in " + sourceName + " line " + lineNumber + " for " + column + ": " + value,
-                    exception
-            );
+                    "Invalid decimal in "
+                            + sourceName
+                            + " line "
+                            + lineNumber
+                            + " for "
+                            + column
+                            + ": "
+                            + value,
+                    exception);
         }
     }
 
-    private record ActivityMobilityCsvFile(String month, String path) {
-    }
+    private record ActivityMobilityCsvFile(String month, String path) {}
 }

@@ -2,6 +2,12 @@ package com.example.padong_server.domain.activityMobility.service;
 
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityCsvRow;
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityRepresentativeRow;
+import com.example.padong_server.global.util.Preconditions;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Component;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -11,8 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -22,12 +26,15 @@ public class ActivityMobilityAggregator {
     private static final double COMMUTE_IN_WEIGHT = 0.8;
     private static final double COMMUTE_OUT_WEIGHT = 0.2;
     private static final double SOURCE_TOTAL_DIFF_LOG_THRESHOLD = 0.01;
+    private static final String INVALID_PERIOD_MESSAGE_FORMAT =
+            "startMonth must be before or equal to endMonth. startMonth=%s, endMonth=%s";
+    private static final String ROW_MONTH_OUTSIDE_PERIOD_MESSAGE_FORMAT =
+            "Activity mobility row month is outside aggregation period. month=%s, startMonth=%s,"
+                    + " endMonth=%s";
+    private static final String INVALID_MONTH_MESSAGE_FORMAT = "Invalid %s: %s. expected yyyyMM";
 
     public List<ActivityMobilityRepresentativeRow> aggregate(
-            List<ActivityMobilityCsvRow> rows,
-            String startMonth,
-            String endMonth
-    ) {
+            List<ActivityMobilityCsvRow> rows, String startMonth, String endMonth) {
         validatePeriod(startMonth, endMonth);
         int totalWeekdays = countWeekdays(startMonth, endMonth);
         Map<OdKey, Accumulator> accumulators = new LinkedHashMap<>();
@@ -36,32 +43,37 @@ public class ActivityMobilityAggregator {
         for (ActivityMobilityCsvRow row : rows) {
             validateRowInPeriod(row, startMonth, endMonth);
             OdKey key = new OdKey(row.arrivalDongCode(), row.departureDongCode());
-            Accumulator accumulator = accumulators.computeIfAbsent(key, ignored -> new Accumulator(row));
+            Accumulator accumulator =
+                    accumulators.computeIfAbsent(key, ignored -> new Accumulator(row));
             accumulator.add(row);
-            sourceTotalDiffStats.add(row.sourceTotalMobility(), recalculateMonthlyTotalMobility(row));
+            sourceTotalDiffStats.add(
+                    row.sourceTotalMobility(), recalculateMonthlyTotalMobility(row));
         }
 
         logSourceTotalDiffStats(sourceTotalDiffStats);
 
         return accumulators.entrySet().stream()
-                .map(entry -> entry.getValue().toRepresentativeRow(startMonth, endMonth, totalWeekdays))
-                .sorted((first, second) -> {
-                    int arrivalCompare = first.arrivalDongCode().compareTo(second.arrivalDongCode());
-                    if (arrivalCompare != 0) {
-                        return arrivalCompare;
-                    }
-                    return first.departureDongCode().compareTo(second.departureDongCode());
-                })
+                .map(
+                        entry ->
+                                entry.getValue()
+                                        .toRepresentativeRow(startMonth, endMonth, totalWeekdays))
+                .sorted(
+                        (first, second) -> {
+                            int arrivalCompare =
+                                    first.arrivalDongCode().compareTo(second.arrivalDongCode());
+                            if (arrivalCompare != 0) {
+                                return arrivalCompare;
+                            }
+                            return first.departureDongCode().compareTo(second.departureDongCode());
+                        })
                 .toList();
     }
 
     int countWeekdays(String startMonth, String endMonth) {
         YearMonth start = parseMonth(startMonth, "startMonth");
         YearMonth end = parseMonth(endMonth, "endMonth");
-        if (start.isAfter(end)) {
-            throw new IllegalArgumentException("startMonth must be before or equal to endMonth. startMonth="
-                    + startMonth + ", endMonth=" + endMonth);
-        }
+        Preconditions.validate(
+                !start.isAfter(end), INVALID_PERIOD_MESSAGE_FORMAT.formatted(startMonth, endMonth));
 
         int count = 0;
         LocalDate date = start.atDay(1);
@@ -80,21 +92,23 @@ public class ActivityMobilityAggregator {
         countWeekdays(startMonth, endMonth);
     }
 
-    private void validateRowInPeriod(ActivityMobilityCsvRow row, String startMonth, String endMonth) {
+    private void validateRowInPeriod(
+            ActivityMobilityCsvRow row, String startMonth, String endMonth) {
         YearMonth rowMonth = parseMonth(row.month(), "row.month");
         YearMonth start = parseMonth(startMonth, "startMonth");
         YearMonth end = parseMonth(endMonth, "endMonth");
-        if (rowMonth.isBefore(start) || rowMonth.isAfter(end)) {
-            throw new IllegalArgumentException("Activity mobility row month is outside aggregation period. month="
-                    + row.month() + ", startMonth=" + startMonth + ", endMonth=" + endMonth);
-        }
+        Preconditions.validate(
+                !rowMonth.isBefore(start) && !rowMonth.isAfter(end),
+                ROW_MONTH_OUTSIDE_PERIOD_MESSAGE_FORMAT.formatted(
+                        row.month(), startMonth, endMonth));
     }
 
     private YearMonth parseMonth(String month, String label) {
         try {
             return YearMonth.parse(month, MONTH_FORMATTER);
         } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Invalid " + label + ": " + month + ". expected yyyyMM", exception);
+            throw new IllegalArgumentException(
+                    INVALID_MONTH_MESSAGE_FORMAT.formatted(label, month), exception);
         }
     }
 
@@ -108,15 +122,14 @@ public class ActivityMobilityAggregator {
             return;
         }
         log.info(
-                "ActivityMobility source total comparison: rows={}, diffOverThreshold={}, maxDiff={}",
+                "ActivityMobility source total comparison: rows={}, diffOverThreshold={},"
+                        + " maxDiff={}",
                 stats.count,
                 stats.diffOverThresholdCount,
-                stats.maxDiff
-        );
+                stats.maxDiff);
     }
 
-    private record OdKey(String arrivalDongCode, String departureDongCode) {
-    }
+    private record OdKey(String arrivalDongCode, String departureDongCode) {}
 
     private class Accumulator {
         private final String arrivalDongCode;
@@ -145,14 +158,12 @@ public class ActivityMobilityAggregator {
         }
 
         private ActivityMobilityRepresentativeRow toRepresentativeRow(
-                String startMonth,
-                String endMonth,
-                int totalWeekdays
-        ) {
+                String startMonth, String endMonth, int totalWeekdays) {
             double commuteInDailyAverage = commuteInPopulationSum / totalWeekdays;
             double commuteOutDailyAverage = commuteOutPopulationSum / totalWeekdays;
-            double totalMobility = commuteInDailyAverage * COMMUTE_IN_WEIGHT
-                    + commuteOutDailyAverage * COMMUTE_OUT_WEIGHT;
+            double totalMobility =
+                    commuteInDailyAverage * COMMUTE_IN_WEIGHT
+                            + commuteOutDailyAverage * COMMUTE_OUT_WEIGHT;
             double avgTime = avgTimeWeightSum == 0 ? 0.0 : avgTimeWeightedSum / avgTimeWeightSum;
 
             return new ActivityMobilityRepresentativeRow(
@@ -162,8 +173,7 @@ public class ActivityMobilityAggregator {
                     departureDongCode,
                     totalMobility,
                     avgTime,
-                    observedMonths.size()
-            );
+                    observedMonths.size());
         }
     }
 

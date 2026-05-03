@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/api/auth/reissue",
                                 "/api/auth/signup"
                         ).permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
 

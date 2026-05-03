@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.oauth.jwt;
 
 import com.example.padong_server.domain.oauth.entity.CustomUserDetails;
+import com.example.padong_server.domain.oauth.entity.Role;
 import com.example.padong_server.domain.oauth.entity.User;
 import com.example.padong_server.domain.oauth.repository.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -37,6 +38,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             User user = userRepository.findById(memberId)
                     .orElseThrow();
+
+            if (!user.isRegistered() || (user.getRole() == Role.ADMIN && !user.isApproved())) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             CustomUserDetails userDetails = new CustomUserDetails(user);
 

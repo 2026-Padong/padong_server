@@ -11,6 +11,8 @@ public enum ErrorCode {
     POPULATION_NOT_FOUND(HttpStatus.NOT_FOUND, "POPULATION_NOT_FOUND", "해당 행정동의 인구 정보가 없습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     ADMIN_DONG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_DONG_NOT_FOUND", "행정동을 찾을 수 없습니다."),
+    INVALID_SIGNUP_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_SIGNUP_REQUEST", "회원가입 요청이 올바르지 않습니다."),
+    UNAUTHORIZED_USER(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED_USER", "인증할 수 없는 사용자입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "유효하지 않은 refresh token입니다."),
     SEOUL_REALTIME_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "SEOUL_REALTIME_API_CALL_FAILED", "서울시 실시간 도시데이터 API 호출에 실패했습니다."),
     SEOUL_REALTIME_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "SEOUL_REALTIME_DATA_NOT_FOUND", "해당 AREA_NM의 실시간 데이터를 찾을 수 없습니다."),

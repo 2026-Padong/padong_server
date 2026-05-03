@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.oauth.jwt;
 
+import com.example.padong_server.domain.oauth.entity.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.Decoders;
@@ -27,27 +28,30 @@ public class JwtProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public JwtToken createToken(Long memberId) {
-        String accessToken = createAccessToken(memberId);
-        String refreshToken = createRefreshToken(memberId);
+    public JwtToken createToken(User user) {
+        String accessToken = createAccessToken(user);
+        String refreshToken = createRefreshToken(user);
 
         return new JwtToken(accessToken, refreshToken);
     }
 
-    public String createAccessToken(Long memberId) {
-        return createToken(memberId, accessTokenExpireTime);
+    public String createAccessToken(User user) {
+        return createToken(user, accessTokenExpireTime);
     }
 
-    public String createRefreshToken(Long memberId) {
-        return createToken(memberId, refreshTokenExpireTime);
+    public String createRefreshToken(User user) {
+        return createToken(user, refreshTokenExpireTime);
     }
 
-    private String createToken(Long memberId, long expireTime) {
+    private String createToken(User user, long expireTime) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expireTime);
 
         return Jwts.builder()
-                .subject(String.valueOf(memberId))
+                .subject(String.valueOf(user.getId()))
+                .claim("userId", user.getId())
+                .claim("kakaoId", user.getKakaoId())
+                .claim("role", user.getRole().name())
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(key)

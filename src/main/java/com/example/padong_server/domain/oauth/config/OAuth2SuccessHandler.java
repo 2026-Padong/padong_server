@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.oauth.config;
 
 import com.example.padong_server.domain.oauth.entity.User;
+import com.example.padong_server.domain.oauth.entity.Role;
 import com.example.padong_server.domain.oauth.jwt.JwtProvider;
 import com.example.padong_server.domain.oauth.jwt.JwtToken;
 import com.example.padong_server.domain.oauth.repository.UserRepository;
@@ -50,7 +51,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         User user = userRepository.findByKakaoId(kakaoId).orElse(null);
 
-        if (user == null || user.getAdminDong() == null) {
+        if (user == null || !user.isRegistered()) {
             String redirectUrl = "http://localhost:3000/oauth/callback"
                     + "?signupRequired=true"
                     + "&kakaoId=" + encode(String.valueOf(kakaoId))
@@ -62,7 +63,16 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             return;
         }
 
-        JwtToken token = jwtProvider.createToken(user.getId());
+        if (user.getRole() == Role.ADMIN && !user.isApproved()) {
+            String redirectUrl = "http://localhost:3000/oauth/callback"
+                    + "?pendingApproval=true"
+                    + "&approved=false";
+
+            response.sendRedirect(redirectUrl);
+            return;
+        }
+
+        JwtToken token = jwtProvider.createToken(user);
         refreshTokenService.save(
                 user.getId(),
                 token.getRefreshToken(),

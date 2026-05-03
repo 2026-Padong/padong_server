@@ -8,6 +8,7 @@ public enum ErrorCode {
 
     INVALID_GU_NAME(HttpStatus.BAD_REQUEST, "INVALID_GU_NAME", "존재하지 않는 자치구 이름입니다."),
     INVALID_STORE_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_STORE_REQUEST", "가게 등록 요청값이 올바르지 않습니다."),
+    INVALID_STORE_LIKE_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_STORE_LIKE_REQUEST", "가게 좋아요 요청값이 올바르지 않습니다."),
     INVALID_MENU_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_MENU_REQUEST", "메뉴 등록 요청값이 올바르지 않습니다."),
     INVALID_ORDER_FLOW_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_ORDER_FLOW_REQUEST", "주문 흐름 요청값이 올바르지 않습니다."),
     INVALID_ORDER_FLOW_STATUS(HttpStatus.BAD_REQUEST, "INVALID_ORDER_FLOW_STATUS", "현재 주문 상태에서는 요청한 작업을 수행할 수 없습니다."),

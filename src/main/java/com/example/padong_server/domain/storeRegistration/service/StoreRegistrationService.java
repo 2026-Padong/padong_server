@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.storeRegistration.service;
 
+import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationCreateRequest;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationResponse;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
@@ -17,6 +18,7 @@ import org.springframework.util.StringUtils;
 public class StoreRegistrationService {
 
     private final StoreRegistrationRepository storeRegistrationRepository;
+    private final StoreLikeService storeLikeService;
 
     @Transactional
     public StoreRegistrationResponse createStore(StoreRegistrationCreateRequest request) {
@@ -29,12 +31,12 @@ public class StoreRegistrationService {
                 .operatingHours(request.operatingHours().trim())
                 .build();
 
-        return toResponse(storeRegistrationRepository.save(storeRegistration));
+        return toResponse(storeRegistrationRepository.save(storeRegistration), null);
     }
 
     @Transactional(readOnly = true)
-    public StoreRegistrationResponse getStore(Long storeId) {
-        return toResponse(findStore(storeId));
+    public StoreRegistrationResponse getStore(Long storeId, Long userId) {
+        return toResponse(findStore(storeId), userId);
     }
 
     @Transactional
@@ -49,7 +51,7 @@ public class StoreRegistrationService {
                 request.operatingHours().trim()
         );
 
-        return toResponse(storeRegistration);
+        return toResponse(storeRegistration, null);
     }
 
     @Transactional
@@ -109,13 +111,15 @@ public class StoreRegistrationService {
         }
     }
 
-    private StoreRegistrationResponse toResponse(StoreRegistration storeRegistration) {
+    private StoreRegistrationResponse toResponse(StoreRegistration storeRegistration, Long userId) {
         return StoreRegistrationResponse.builder()
                 .id(storeRegistration.getId())
                 .name(storeRegistration.getName())
                 .address(storeRegistration.getRoadAddress())
                 .phoneNumber(storeRegistration.getPhoneNumber())
                 .operatingHours(storeRegistration.getOperatingHours())
+                .likeCount(storeLikeService.getLikeCount(storeRegistration.getId()))
+                .likedByCurrentUser(storeLikeService.isLikedByUser(storeRegistration.getId(), userId))
                 .build();
     }
 }

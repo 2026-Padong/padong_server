@@ -12,4 +12,6 @@ public class StoreRegistrationResponse {
     private String address;
     private String phoneNumber;
     private String operatingHours;
+    private long likeCount;
+    private boolean likedByCurrentUser;
 }

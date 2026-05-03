@@ -12,6 +12,11 @@ import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -19,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,11 +50,67 @@ public class MobilityController {
     }
 
     @GetMapping("/arrival/multi")
-    @Operation(summary = "여러 행정동 코드로 공통 생활이동 많은 순 검색")
+    @Operation(
+            summary = "여러 행정동 코드로 공통 생활이동 많은 순 검색",
+            description = """
+                    여러 도착 행정동에 공통으로 존재하는 출발 후보 행정동을 totalMobility 합산 많은 순으로 조회합니다.
+                    arrivalDongCodes는 반복 query parameter로 전달합니다.
+                    자치구 필터는 출발 후보 행정동의 districtName 기준이며, 예시는 departureDistrictNames=관악구 입니다.
+                    가격 필터 단위는 만원입니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "다중 행정동 생활이동 조회 성공",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseDTO.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "statusCode": "200",
+                                              "message": "다중 행정동 생활이동 많은 순 조회 성공",
+                                              "data": {
+                                                "content": [
+                                                  {
+                                                    "departureDong": {
+                                                      "adminDongCode": "1162069500",
+                                                      "address": "서울특별시 관악구 신림동"
+                                                    },
+                                                    "totalMobility": 400.58
+                                                  }
+                                                ],
+                                                "page": 0,
+                                                "size": 10,
+                                                "totalElements": 120,
+                                                "totalPages": 12,
+                                                "first": true,
+                                                "last": false,
+                                                "hasNext": true,
+                                                "hasPrevious": false
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "필터 값 또는 행정동 코드 개수 오류"),
+            @ApiResponse(responseCode = "404", description = "공통 생활이동 데이터 없음")
+    })
     public ResponseEntity<ResponseDTO<PageResponse<CommonDepartureMobilityResponse>>> searchByArrivalDongCodes(
+            @Parameter(
+                    description = "도착 행정동 코드 목록. 반복 query parameter로 전달. 예: arrivalDongCodes=1168064000&arrivalDongCodes=1156054000",
+                    example = "1168064000"
+            )
             @RequestParam List<String> arrivalDongCodes,
+
+            @Parameter(description = "페이지 번호. 0부터 시작.", example = "0")
             @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "페이지 크기", example = "10")
             @RequestParam(defaultValue = "10") int size,
+
             @ModelAttribute MobilityFilterRequest filterRequest
     ) {
         Pageable pageable = PageRequest.of(page, size);
@@ -58,11 +120,64 @@ public class MobilityController {
     }
 
     @GetMapping("/arrival/{adminDongCode}")
-    @Operation(summary = "행정동 코드로 생활이동 많은 순 검색")
+    @Operation(
+            summary = "행정동 코드로 생활이동 많은 순 검색",
+            description = """
+                    단일 도착 행정동으로 이동하는 출발 후보 행정동을 totalMobility 많은 순으로 조회합니다.
+                    자치구 필터는 출발 후보 행정동의 districtName 기준이며, 예시는 departureDistrictNames=관악구 입니다.
+                    가격 필터 단위는 만원입니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "단일 행정동 생활이동 조회 성공",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseDTO.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "statusCode": "200",
+                                              "message": "생활이동 많은 순 조회 성공",
+                                              "data": {
+                                                "content": [
+                                                  {
+                                                    "departureDong": {
+                                                      "adminDongCode": "1162069500",
+                                                      "address": "서울특별시 관악구 신림동"
+                                                    },
+                                                    "totalMobility": 477.07,
+                                                    "avgTime": 42.7
+                                                  }
+                                                ],
+                                                "page": 0,
+                                                "size": 10,
+                                                "totalElements": 424,
+                                                "totalPages": 43,
+                                                "first": true,
+                                                "last": false,
+                                                "hasNext": true,
+                                                "hasPrevious": false
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "필터 값 오류"),
+            @ApiResponse(responseCode = "404", description = "생활이동 데이터 없음")
+    })
     public ResponseEntity<ResponseDTO<PageResponse<MobilitySimpleResponse>>> searchByArrivalDongCode(
+            @Parameter(description = "도착 행정동 코드", example = "1168064000")
             @PathVariable String adminDongCode,
+
+            @Parameter(description = "페이지 번호. 0부터 시작.", example = "0")
             @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "페이지 크기", example = "10")
             @RequestParam(defaultValue = "10") int size,
+
             @ModelAttribute MobilityFilterRequest filterRequest
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Direction.DESC, "totalMobility"));

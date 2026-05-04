@@ -57,7 +57,7 @@ class StoreRegistrationControllerTest {
                 .build();
         given(storeRegistrationService.getStore(1L, 99L)).willReturn(response);
 
-        mockMvc.perform(get("/api/stores")
+        mockMvc.perform(get("/stores")
                         .param("storeId", "1")
                         .param("userId", "99")
                         .accept(MediaType.APPLICATION_JSON))
@@ -77,7 +77,7 @@ class StoreRegistrationControllerTest {
                 .build();
         given(storeLikeService.toggleLike(1L, 99L)).willReturn(response);
 
-        mockMvc.perform(post("/api/stores/likes")
+        mockMvc.perform(post("/stores/likes")
                         .param("storeId", "1")
                         .param("userId", "99")
                         .accept(MediaType.APPLICATION_JSON))

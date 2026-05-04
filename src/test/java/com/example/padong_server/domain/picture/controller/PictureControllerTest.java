@@ -6,6 +6,7 @@ import com.example.padong_server.domain.picture.service.PictureService;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.exception.GlobalExceptionHandler;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,8 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -48,7 +47,6 @@ class PictureControllerTest {
         AdminDongPictureResponse response = AdminDongPictureResponse.builder()
                 .adminDongCode("1168052100")
                 .adminDongName("삼성1동")
-                .pictureCount(1)
                 .pictures(List.of(
                         PictureItemResponse.builder()
                                 .contentId("2456536")
@@ -65,12 +63,11 @@ class PictureControllerTest {
 
         given(pictureService.getPicturesByAdminDongCode("1168052100")).willReturn(response);
 
-        mockMvc.perform(get("/api/pictures/admin-dongs/1168052100")
+        mockMvc.perform(get("/pictures/admin-dongs/1168052100")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.adminDongCode").value("1168052100"))
                 .andExpect(jsonPath("$.adminDongName").value("삼성1동"))
-                .andExpect(jsonPath("$.pictureCount").value(1))
                 .andExpect(jsonPath("$.pictures[0].title").value("강남 마이스 관광특구"));
     }
 
@@ -80,7 +77,7 @@ class PictureControllerTest {
         given(pictureService.getPicturesByAdminDongCode("1168052100"))
                 .willThrow(new CustomException(ErrorCode.PICTURE_NOT_FOUND));
 
-        mockMvc.perform(get("/api/pictures/admin-dongs/1168052100")
+        mockMvc.perform(get("/pictures/admin-dongs/1168052100")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PICTURE_NOT_FOUND"));

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/boundary")
-@Tag(name = "Boundary", description = "행정동 경계 데이터 관리 API")
+@Tag(name = "행정동 경계", description = "행정동 경계 데이터 관리 API")
 public class BoundaryController {
     private final BoundaryService boundaryService;
 
@@ -24,5 +24,4 @@ public class BoundaryController {
     public ResponseEntity<ResponseDTO<BoundaryResponse>> getBoundary(@PathVariable String geocode) {
         return ResponseEntity.ok(boundaryService.getBoundary(geocode));
     }
-
 }

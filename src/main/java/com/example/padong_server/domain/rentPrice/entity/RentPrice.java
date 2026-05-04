@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.rentPrice.entity;
 
-import com.example.padong_server.domain.dongne.entity.LegalDong;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -23,8 +23,8 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "rent_price",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_rent_price_legal_dong_building_type",
-                columnNames = {"legal_dong_id", "building_type"}
+                name = "uk_rent_price_admin_dong_building_type",
+                columnNames = {"admin_dong_id", "building_type"}
         )
 )
 @Getter
@@ -38,8 +38,8 @@ public class RentPrice {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "legal_dong_id", nullable = false)
-    private LegalDong legalDong;
+    @JoinColumn(name = "admin_dong_id", nullable = false)
+    private AdminDong adminDong;
 
     @Column(name = "building_type", nullable = false, length = 50)
     private String buildingType;

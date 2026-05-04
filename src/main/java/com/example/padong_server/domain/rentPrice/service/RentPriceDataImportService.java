@@ -3,18 +3,23 @@ package com.example.padong_server.domain.rentPrice.service;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.entity.DongMapping;
 import com.example.padong_server.domain.dongne.entity.LegalDong;
+import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
-import com.example.padong_server.domain.dongne.repository.LegalDongRepository;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
 import com.example.padong_server.domain.rentPrice.dto.response.RentPriceImportResponse;
-import com.example.padong_server.domain.rentPrice.entity.AdminRentPrice;
 import com.example.padong_server.domain.rentPrice.entity.RentPrice;
-import com.example.padong_server.domain.rentPrice.repository.AdminRentPriceRepository;
 import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
 import com.example.padong_server.domain.rentPrice.util.RentPriceDataUtil;
+import com.example.padong_server.global.util.Preconditions;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -23,46 +28,42 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class RentPriceDataImportService {
 
     private static final int PER_SQUARE_METER_DIVIDE_SCALE = 6;
+    private static final String LEGAL_DONG_MAPPING_NOT_FOUND_MESSAGE_FORMAT =
+            "행정동 매핑이 없는 법정동 코드입니다: %s";
 
     private final RentPriceDataUtil rentPriceDataUtil;
-    private final LegalDongRepository legalDongRepository;
     private final DongMappingRepository dongMappingRepository;
     private final RentPriceRepository rentPriceRepository;
-    private final AdminRentPriceRepository adminRentPriceRepository;
 
     @Transactional
     public RentPriceImportResponse importData() {
         RentPriceRawData rawData = rentPriceDataUtil.readRows();
         MappingIndex mappingIndex = loadMappingIndex();
 
-        Map<LegalStatKey, StatAccumulator> legalAccumulators = aggregateLegal(rawData);
-        Map<AdminStatKey, StatAccumulator> adminAccumulators = aggregateAdmin(rawData, mappingIndex.adminDongsByLegalCode());
+        Map<AdminStatKey, StatAccumulator> adminAccumulators =
+                aggregateAdmin(rawData, mappingIndex.adminDongsByLegalCode());
+        List<RentPrice> stats = toStats(adminAccumulators, mappingIndex.adminByCode());
 
-        List<RentPrice> legalStats = toLegalStats(legalAccumulators, loadLegalDongMap());
-        List<AdminRentPrice> adminStats = toAdminStats(adminAccumulators, mappingIndex.adminByCode());
-
-        adminRentPriceRepository.deleteAllInBatch();
         rentPriceRepository.deleteAllInBatch();
-        rentPriceRepository.saveAll(legalStats);
-        adminRentPriceRepository.saveAll(adminStats);
+        rentPriceRepository.saveAll(stats);
 
         return new RentPriceImportResponse(
-                legalStats.size(),
+                stats.size(),
                 rawData.sourceRowCount(),
                 rawData.saleRows().size(),
-                rawData.rentRows().stream().filter(row -> row.rentType() == RentType.JEONSE).count(),
-                rawData.rentRows().stream().filter(row -> row.rentType() == RentType.MONTHLY_RENT).count(),
-                rawData.skippedRowCount()
-        );
+                rawData.rentRows().stream()
+                        .filter(row -> row.rentType() == RentType.JEONSE)
+                        .count(),
+                rawData.rentRows().stream()
+                        .filter(row -> row.rentType() == RentType.MONTHLY_RENT)
+                        .count(),
+                rawData.skippedRowCount());
     }
 
     private MappingIndex loadMappingIndex() {
@@ -80,48 +81,30 @@ public class RentPriceDataImportService {
         }
 
         Map<String, List<AdminDong>> immutableMap = new HashMap<>();
-        for (Map.Entry<String, LinkedHashMap<String, AdminDong>> entry : adminDongsByLegalCode.entrySet()) {
+        for (Map.Entry<String, LinkedHashMap<String, AdminDong>> entry :
+                adminDongsByLegalCode.entrySet()) {
             immutableMap.put(entry.getKey(), List.copyOf(entry.getValue().values()));
         }
 
         return new MappingIndex(immutableMap, adminByCode);
     }
 
-    private Map<LegalStatKey, StatAccumulator> aggregateLegal(RentPriceRawData rawData) {
-        Map<LegalStatKey, StatAccumulator> accumulators = new HashMap<>();
-        for (SaleRow row : rawData.saleRows()) {
-            accumulatorForLegal(accumulators, row.legalDongCode(), row.buildingType())
-                    .addSale(row.salePrice(), row.area());
-        }
-        for (RentRow row : rawData.rentRows()) {
-            StatAccumulator accumulator = accumulatorForLegal(accumulators, row.legalDongCode(), row.buildingType());
-            if (row.rentType() == RentType.JEONSE) {
-                accumulator.addJeonse(row.deposit(), row.area());
-                continue;
-            }
-            accumulator.addMonthlyRent(row.deposit(), row.monthlyRent());
-        }
-        return accumulators;
-    }
-
     private Map<AdminStatKey, StatAccumulator> aggregateAdmin(
-            RentPriceRawData rawData,
-            Map<String, List<AdminDong>> adminDongsByLegalCode
-    ) {
+            RentPriceRawData rawData, Map<String, List<AdminDong>> adminDongsByLegalCode) {
         Map<AdminStatKey, StatAccumulator> accumulators = new HashMap<>();
         for (SaleRow row : rawData.saleRows()) {
-            for (AdminDong adminDong : requireAdminDongs(adminDongsByLegalCode, row.legalDongCode())) {
+            for (AdminDong adminDong :
+                    requireAdminDongs(adminDongsByLegalCode, row.legalDongCode())) {
                 accumulatorForAdmin(accumulators, adminDong.getAdminDongCode(), row.buildingType())
                         .addSale(row.salePrice(), row.area());
             }
         }
         for (RentRow row : rawData.rentRows()) {
-            for (AdminDong adminDong : requireAdminDongs(adminDongsByLegalCode, row.legalDongCode())) {
-                StatAccumulator accumulator = accumulatorForAdmin(
-                        accumulators,
-                        adminDong.getAdminDongCode(),
-                        row.buildingType()
-                );
+            for (AdminDong adminDong :
+                    requireAdminDongs(adminDongsByLegalCode, row.legalDongCode())) {
+                StatAccumulator accumulator =
+                        accumulatorForAdmin(
+                                accumulators, adminDong.getAdminDongCode(), row.buildingType());
                 if (row.rentType() == RentType.JEONSE) {
                     accumulator.addJeonse(row.deposit(), row.area());
                     continue;
@@ -132,84 +115,31 @@ public class RentPriceDataImportService {
         return accumulators;
     }
 
-    private Map<String, LegalDong> loadLegalDongMap() {
-        Map<String, LegalDong> legalDongMap = new HashMap<>();
-        for (LegalDong legalDong : legalDongRepository.findAll()) {
-            legalDongMap.put(legalDong.getLegalDongCode(), legalDong);
-        }
-        return legalDongMap;
-    }
-
-    private List<RentPrice> toLegalStats(
-            Map<LegalStatKey, StatAccumulator> accumulators,
-            Map<String, LegalDong> legalDongMap
-    ) {
+    private List<RentPrice> toStats(
+            Map<AdminStatKey, StatAccumulator> accumulators, Map<String, AdminDong> adminByCode) {
         List<RentPrice> stats = new ArrayList<>();
-        List<LegalStatKey> keys = accumulators.keySet().stream()
-                .sorted(Comparator.comparing(LegalStatKey::legalDongCode).thenComparing(LegalStatKey::buildingType))
-                .toList();
-
-        for (LegalStatKey key : keys) {
-            LegalDong legalDong = legalDongMap.get(key.legalDongCode());
-            if (legalDong == null) {
-                throw new IllegalArgumentException("존재하지 않는 법정동 코드입니다: " + key.legalDongCode());
-            }
-            stats.add(buildLegalStat(key.buildingType(), legalDong, accumulators.get(key)));
-        }
-        return stats;
-    }
-
-    private List<AdminRentPrice> toAdminStats(
-            Map<AdminStatKey, StatAccumulator> accumulators,
-            Map<String, AdminDong> adminByCode
-    ) {
-        List<AdminRentPrice> stats = new ArrayList<>();
-        List<AdminStatKey> keys = accumulators.keySet().stream()
-                .sorted(Comparator.comparing(AdminStatKey::adminDongCode).thenComparing(AdminStatKey::buildingType))
-                .toList();
+        List<AdminStatKey> keys =
+                accumulators.keySet().stream()
+                        .sorted(
+                                Comparator.comparing(AdminStatKey::adminDongCode)
+                                        .thenComparing(AdminStatKey::buildingType))
+                        .toList();
 
         for (AdminStatKey key : keys) {
             AdminDong adminDong = adminByCode.get(key.adminDongCode());
-            if (adminDong == null) {
-                throw new IllegalArgumentException("존재하지 않는 행정동 코드입니다: " + key.adminDongCode());
-            }
-            stats.add(buildAdminStat(key.buildingType(), adminDong, accumulators.get(key)));
+            Preconditions.validate(
+                    adminDong != null,
+                    AdminDongRepository.ADMIN_DONG_NOT_FOUND_MESSAGE_FORMAT.formatted(
+                            key.adminDongCode()));
+            stats.add(buildStat(key.buildingType(), adminDong, accumulators.get(key)));
         }
         return stats;
     }
 
-    private RentPrice buildLegalStat(
-            String buildingType,
-            LegalDong legalDong,
-            StatAccumulator accumulator
-    ) {
+    private RentPrice buildStat(
+            String buildingType, AdminDong adminDong, StatAccumulator accumulator) {
         MonthlyRentPair representativeMonthlyRentPair = accumulator.representativeMonthlyRentPair();
         return RentPrice.builder()
-                .legalDong(legalDong)
-                .buildingType(buildingType)
-                .avgSalePrice(accumulator.salePrices.average())
-                .medianSalePrice(accumulator.salePrices.median())
-                .avgSalePricePerSquareMeter(accumulator.averageSalePricePerSquareMeter())
-                .saleCount(accumulator.salePrices.count())
-                .avgJeonseDeposit(accumulator.jeonseDeposits.average())
-                .medianJeonseDeposit(accumulator.jeonseDeposits.median())
-                .avgJeonseDepositPerSquareMeter(accumulator.averageJeonseDepositPerSquareMeter())
-                .jeonseCount(accumulator.jeonseDeposits.count())
-                .avgMonthlyDeposit(accumulator.monthlyDeposits.average())
-                .medianMonthlyDeposit(depositOf(representativeMonthlyRentPair))
-                .avgMonthlyRent(accumulator.monthlyRents.average())
-                .medianMonthlyRent(monthlyRentOf(representativeMonthlyRentPair))
-                .monthlyRentCount(accumulator.monthlyRents.count())
-                .build();
-    }
-
-    private AdminRentPrice buildAdminStat(
-            String buildingType,
-            AdminDong adminDong,
-            StatAccumulator accumulator
-    ) {
-        MonthlyRentPair representativeMonthlyRentPair = accumulator.representativeMonthlyRentPair();
-        return AdminRentPrice.builder()
                 .adminDong(adminDong)
                 .buildingType(buildingType)
                 .avgSalePrice(accumulator.salePrices.average())
@@ -237,55 +167,29 @@ public class RentPriceDataImportService {
     }
 
     private List<AdminDong> requireAdminDongs(
-            Map<String, List<AdminDong>> adminDongsByLegalCode,
-            String legalDongCode
-    ) {
+            Map<String, List<AdminDong>> adminDongsByLegalCode, String legalDongCode) {
         List<AdminDong> adminDongs = adminDongsByLegalCode.get(legalDongCode);
-        if (adminDongs == null || adminDongs.isEmpty()) {
-            throw new IllegalArgumentException("행정동 매핑이 없는 법정동 코드입니다: " + legalDongCode);
-        }
+        Preconditions.validate(
+                adminDongs != null && !adminDongs.isEmpty(),
+                LEGAL_DONG_MAPPING_NOT_FOUND_MESSAGE_FORMAT.formatted(legalDongCode));
         return adminDongs;
-    }
-
-    private StatAccumulator accumulatorForLegal(
-            Map<LegalStatKey, StatAccumulator> accumulators,
-            String legalDongCode,
-            String buildingType
-    ) {
-        return accumulators.computeIfAbsent(
-                new LegalStatKey(legalDongCode, buildingType),
-                ignored -> new StatAccumulator()
-        );
     }
 
     private StatAccumulator accumulatorForAdmin(
             Map<AdminStatKey, StatAccumulator> accumulators,
             String adminDongCode,
-            String buildingType
-    ) {
+            String buildingType) {
         return accumulators.computeIfAbsent(
-                new AdminStatKey(adminDongCode, buildingType),
-                ignored -> new StatAccumulator()
-        );
+                new AdminStatKey(adminDongCode, buildingType), ignored -> new StatAccumulator());
     }
 
-    private record LegalStatKey(String legalDongCode, String buildingType) {
-    }
-
-    private record AdminStatKey(String adminDongCode, String buildingType) {
-    }
+    private record AdminStatKey(String adminDongCode, String buildingType) {}
 
     private record MappingIndex(
             Map<String, List<AdminDong>> adminDongsByLegalCode,
-            Map<String, AdminDong> adminByCode
-    ) {
-    }
+            Map<String, AdminDong> adminByCode) {}
 
-    private record MonthlyRentPair(
-            Long deposit,
-            Long monthlyRent
-    ) {
-    }
+    private record MonthlyRentPair(Long deposit, Long monthlyRent) {}
 
     private static class StatAccumulator {
         private final LongValues salePrices = new LongValues();
@@ -318,7 +222,8 @@ public class RentPriceDataImportService {
             if (area == null) {
                 return;
             }
-            salePricePerSquareMeterSum = salePricePerSquareMeterSum.add(perSquareMeter(salePrice, area));
+            salePricePerSquareMeterSum =
+                    salePricePerSquareMeterSum.add(perSquareMeter(salePrice, area));
             salePricePerSquareMeterCount++;
         }
 
@@ -326,7 +231,8 @@ public class RentPriceDataImportService {
             if (area == null) {
                 return;
             }
-            jeonseDepositPerSquareMeterSum = jeonseDepositPerSquareMeterSum.add(perSquareMeter(deposit, area));
+            jeonseDepositPerSquareMeterSum =
+                    jeonseDepositPerSquareMeterSum.add(perSquareMeter(deposit, area));
             jeonseDepositPerSquareMeterCount++;
         }
 
@@ -339,7 +245,8 @@ public class RentPriceDataImportService {
         }
 
         private BigDecimal perSquareMeter(Long price, BigDecimal area) {
-            return BigDecimal.valueOf(price).divide(area, PER_SQUARE_METER_DIVIDE_SCALE, RoundingMode.HALF_UP);
+            return BigDecimal.valueOf(price)
+                    .divide(area, PER_SQUARE_METER_DIVIDE_SCALE, RoundingMode.HALF_UP);
         }
 
         private BigDecimal averageDecimal(BigDecimal sum, int count) {
@@ -356,24 +263,26 @@ public class RentPriceDataImportService {
             Long medianDeposit = monthlyDeposits.median();
             Long medianMonthlyRent = monthlyRents.median();
             return monthlyRentPairs.stream()
-                    .min(Comparator
-                            .comparingDouble((MonthlyRentPair pair) -> representativeScore(
-                                    pair,
-                                    medianDeposit,
-                                    medianMonthlyRent
-                            ))
-                            .thenComparingDouble(pair -> normalizedDistance(pair.monthlyRent(), medianMonthlyRent))
-                            .thenComparingDouble(pair -> normalizedDistance(pair.deposit(), medianDeposit))
-                            .thenComparing(MonthlyRentPair::monthlyRent)
-                            .thenComparing(MonthlyRentPair::deposit))
+                    .min(
+                            Comparator.comparingDouble(
+                                            (MonthlyRentPair pair) ->
+                                                    representativeScore(
+                                                            pair, medianDeposit, medianMonthlyRent))
+                                    .thenComparingDouble(
+                                            pair ->
+                                                    normalizedDistance(
+                                                            pair.monthlyRent(), medianMonthlyRent))
+                                    .thenComparingDouble(
+                                            pair ->
+                                                    normalizedDistance(
+                                                            pair.deposit(), medianDeposit))
+                                    .thenComparing(MonthlyRentPair::monthlyRent)
+                                    .thenComparing(MonthlyRentPair::deposit))
                     .orElse(null);
         }
 
         private double representativeScore(
-                MonthlyRentPair monthlyRentPair,
-                Long medianDeposit,
-                Long medianMonthlyRent
-        ) {
+                MonthlyRentPair monthlyRentPair, Long medianDeposit, Long medianMonthlyRent) {
             return normalizedDistance(monthlyRentPair.deposit(), medianDeposit)
                     + normalizedDistance(monthlyRentPair.monthlyRent(), medianMonthlyRent);
         }

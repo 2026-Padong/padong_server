@@ -39,6 +39,7 @@ public class SeoulRealtimeData {
     private final Double pm10;
     private final String pm10Status;
     private final Double rainChance;
+    private final String eventNm;
     private final List<String> subwayStationNames;
     private final List<String> subwayLines;
     private final List<String> busStopNames;

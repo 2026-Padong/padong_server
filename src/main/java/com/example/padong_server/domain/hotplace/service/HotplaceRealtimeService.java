@@ -101,6 +101,7 @@ public class HotplaceRealtimeService {
                 .thumbnail(resolveThumbnail(hotPlace, realtimeData))
                 .category(resolveCategory(hotPlace))
                 .roadAddr(defaultText(realtimeData.getRoadAddr()))
+                .eventNm(defaultText(realtimeData.getEventNm()))
                 .weather(toWeatherSummary(realtimeData))
                 .population(toPopulation(realtimeData))
                 .age(toAge(realtimeData))

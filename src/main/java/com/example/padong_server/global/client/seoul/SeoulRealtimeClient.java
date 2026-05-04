@@ -97,6 +97,7 @@ public class SeoulRealtimeClient {
                     .pm10(readDouble(weatherNode, "PM10"))
                     .pm10Status(readText(weatherNode, "PM10_INDEX", DEFAULT_CONGEST_LEVEL))
                     .rainChance(readDouble(forecastNode, "RAIN_CHANCE"))
+                    .eventNm(readText(targetNode, "EVENT_NM", null))
                     .subwayStationNames(extractDistinctTexts(targetNode, "SUB_STTS", "SUB_STN_NM"))
                     .subwayLines(extractDistinctTexts(targetNode, "SUB_STTS", "SUB_LINE"))
                     .busStopNames(extractDistinctTexts(targetNode, "BUS_STN_STTS", "BUS_STN_NM"))

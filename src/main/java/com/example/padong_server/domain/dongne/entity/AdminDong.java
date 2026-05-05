@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.news.entity.NewsArticle;
+import com.example.padong_server.domain.oauth.entity.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -47,6 +48,9 @@ public class AdminDong {
 
     @OneToMany(mappedBy = "adminDong")
     private List<NewsArticle> newsArticles = new ArrayList<>();
+
+    @OneToMany(mappedBy = "adminDong")
+    private List<User> users = new ArrayList<>();
 
     public AdminDong(AdminDongCsvRow row) {
         this.cityName = row.cityName();

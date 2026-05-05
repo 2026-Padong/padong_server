@@ -16,6 +16,33 @@ spring:
       hibernate:
         format_sql: true
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID:local-kakao-client-id}
+            client-secret: ${KAKAO_CLIENT_SECRET:local-kakao-client-secret}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - profile_nickname
+              - profile_image
+              - account_email
+            client-name: Kakao
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
 swagger-config:
   server-url-http: "http://localhost:8080"
   server-url-https: "http://localhost:8080"
@@ -43,6 +70,9 @@ naver:
     client-id: ${NAVER_NEWS_CLIENT_ID:}
     client-secret: ${NAVER_NEWS_CLIENT_SECRET:}
 
+jwt:
+  secret: DMNKKvuQ4XyaP6Kx92fFLN1DtUxi33D66ctk5QBubQc=
+  
 sk-address-api:
   base-url: ${SK_ADDRESS_API_BASE_URL:https://apis.openapi.sk.com}
   app-key: ${SK_OPEN_API_KEY:}

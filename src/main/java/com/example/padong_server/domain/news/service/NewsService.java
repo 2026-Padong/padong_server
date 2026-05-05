@@ -46,7 +46,7 @@ public class NewsService {
     }
 
     public ResponseDTO<NewsResponse> getGeneralNews(String query) {
-        NewsResponse response = requestNews(query, NEWS_DISPLAY_SIZE);
+        NewsResponse response = requestNews(query);
         return ResponseDTO.res(HttpStatus.OK, "news 조회 성공", response);
     }
 
@@ -84,17 +84,17 @@ public class NewsService {
     }
 
     private void saveLatestNews(AdminDong adminDong) {
-        NewsResponse response = requestNews(adminDong.getAdminDongName(), NEWS_DISPLAY_SIZE);
+        NewsResponse response = requestNews(adminDong.getAdminDongName());
         newsPersistenceService.saveNewsArticles(adminDong, response.getItems());
     }
 
-    private NewsResponse requestNews(String query, int display) {
+    private NewsResponse requestNews(String query) {
         NewsResponse response = buildWebClient()
                 .get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v1/search/news.json")
                         .queryParam("query", query)
-                        .queryParam("display", display)
+                        .queryParam("display", NewsService.NEWS_DISPLAY_SIZE)
                         .queryParam("start", 1)
                         .build())
                 .retrieve()

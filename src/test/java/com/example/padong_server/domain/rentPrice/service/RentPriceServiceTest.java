@@ -2,6 +2,8 @@ package com.example.padong_server.domain.rentPrice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
@@ -9,11 +11,12 @@ import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceSummaryResponse;
-import com.example.padong_server.domain.rentPrice.entity.AdminRentPrice;
+import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import com.example.padong_server.domain.rentPrice.policy.RentPriceDisplayPolicy;
-import com.example.padong_server.domain.rentPrice.repository.AdminRentPriceRepository;
-import java.math.BigDecimal;
-import java.util.List;
+import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
+import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,24 +24,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class RentPriceServiceTest {
 
-    @Mock
-    private AdminDongRepository adminDongRepository;
+    @Mock private AdminDongRepository adminDongRepository;
 
-    @Mock
-    private AdminRentPriceRepository adminRentPriceRepository;
+    @Mock private RentPriceRepository rentPriceRepository;
 
     private RentPriceService rentPriceService;
 
     @BeforeEach
     void setUp() {
-        rentPriceService = new RentPriceService(
-                adminDongRepository,
-                adminRentPriceRepository,
-                new RentPriceDisplayPolicy()
-        );
+        rentPriceService =
+                new RentPriceService(
+                        adminDongRepository, rentPriceRepository, new RentPriceDisplayPolicy());
     }
 
     @Test
@@ -48,12 +50,14 @@ class RentPriceServiceTest {
         AdminDong second = adminDong("1111053000", "사직동");
         when(adminDongRepository.findAllByAdminDongCodeIn(List.of("1111053000", "1111051500")))
                 .thenReturn(List.of(first, second));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111053000", "1111051500")))
-                .thenReturn(List.of(
-                        adminStat(first, "아파트", 98_000L, 5, 50_000L, 8, 1_000L, 85L, 12),
-                        adminStat(second, "오피스텔", 70_000L, 0, 35_000L, 4, 500L, 45L, 3),
-                        adminStat(second, "아파트", 90_000L, 31, 45_000L, 35, 1_200L, 70L, 30)
-        ));
+        when(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(
+                        List.of("1111053000", "1111051500")))
+                .thenReturn(
+                        List.of(
+                                adminStat(first, "아파트", 98_000L, 5, 50_000L, 8, 1_000L, 85L, 12),
+                                adminStat(second, "오피스텔", 70_000L, 0, 35_000L, 4, 500L, 45L, 3),
+                                adminStat(
+                                        second, "아파트", 90_000L, 31, 45_000L, 35, 1_200L, 70L, 30)));
 
         List<AdminDongRentPriceSummaryResponse> responses =
                 rentPriceService.getSummaries(List.of("1111053000", "1111051500"), "아파트", "매매");
@@ -78,11 +82,14 @@ class RentPriceServiceTest {
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
         when(adminDongRepository.findAllByAdminDongCodeIn(List.of("1111051500")))
                 .thenReturn(List.of(adminDong));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
-                .thenReturn(List.of(
-                        adminStat(adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
-                        adminStat(adminDong, "단독다가구", 55_000L, 2, 24_000L, 7, 500L, 45L, 30)
-                ));
+        when(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
+                .thenReturn(
+                        List.of(
+                                adminStat(
+                                        adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
+                                adminStat(
+                                        adminDong, "단독다가구", 55_000L, 2, 24_000L, 7, 500L, 45L,
+                                        30)));
 
         List<AdminDongRentPriceSummaryResponse> responses =
                 rentPriceService.getSummaries(List.of("1111051500"), "단독다가구", "월세");
@@ -105,11 +112,14 @@ class RentPriceServiceTest {
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
         when(adminDongRepository.findAllByAdminDongCodeIn(List.of("1111051500")))
                 .thenReturn(List.of(adminDong));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
-                .thenReturn(List.of(
-                        adminStat(adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
-                        adminStat(adminDong, "단독다가구", 55_000L, 2, 24_000L, 7, 500L, 45L, 30)
-                ));
+        when(rentPriceRepository.findAllByAdminDongAdminDongCodeIn(List.of("1111051500")))
+                .thenReturn(
+                        List.of(
+                                adminStat(
+                                        adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
+                                adminStat(
+                                        adminDong, "단독다가구", 55_000L, 2, 24_000L, 7, 500L, 45L,
+                                        30)));
 
         List<AdminDongRentPriceSummaryResponse> responses =
                 rentPriceService.getSummaries(List.of("1111051500"), null, null);
@@ -126,12 +136,14 @@ class RentPriceServiceTest {
     @DisplayName("상세 조회는 4개 건물유형을 모두 반환하고 없는 유형은 NO_DATA로 채운다")
     void returnsDetailWithAllBuildingTypes() {
         AdminDong adminDong = adminDong("1111051500", "청운효자동");
-        when(adminDongRepository.findByAdminDongCode("1111051500")).thenReturn(java.util.Optional.of(adminDong));
-        when(adminRentPriceRepository.findAllByAdminDongAdminDongCode("1111051500"))
-                .thenReturn(List.of(
-                        adminStat(adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
-                        adminStat(adminDong, "오피스텔", 70_000L, 3, 35_000L, 2, 500L, 45L, 3)
-                ));
+        doReturn(adminDong).when(adminDongRepository).getByAdminDongCode("1111051500");
+        when(rentPriceRepository.findAllByAdminDongAdminDongCode("1111051500"))
+                .thenReturn(
+                        List.of(
+                                adminStat(
+                                        adminDong, "아파트", 98_000L, 12, 50_000L, 8, 1_000L, 85L, 12),
+                                adminStat(
+                                        adminDong, "오피스텔", 70_000L, 3, 35_000L, 2, 500L, 45L, 3)));
 
         AdminDongRentPriceDetailResponse response = rentPriceService.getDetail("1111051500");
 
@@ -144,7 +156,8 @@ class RentPriceServiceTest {
         assertThat(response.buildingTypes()).hasSize(4);
         assertThat(response.buildingTypes())
                 .extracting(item -> item.buildingType().buildingTypeCode())
-                .containsExactly("APARTMENT", "OFFICETEL", "ROW_MULTIFAMILY", "DETACHED_MULTIFAMILY");
+                .containsExactly(
+                        "APARTMENT", "OFFICETEL", "ROW_MULTIFAMILY", "DETACHED_MULTIFAMILY");
         assertThat(response.buildingTypes().get(0).sale().amount()).isEqualTo(98_000L);
         assertThat(response.buildingTypes().get(1).sale().amount()).isEqualTo(70_000L);
         assertThat(response.buildingTypes().get(2).sale().amount()).isNull();
@@ -153,10 +166,12 @@ class RentPriceServiceTest {
     @Test
     @DisplayName("존재하지 않는 행정동 코드는 bad request 대상 예외를 낸다")
     void failsWhenAdminDongCodeIsUnknown() {
-        when(adminDongRepository.findByAdminDongCode("9999999999")).thenReturn(java.util.Optional.empty());
+        doThrow(new CustomException(ErrorCode.VALIDATION_ERROR, "존재하지 않는 행정동 코드입니다: 9999999999"))
+                .when(adminDongRepository)
+                .getByAdminDongCode("9999999999");
 
         assertThatThrownBy(() -> rentPriceService.getDetail("9999999999"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(CustomException.class)
                 .hasMessage("존재하지 않는 행정동 코드입니다: 9999999999");
     }
 
@@ -164,24 +179,24 @@ class RentPriceServiceTest {
     @DisplayName("summary 요청 목록이 null이면 bad request 대상 예외를 낸다")
     void failsWhenFilteredSummaryRequestListIsNull() {
         assertThatThrownBy(() -> rentPriceService.getSummaries(null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(CustomException.class)
                 .hasMessage("행정동 코드는 비어 있을 수 없습니다.");
     }
 
     private AdminDong adminDong(String adminDongCode, String adminDongName) {
-        return new AdminDong(new AdminDongCsvRow(
-                adminDongCode,
-                "서울특별시",
-                "종로구",
-                adminDongName,
-                37.58,
-                126.97,
-                "20081101",
-                ""
-        ));
+        return new AdminDong(
+                new AdminDongCsvRow(
+                        adminDongCode,
+                        "서울특별시",
+                        "종로구",
+                        adminDongName,
+                        37.58,
+                        126.97,
+                        "20081101",
+                        ""));
     }
 
-    private AdminRentPrice adminStat(
+    private RentPrice adminStat(
             AdminDong adminDong,
             String buildingType,
             Long medianSalePrice,
@@ -190,21 +205,23 @@ class RentPriceServiceTest {
             Integer jeonseCount,
             Long medianMonthlyDeposit,
             Long medianMonthlyRent,
-            Integer monthlyRentCount
-    ) {
-        return AdminRentPrice.builder()
+            Integer monthlyRentCount) {
+        return RentPrice.builder()
                 .adminDong(adminDong)
                 .buildingType(buildingType)
                 .medianSalePrice(medianSalePrice)
                 .avgSalePrice(medianSalePrice == null ? null : medianSalePrice + 1_000L)
-                .avgSalePricePerSquareMeter(medianSalePrice == null ? null : new BigDecimal("1200.10"))
+                .avgSalePricePerSquareMeter(
+                        medianSalePrice == null ? null : new BigDecimal("1200.10"))
                 .saleCount(saleCount)
                 .medianJeonseDeposit(medianJeonseDeposit)
                 .avgJeonseDeposit(medianJeonseDeposit == null ? null : medianJeonseDeposit + 500L)
-                .avgJeonseDepositPerSquareMeter(medianJeonseDeposit == null ? null : new BigDecimal("800.20"))
+                .avgJeonseDepositPerSquareMeter(
+                        medianJeonseDeposit == null ? null : new BigDecimal("800.20"))
                 .jeonseCount(jeonseCount)
                 .medianMonthlyDeposit(medianMonthlyDeposit)
-                .avgMonthlyDeposit(medianMonthlyDeposit == null ? null : medianMonthlyDeposit + 100L)
+                .avgMonthlyDeposit(
+                        medianMonthlyDeposit == null ? null : medianMonthlyDeposit + 100L)
                 .medianMonthlyRent(medianMonthlyRent)
                 .avgMonthlyRent(medianMonthlyRent == null ? null : medianMonthlyRent + 5L)
                 .monthlyRentCount(monthlyRentCount)

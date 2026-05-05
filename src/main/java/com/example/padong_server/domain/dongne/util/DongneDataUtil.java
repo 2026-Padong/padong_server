@@ -3,6 +3,8 @@ package com.example.padong_server.domain.dongne.util;
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.dto.DongMappingCsvRow;
 import com.example.padong_server.domain.dongne.dto.LegalDongCsvRow;
+import com.example.padong_server.global.util.Preconditions;
+
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -22,70 +24,96 @@ public class DongneDataUtil {
     private static final String ADMIN_DONG_PATH = "data/dongne/서울시_행정동_20260325.csv";
     private static final String LEGAL_DONG_PATH = "data/dongne/서울시_법정동_20260325.csv";
     private static final String MAPPING_PATH = "data/dongne/서울시_행정동_법정동_매핑_20260325.csv";
+    private static final String CSV_HEADER_MISSING_MESSAGE_FORMAT = "CSV header is missing: %s";
+    private static final String CSV_READ_FAILURE_MESSAGE_FORMAT = "Failed to read CSV: %s";
+    private static final String UNEXPECTED_CSV_HEADERS_MESSAGE_FORMAT =
+            "Unexpected CSV headers for %s. expected=%s, actual=%s";
+    private static final String CSV_COLUMN_COUNT_MISMATCH_MESSAGE_FORMAT =
+            "CSV column count mismatch. expected=%d, actual=%d";
+    private static final String INVALID_DECIMAL_MESSAGE_FORMAT = "Invalid decimal for %s: %s";
 
     public List<AdminDongCsvRow> readAdminDongRows() {
         return readCsv(
                 ADMIN_DONG_PATH,
-                List.of("admin_dong_code", "city_name", "district_name", "admin_dong_name", "latitude", "longitude", "source_date", "deleted_date"),
-                values -> new AdminDongCsvRow(
-                        values.get("admin_dong_code"),
-                        values.get("city_name"),
-                        values.get("district_name"),
-                        values.get("admin_dong_name"),
-                        parseDouble(values.get("latitude"), "latitude"),
-                        parseDouble(values.get("longitude"), "longitude"),
-                        values.get("source_date"),
-                        values.get("deleted_date")
-                )
-        );
+                List.of(
+                        "admin_dong_code",
+                        "city_name",
+                        "district_name",
+                        "admin_dong_name",
+                        "latitude",
+                        "longitude",
+                        "source_date",
+                        "deleted_date"),
+                values ->
+                        new AdminDongCsvRow(
+                                values.get("admin_dong_code"),
+                                values.get("city_name"),
+                                values.get("district_name"),
+                                values.get("admin_dong_name"),
+                                parseDouble(values.get("latitude"), "latitude"),
+                                parseDouble(values.get("longitude"), "longitude"),
+                                values.get("source_date"),
+                                values.get("deleted_date")));
     }
 
     public List<LegalDongCsvRow> readLegalDongRows() {
         return readCsv(
                 LEGAL_DONG_PATH,
-                List.of("legal_dong_code", "city_name", "district_name", "legal_dong_name", "legal_ri_name", "source_date", "deleted_date"),
-                values -> new LegalDongCsvRow(
-                        values.get("legal_dong_code"),
-                        values.get("city_name"),
-                        values.get("district_name"),
-                        values.get("legal_dong_name"),
-                        values.get("source_date"),
-                        values.get("deleted_date")
-                )
-        );
+                List.of(
+                        "legal_dong_code",
+                        "city_name",
+                        "district_name",
+                        "legal_dong_name",
+                        "legal_ri_name",
+                        "source_date",
+                        "deleted_date"),
+                values ->
+                        new LegalDongCsvRow(
+                                values.get("legal_dong_code"),
+                                values.get("city_name"),
+                                values.get("district_name"),
+                                values.get("legal_dong_name"),
+                                values.get("source_date"),
+                                values.get("deleted_date")));
     }
 
     public List<DongMappingCsvRow> readDongMappingRows() {
         return readCsv(
                 MAPPING_PATH,
-                List.of("admin_dong_code", "city_name", "district_name", "admin_dong_name", "legal_dong_code", "legal_dong_name", "source_date", "deleted_date"),
-                values -> new DongMappingCsvRow(
-                        values.get("admin_dong_code"),
-                        values.get("city_name"),
-                        values.get("district_name"),
-                        values.get("admin_dong_name"),
-                        values.get("legal_dong_code"),
-                        values.get("legal_dong_name"),
-                        values.get("source_date"),
-                        values.get("deleted_date")
-                )
-        );
+                List.of(
+                        "admin_dong_code",
+                        "city_name",
+                        "district_name",
+                        "admin_dong_name",
+                        "legal_dong_code",
+                        "legal_dong_name",
+                        "source_date",
+                        "deleted_date"),
+                values ->
+                        new DongMappingCsvRow(
+                                values.get("admin_dong_code"),
+                                values.get("city_name"),
+                                values.get("district_name"),
+                                values.get("admin_dong_name"),
+                                values.get("legal_dong_code"),
+                                values.get("legal_dong_name"),
+                                values.get("source_date"),
+                                values.get("deleted_date")));
     }
 
-    private <T> List<T> readCsv(String path, List<String> expectedHeaders, Function<Map<String, String>, T> mapper) {
+    private <T> List<T> readCsv(
+            String path, List<String> expectedHeaders, Function<Map<String, String>, T> mapper) {
         ClassPathResource resource = new ClassPathResource(path);
         List<T> rows = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+        try (BufferedReader reader =
+                new BufferedReader(
+                        new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
-            if (headerLine == null) {
-                throw new IllegalArgumentException("CSV header is missing: " + path);
-            }
+            Preconditions.validate(
+                    headerLine != null, CSV_HEADER_MISSING_MESSAGE_FORMAT.formatted(path));
 
-            List<String> headers = parseCsvLine(headerLine).stream()
-                    .map(this::normalize)
-                    .toList();
+            List<String> headers = parseCsvLine(headerLine).stream().map(this::normalize).toList();
             validateHeaders(path, headers, expectedHeaders);
 
             String line;
@@ -102,24 +130,24 @@ public class DongneDataUtil {
                 rows.add(mapper.apply(row));
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to read CSV: " + path, e);
+            throw new IllegalStateException(CSV_READ_FAILURE_MESSAGE_FORMAT.formatted(path), e);
         }
 
         return rows;
     }
 
-    private void validateHeaders(String path, List<String> actualHeaders, List<String> expectedHeaders) {
-        if (!actualHeaders.equals(expectedHeaders)) {
-            throw new IllegalArgumentException(
-                    "Unexpected CSV headers for " + path + ". expected=" + expectedHeaders + ", actual=" + actualHeaders
-            );
-        }
+    private void validateHeaders(
+            String path, List<String> actualHeaders, List<String> expectedHeaders) {
+        Preconditions.validate(
+                actualHeaders.equals(expectedHeaders),
+                UNEXPECTED_CSV_HEADERS_MESSAGE_FORMAT.formatted(
+                        path, expectedHeaders, actualHeaders));
     }
 
     private Map<String, String> toRowMap(List<String> headers, List<String> values) {
-        if (values.size() != headers.size()) {
-            throw new IllegalArgumentException("CSV column count mismatch. expected=" + headers.size() + ", actual=" + values.size());
-        }
+        Preconditions.validate(
+                values.size() == headers.size(),
+                CSV_COLUMN_COUNT_MISMATCH_MESSAGE_FORMAT.formatted(headers.size(), values.size()));
 
         Map<String, String> row = new LinkedHashMap<>();
         for (int i = 0; i < headers.size(); i++) {
@@ -167,7 +195,8 @@ public class DongneDataUtil {
         try {
             return Double.valueOf(normalize(value));
         } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("Invalid decimal for " + label + ": " + value, exception);
+            throw new IllegalArgumentException(
+                    INVALID_DECIMAL_MESSAGE_FORMAT.formatted(label, value), exception);
         }
     }
 }

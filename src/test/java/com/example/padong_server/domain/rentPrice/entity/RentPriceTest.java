@@ -2,7 +2,7 @@ package com.example.padong_server.domain.rentPrice.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.padong_server.domain.dongne.entity.LegalDong;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
 import jakarta.persistence.Column;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -17,8 +17,8 @@ import org.junit.jupiter.api.Test;
 class RentPriceTest {
 
     @Test
-    @DisplayName("법정동과 건물유형 조합을 유일하게 저장한다")
-    void declaresLegalDongAndBuildingTypeUniqueConstraint() {
+    @DisplayName("행정동과 건물유형 조합을 유일하게 저장한다")
+    void declaresAdminDongAndBuildingTypeUniqueConstraint() {
         Table table = RentPrice.class.getAnnotation(Table.class);
 
         assertThat(table.name()).isEqualTo("rent_price");
@@ -26,22 +26,22 @@ class RentPriceTest {
 
         UniqueConstraint uniqueConstraint = table.uniqueConstraints()[0];
         assertThat(uniqueConstraint.name())
-                .isEqualTo("uk_rent_price_legal_dong_building_type");
+                .isEqualTo("uk_rent_price_admin_dong_building_type");
         assertThat(uniqueConstraint.columnNames())
-                .containsExactly("legal_dong_id", "building_type");
+                .containsExactly("admin_dong_id", "building_type");
     }
 
     @Test
-    @DisplayName("법정동은 필수 Lazy 연관으로 매핑한다")
-    void mapsLegalDongAsRequiredLazyAssociation() throws NoSuchFieldException {
-        Field legalDongField = RentPrice.class.getDeclaredField("legalDong");
+    @DisplayName("행정동은 필수 Lazy 연관으로 매핑한다")
+    void mapsAdminDongAsRequiredLazyAssociation() throws NoSuchFieldException {
+        Field adminDongField = RentPrice.class.getDeclaredField("adminDong");
 
-        ManyToOne manyToOne = legalDongField.getAnnotation(ManyToOne.class);
-        JoinColumn joinColumn = legalDongField.getAnnotation(JoinColumn.class);
+        ManyToOne manyToOne = adminDongField.getAnnotation(ManyToOne.class);
+        JoinColumn joinColumn = adminDongField.getAnnotation(JoinColumn.class);
 
         assertThat(manyToOne.fetch()).isEqualTo(FetchType.LAZY);
         assertThat(manyToOne.optional()).isFalse();
-        assertThat(joinColumn.name()).isEqualTo("legal_dong_id");
+        assertThat(joinColumn.name()).isEqualTo("admin_dong_id");
         assertThat(joinColumn.nullable()).isFalse();
     }
 
@@ -60,10 +60,10 @@ class RentPriceTest {
     @Test
     @DisplayName("최근 2년 매매/전세/월세 통계 필드를 보존한다")
     void storesSaleJeonseAndMonthlyRentStats() {
-        LegalDong legalDong = new LegalDong();
+        AdminDong adminDong = new AdminDong();
 
         RentPrice stat = RentPrice.builder()
-                .legalDong(legalDong)
+                .adminDong(adminDong)
                 .buildingType("아파트")
                 .avgSalePrice(100_000L)
                 .medianSalePrice(98_000L)
@@ -80,7 +80,7 @@ class RentPriceTest {
                 .monthlyRentCount(40)
                 .build();
 
-        assertThat(stat.getLegalDong()).isSameAs(legalDong);
+        assertThat(stat.getAdminDong()).isSameAs(adminDong);
         assertThat(stat.getBuildingType()).isEqualTo("아파트");
         assertThat(stat.getAvgSalePrice()).isEqualTo(100_000L);
         assertThat(stat.getMedianSalePrice()).isEqualTo(98_000L);

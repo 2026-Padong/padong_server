@@ -4,6 +4,11 @@ import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
+import com.example.padong_server.global.util.Preconditions;
+
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -15,32 +20,101 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Component;
 
 @Component
 public class RentPriceDataUtil {
 
     private static final String RESOURCE_ROOT = "data/residence";
+    private static final String CSV_READ_FAILURE_MESSAGE_FORMAT = "주거 실거래가 CSV를 읽을 수 없습니다: %s";
+    private static final String CSV_COLUMN_COUNT_MISMATCH_MESSAGE_FORMAT =
+            "CSV 컬럼 수가 헤더와 다릅니다: %s:%d expected=%d actual=%d";
+    private static final String CSV_HEADER_NOT_FOUND_MESSAGE_FORMAT = "CSV 헤더를 찾을 수 없습니다: %s";
+    private static final String REQUIRED_CSV_COLUMN_MISSING_MESSAGE_FORMAT =
+            "CSV 필수 컬럼이 없습니다: %s column=%s";
+    private static final String UNCLOSED_CSV_QUOTE_MESSAGE = "닫히지 않은 CSV 따옴표가 있습니다.";
 
-    static final List<RentPriceCsvFile> DEFAULT_FILES = List.of(
-            saleFile("apartment", "아파트", "아파트(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv", "전용면적(㎡)"),
-            saleFile("apartment", "아파트", "아파트(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv", "전용면적(㎡)"),
-            rentFile("apartment", "아파트", "아파트(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv", "전용면적(㎡)"),
-            rentFile("apartment", "아파트", "아파트(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv", "전용면적(㎡)"),
-            saleFile("detached_multifamily", "단독다가구", "단독다가구(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv", "연면적(㎡)"),
-            saleFile("detached_multifamily", "단독다가구", "단독다가구(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv", "연면적(㎡)"),
-            rentFile("detached_multifamily", "단독다가구", "단독다가구(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv", "계약면적(㎡)"),
-            rentFile("detached_multifamily", "단독다가구", "단독다가구(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv", "계약면적(㎡)"),
-            saleFile("officetel", "오피스텔", "오피스텔(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv", "전용면적(㎡)"),
-            saleFile("officetel", "오피스텔", "오피스텔(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv", "전용면적(㎡)"),
-            rentFile("officetel", "오피스텔", "오피스텔(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv", "전용면적(㎡)"),
-            rentFile("officetel", "오피스텔", "오피스텔(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv", "전용면적(㎡)"),
-            saleFile("row_multifamily", "연립다세대", "연립다세대(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv", "전용면적(㎡)"),
-            saleFile("row_multifamily", "연립다세대", "연립다세대(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv", "전용면적(㎡)"),
-            rentFile("row_multifamily", "연립다세대", "연립다세대(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv", "전용면적(㎡)"),
-            rentFile("row_multifamily", "연립다세대", "연립다세대(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv", "전용면적(㎡)")
-    );
+    static final List<RentPriceCsvFile> DEFAULT_FILES =
+            List.of(
+                    saleFile(
+                            "apartment",
+                            "아파트",
+                            "아파트(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    saleFile(
+                            "apartment",
+                            "아파트",
+                            "아파트(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    rentFile(
+                            "apartment",
+                            "아파트",
+                            "아파트(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    rentFile(
+                            "apartment",
+                            "아파트",
+                            "아파트(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    saleFile(
+                            "detached_multifamily",
+                            "단독다가구",
+                            "단독다가구(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "연면적(㎡)"),
+                    saleFile(
+                            "detached_multifamily",
+                            "단독다가구",
+                            "단독다가구(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "연면적(㎡)"),
+                    rentFile(
+                            "detached_multifamily",
+                            "단독다가구",
+                            "단독다가구(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "계약면적(㎡)"),
+                    rentFile(
+                            "detached_multifamily",
+                            "단독다가구",
+                            "단독다가구(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "계약면적(㎡)"),
+                    saleFile(
+                            "officetel",
+                            "오피스텔",
+                            "오피스텔(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    saleFile(
+                            "officetel",
+                            "오피스텔",
+                            "오피스텔(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    rentFile(
+                            "officetel",
+                            "오피스텔",
+                            "오피스텔(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    rentFile(
+                            "officetel",
+                            "오피스텔",
+                            "오피스텔(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    saleFile(
+                            "row_multifamily",
+                            "연립다세대",
+                            "연립다세대(매매)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    saleFile(
+                            "row_multifamily",
+                            "연립다세대",
+                            "연립다세대(매매)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    rentFile(
+                            "row_multifamily",
+                            "연립다세대",
+                            "연립다세대(전월세)_실거래가_20240418_ 20250417_with_법정동코드.csv",
+                            "전용면적(㎡)"),
+                    rentFile(
+                            "row_multifamily",
+                            "연립다세대",
+                            "연립다세대(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv",
+                            "전용면적(㎡)"));
 
     public RentPriceRawData readRows() {
         RawDataBuilder builder = new RawDataBuilder();
@@ -58,15 +132,18 @@ public class RentPriceDataUtil {
 
     private void readClasspathFile(RentPriceCsvFile file, RawDataBuilder builder) {
         ClassPathResource resource = new ClassPathResource(file.resourcePath());
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+        try (BufferedReader reader =
+                new BufferedReader(
+                        new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
             readReader(file, reader, builder);
         } catch (IOException exception) {
-            throw new IllegalStateException("주거 실거래가 CSV를 읽을 수 없습니다: " + file.resourcePath(), exception);
+            throw new IllegalStateException(
+                    CSV_READ_FAILURE_MESSAGE_FORMAT.formatted(file.resourcePath()), exception);
         }
     }
 
-    private void readReader(RentPriceCsvFile file, BufferedReader reader, RawDataBuilder builder) throws IOException {
+    private void readReader(RentPriceCsvFile file, BufferedReader reader, RawDataBuilder builder)
+            throws IOException {
         List<String> lines = new ArrayList<>();
         String line;
         while ((line = reader.readLine()) != null) {
@@ -91,18 +168,16 @@ public class RentPriceDataUtil {
             if (isBlankLine(columns)) {
                 continue;
             }
-            if (columns.size() != headerIndex.size()) {
-                throw new IllegalArgumentException(
-                        "CSV 컬럼 수가 헤더와 다릅니다: " + file.resourcePath() + ":" + lineNumber
-                                + " expected=" + headerIndex.size() + " actual=" + columns.size()
-                );
-            }
+            Preconditions.validate(
+                    columns.size() == headerIndex.size(),
+                    CSV_COLUMN_COUNT_MISMATCH_MESSAGE_FORMAT.formatted(
+                            file.resourcePath(), lineNumber, headerIndex.size(), columns.size()));
             readDataRow(file, headerIndex, columns, builder);
         }
 
-        if (headerIndex == null) {
-            throw new IllegalArgumentException("CSV 헤더를 찾을 수 없습니다: " + file.resourcePath());
-        }
+        Preconditions.validate(
+                headerIndex != null,
+                CSV_HEADER_NOT_FOUND_MESSAGE_FORMAT.formatted(file.resourcePath()));
     }
 
     private Map<String, Integer> mapHeader(RentPriceCsvFile file, List<String> header) {
@@ -124,18 +199,19 @@ public class RentPriceDataUtil {
         return headerIndex;
     }
 
-    private void requireColumn(RentPriceCsvFile file, Map<String, Integer> headerIndex, String columnName) {
-        if (!headerIndex.containsKey(columnName)) {
-            throw new IllegalArgumentException("CSV 필수 컬럼이 없습니다: " + file.resourcePath() + " column=" + columnName);
-        }
+    private void requireColumn(
+            RentPriceCsvFile file, Map<String, Integer> headerIndex, String columnName) {
+        Preconditions.validate(
+                headerIndex.containsKey(columnName),
+                REQUIRED_CSV_COLUMN_MISSING_MESSAGE_FORMAT.formatted(
+                        file.resourcePath(), columnName));
     }
 
     private void readDataRow(
             RentPriceCsvFile file,
             Map<String, Integer> headerIndex,
             List<String> columns,
-            RawDataBuilder builder
-    ) {
+            RawDataBuilder builder) {
         builder.sourceRowCount++;
         if (file.sourceType() == SourceType.SALE) {
             readSaleRow(file, headerIndex, columns, builder);
@@ -148,8 +224,7 @@ public class RentPriceDataUtil {
             RentPriceCsvFile file,
             Map<String, Integer> headerIndex,
             List<String> columns,
-            RawDataBuilder builder
-    ) {
+            RawDataBuilder builder) {
         String legalDongCode = get(columns, headerIndex, "법정동코드");
         String cancelReason = get(columns, headerIndex, "해제사유발생일");
         Optional<Long> salePrice = parseMoney(get(columns, headerIndex, "거래금액(만원)"));
@@ -158,20 +233,20 @@ public class RentPriceDataUtil {
             return;
         }
 
-        builder.saleRows.add(new SaleRow(
-                legalDongCode,
-                file.buildingType(),
-                salePrice.get(),
-                parsePositiveDecimal(get(columns, headerIndex, file.areaColumn())).orElse(null)
-        ));
+        builder.saleRows.add(
+                new SaleRow(
+                        legalDongCode,
+                        file.buildingType(),
+                        salePrice.get(),
+                        parsePositiveDecimal(get(columns, headerIndex, file.areaColumn()))
+                                .orElse(null)));
     }
 
     private void readRentRow(
             RentPriceCsvFile file,
             Map<String, Integer> headerIndex,
             List<String> columns,
-            RawDataBuilder builder
-    ) {
+            RawDataBuilder builder) {
         String legalDongCode = get(columns, headerIndex, "법정동코드");
         RentType rentType = parseRentType(get(columns, headerIndex, "전월세구분")).orElse(null);
         Optional<Long> deposit = parseMoney(get(columns, headerIndex, "보증금(만원)"));
@@ -186,14 +261,15 @@ public class RentPriceDataUtil {
             return;
         }
 
-        builder.rentRows.add(new RentRow(
-                legalDongCode,
-                file.buildingType(),
-                rentType,
-                deposit.get(),
-                rentType == RentType.MONTHLY_RENT ? monthlyRent.get() : null,
-                parsePositiveDecimal(get(columns, headerIndex, file.areaColumn())).orElse(null)
-        ));
+        builder.rentRows.add(
+                new RentRow(
+                        legalDongCode,
+                        file.buildingType(),
+                        rentType,
+                        deposit.get(),
+                        rentType == RentType.MONTHLY_RENT ? monthlyRent.get() : null,
+                        parsePositiveDecimal(get(columns, headerIndex, file.areaColumn()))
+                                .orElse(null)));
     }
 
     static List<String> parseCsvLine(String line) {
@@ -218,9 +294,7 @@ public class RentPriceDataUtil {
             }
             current.append(character);
         }
-        if (quoted) {
-            throw new IllegalArgumentException("닫히지 않은 CSV 따옴표가 있습니다.");
-        }
+        Preconditions.validate(!quoted, UNCLOSED_CSV_QUOTE_MESSAGE);
         columns.add(current.toString());
         return columns;
     }
@@ -229,7 +303,8 @@ public class RentPriceDataUtil {
         return columns.stream().allMatch(column -> normalize(column).isBlank());
     }
 
-    private static String get(List<String> columns, Map<String, Integer> headerIndex, String columnName) {
+    private static String get(
+            List<String> columns, Map<String, Integer> headerIndex, String columnName) {
         return normalize(columns.get(headerIndex.get(columnName)));
     }
 
@@ -269,31 +344,26 @@ public class RentPriceDataUtil {
         return Optional.of(decimal);
     }
 
-    private static RentPriceCsvFile saleFile(String folderName, String buildingType, String fileName, String areaColumn) {
+    private static RentPriceCsvFile saleFile(
+            String folderName, String buildingType, String fileName, String areaColumn) {
         return new RentPriceCsvFile(
                 RESOURCE_ROOT + "/" + folderName + "/" + fileName,
                 buildingType,
                 SourceType.SALE,
-                areaColumn
-        );
+                areaColumn);
     }
 
-    private static RentPriceCsvFile rentFile(String folderName, String buildingType, String fileName, String areaColumn) {
+    private static RentPriceCsvFile rentFile(
+            String folderName, String buildingType, String fileName, String areaColumn) {
         return new RentPriceCsvFile(
                 RESOURCE_ROOT + "/" + folderName + "/" + fileName,
                 buildingType,
                 SourceType.RENT,
-                areaColumn
-        );
+                areaColumn);
     }
 
     record RentPriceCsvFile(
-            String resourcePath,
-            String buildingType,
-            SourceType sourceType,
-            String areaColumn
-    ) {
-    }
+            String resourcePath, String buildingType, SourceType sourceType, String areaColumn) {}
 
     enum SourceType {
         SALE,
@@ -308,11 +378,7 @@ public class RentPriceDataUtil {
 
         private RentPriceRawData toRawData() {
             return new RentPriceRawData(
-                    List.copyOf(saleRows),
-                    List.copyOf(rentRows),
-                    sourceRowCount,
-                    skippedRowCount
-            );
+                    List.copyOf(saleRows), List.copyOf(rentRows), sourceRowCount, skippedRowCount);
         }
     }
 }

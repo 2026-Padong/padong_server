@@ -2,7 +2,7 @@ package com.example.padong_server.domain.rentPrice.policy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.padong_server.domain.dongne.entity.LegalDong;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.DisplayName;
@@ -76,7 +76,7 @@ class RentPriceDisplayPolicyTest {
 
     private RentPrice.RentPriceBuilder baseStatBuilder() {
         return RentPrice.builder()
-                .legalDong(new LegalDong())
+                .adminDong(new AdminDong())
                 .buildingType("아파트");
     }
 }

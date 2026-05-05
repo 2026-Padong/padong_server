@@ -56,6 +56,15 @@ seoul-open-api:
   base-url: ${SEOUL_OPEN_API_BASE_URL}
   api-key: ${SEOUL_OPEN_API_KEY}
 
+boundary-api:
+  base-url: ${BOUNDARY_API_BASE_URL:http://api.vworld.kr}
+  service-key: ${BOUNDARY_API_SERVICE_KEY}
+  domain: ${BOUNDARY_API_DOMAIN:www.padong.site}
+
+tour-api:
+  base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr}
+  service-key: ${TOUR_API_SERVICE_KEY}
+
 naver:
   news:
     client-id: ${NAVER_NEWS_CLIENT_ID}
@@ -63,3 +72,7 @@ naver:
 
 jwt:
   secret: ${JWT_SECRET}
+  
+sk-address-api:
+  base-url: ${SK_ADDRESS_API_BASE_URL:https://apis.openapi.sk.com}
+  app-key: ${SK_OPEN_API_KEY}

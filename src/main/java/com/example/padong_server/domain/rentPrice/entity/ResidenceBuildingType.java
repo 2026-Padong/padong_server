@@ -1,5 +1,9 @@
 package com.example.padong_server.domain.rentPrice.entity;
 
+import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
+import com.example.padong_server.global.util.Preconditions;
+
 import java.util.Arrays;
 
 public enum ResidenceBuildingType {
@@ -26,14 +30,40 @@ public enum ResidenceBuildingType {
         return from(label);
     }
 
+    public static ResidenceBuildingType fromNullable(String value) {
+        String normalizedValue = trimToNull(value);
+        return normalizedValue == null ? null : from(normalizedValue);
+    }
+
+    public static ResidenceBuildingType fromNullableOrDefault(
+            String value, ResidenceBuildingType defaultType) {
+        ResidenceBuildingType buildingType = fromNullable(value);
+        return buildingType == null ? defaultType : buildingType;
+    }
+
     public static ResidenceBuildingType from(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException("건물유형은 비어 있을 수 없습니다.");
-        }
-        String normalizedLabel = value.trim();
+        String normalizedLabel = trimToNull(value);
+        Preconditions.validate(
+                normalizedLabel != null, ErrorCode.RESIDENCE_BUILDING_TYPE_REQUIRED.getMessage());
         return Arrays.stream(values())
-                .filter(type -> type.name().equalsIgnoreCase(normalizedLabel) || type.label.equals(normalizedLabel))
+                .filter(
+                        type ->
+                                type.name().equalsIgnoreCase(normalizedLabel)
+                                        || type.label.equals(normalizedLabel))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("지원하지 않는 건물유형입니다: " + value));
+                .orElseThrow(
+                        () ->
+                                new CustomException(
+                                        ErrorCode.INVALID_RESIDENCE_BUILDING_TYPE,
+                                        ErrorCode.INVALID_RESIDENCE_BUILDING_TYPE.getMessage()
+                                                + ": "
+                                                + value));
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
     }
 }

@@ -7,8 +7,15 @@ import lombok.Getter;
 @Builder
 public class HotplaceRealtimeItem {
 
-    private final String category;
     private final String areaNm;
-    private final String congestionLevel;
-    private final String congestionMessage;
+    private final String thumbnail;
+    private final String category;
+    private final String roadAddr;
+    private final String eventNm;
+    private final WeatherSummary weather;
+    private final HotplacePopulation population;
+    private final HotplaceAge age;
+    private final HotplaceGender gender;
+    private final HotplaceTransport transport;
+    private final RoadTrafficInfo roadTraffic;
 }

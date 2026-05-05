@@ -11,7 +11,10 @@ import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
 import com.example.padong_server.domain.dongne.repository.LegalDongRepository;
 import com.example.padong_server.domain.dongne.util.DongneDataUtil;
+import com.example.padong_server.global.util.Preconditions;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +26,12 @@ import java.util.function.Function;
 @Service
 @RequiredArgsConstructor
 public class DongneImportService {
+
+    private static final String DUPLICATE_KEY_MESSAGE_FORMAT = "중복된 %s가 있습니다: %s";
+    private static final String MAPPING_ADMIN_DONG_NOT_FOUND_MESSAGE_FORMAT =
+            "매핑 대상 행정동 코드가 없습니다: %s";
+    private static final String MAPPING_LEGAL_DONG_NOT_FOUND_MESSAGE_FORMAT =
+            "매핑 대상 법정동 코드가 없습니다: %s";
 
     private final AdminDongRepository adminDongRepository;
     private final LegalDongRepository legalDongRepository;
@@ -42,23 +51,25 @@ public class DongneImportService {
         legalDongRepository.deleteAllInBatch();
         adminDongRepository.deleteAllInBatch();
 
-        List<AdminDong> savedAdmins = adminDongRepository.saveAll(
-                adminRows.stream().map(AdminDong::new).toList()
-        );
-        List<LegalDong> savedLegals = legalDongRepository.saveAll(
-                legalRows.stream().map(LegalDong::new).toList()
-        );
+        List<AdminDong> savedAdmins =
+                adminDongRepository.saveAll(adminRows.stream().map(AdminDong::new).toList());
+        List<LegalDong> savedLegals =
+                legalDongRepository.saveAll(legalRows.stream().map(LegalDong::new).toList());
 
-        Map<String, AdminDong> adminByCode = indexBy(savedAdmins, AdminDong::getAdminDongCode, "행정동 코드");
-        Map<String, LegalDong> legalByCode = indexBy(savedLegals, LegalDong::getLegalDongCode, "법정동 코드");
+        Map<String, AdminDong> adminByCode =
+                indexBy(savedAdmins, AdminDong::getAdminDongCode, "행정동 코드");
+        Map<String, LegalDong> legalByCode =
+                indexBy(savedLegals, LegalDong::getLegalDongCode, "법정동 코드");
 
-        List<DongMapping> mappings = mappingRows.stream()
-                .map(row -> new DongMapping(
-                        requireAdmin(adminByCode, row.adminDongCode()),
-                        requireLegal(legalByCode, row.legalDongCode()),
-                        row
-                ))
-                .toList();
+        List<DongMapping> mappings =
+                mappingRows.stream()
+                        .map(
+                                row ->
+                                        new DongMapping(
+                                                requireAdmin(adminByCode, row.adminDongCode()),
+                                                requireLegal(legalByCode, row.legalDongCode()),
+                                                row))
+                        .toList();
 
         List<DongMapping> savedMappings = dongMappingRepository.saveAll(mappings);
 
@@ -69,31 +80,31 @@ public class DongneImportService {
         indexBy(rows, keyExtractor, label);
     }
 
-    private <T> Map<String, T> indexBy(List<T> rows, Function<T, String> keyExtractor, String label) {
+    private <T> Map<String, T> indexBy(
+            List<T> rows, Function<T, String> keyExtractor, String label) {
         Map<String, T> result = new LinkedHashMap<>();
         for (T row : rows) {
             String key = keyExtractor.apply(row);
             T existing = result.putIfAbsent(key, row);
-            if (existing != null) {
-                throw new IllegalArgumentException("중복된 " + label + "가 있습니다: " + key);
-            }
+            Preconditions.validate(
+                    existing == null, DUPLICATE_KEY_MESSAGE_FORMAT.formatted(label, key));
         }
         return result;
     }
 
     private AdminDong requireAdmin(Map<String, AdminDong> adminByCode, String adminDongCode) {
         AdminDong adminDong = adminByCode.get(adminDongCode);
-        if (adminDong == null) {
-            throw new IllegalArgumentException("매핑 대상 행정동 코드가 없습니다: " + adminDongCode);
-        }
+        Preconditions.validate(
+                adminDong != null,
+                MAPPING_ADMIN_DONG_NOT_FOUND_MESSAGE_FORMAT.formatted(adminDongCode));
         return adminDong;
     }
 
     private LegalDong requireLegal(Map<String, LegalDong> legalByCode, String legalDongCode) {
         LegalDong legalDong = legalByCode.get(legalDongCode);
-        if (legalDong == null) {
-            throw new IllegalArgumentException("매핑 대상 법정동 코드가 없습니다: " + legalDongCode);
-        }
+        Preconditions.validate(
+                legalDong != null,
+                MAPPING_LEGAL_DONG_NOT_FOUND_MESSAGE_FORMAT.formatted(legalDongCode));
         return legalDong;
     }
 }

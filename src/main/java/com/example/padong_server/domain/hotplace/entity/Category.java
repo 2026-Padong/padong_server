@@ -3,16 +3,19 @@ package com.example.padong_server.domain.hotplace.entity;
 import java.util.Arrays;
 
 public enum Category {
-    CULTURAL_HERITAGE("\uBB38\uD654\uC720\uC0B0"),
-    TOURIST_SPECIAL_ZONE("\uAD00\uAD11\uD2B9\uAD6C"),
-    SUBWAY_STATION("\uC9C0\uD558\uCCA0\uC5ED"),
-    PARK("\uACF5\uC6D0"),
-    PALACE("\uACE0\uAD81"),
-    HANOK_VILLAGE("\uD55C\uC625\uB9C8\uC744"),
-    RIVER("\uD55C\uAC15\uACF5\uC6D0"),
-    MARKET("\uC804\uD1B5\uC2DC\uC7A5"),
-    MOUNTAIN("\uC0B0"),
-    ETC("\uAE30\uD0C0");
+    CULTURAL_HERITAGE("문화유산"),
+    CULTURAL_HERITAGE_COMPLEX("고궁·문화유산"),
+    TOURIST_SPECIAL_ZONE("관광특구"),
+    SUBWAY_STATION("지하철역"),
+    PARK("공원"),
+    PALACE("고궁"),
+    HANOK_VILLAGE("한옥마을"),
+    RIVER("한강공원"),
+    MARKET("전통시장"),
+    MOUNTAIN("산"),
+    COMMERCIAL_DISTRICT("발달상권"),
+    DENSE_POPULATION_AREA("인구밀집지역"),
+    ETC("기타");
 
     private final String description;
 

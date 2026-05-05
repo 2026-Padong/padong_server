@@ -9,6 +9,9 @@ public class WeatherSummary {
 
     private final String weatherStatus;
     private final String temperature;
-    private final String pm10;
+    private final String sensibleTemperature;
+    private final String humidity;
+    private final String fineDustStatus;
+    private final String fineDust;
     private final String precipitationProbability;
 }

@@ -32,12 +32,9 @@ import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/mobility")
@@ -132,7 +129,7 @@ public class MobilityController {
                                                 + " arrivalDongCodes=1168064000&arrivalDongCodes=1156054000",
                                     example = "1168064000")
                             @RequestParam
-                            List<String> arrivalDongCodes,
+                    List<String> arrivalDongCodes,
                     @Parameter(description = "페이지 번호, 0부터 시작", example = "0")
                             @RequestParam(defaultValue = "0")
                             int page,

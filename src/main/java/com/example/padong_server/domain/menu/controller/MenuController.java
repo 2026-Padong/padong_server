@@ -25,22 +25,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Menu", description = "APIs for store owners to create, list, update, and delete menus")
+@Tag(name = "메뉴", description = "사장이 메뉴를 등록, 조회, 수정, 삭제하는 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/menus")
+@RequestMapping("/menus")
 public class MenuController {
 
     private final MenuService menuService;
 
     @Operation(
-            summary = "Create menu",
-            description = "Creates a menu for the given store using query parameters."
+            summary = "메뉴 등록",
+            description = "가게 ID와 메뉴 정보를 쿼리 파라미터로 받아 메뉴를 등록합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
-                    description = "Menu created",
+                    description = "메뉴 등록 성공",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(implementation = ResponseDTO.class),
@@ -52,13 +52,13 @@ public class MenuController {
                                               "data": {
                                                 "id": 1,
                                                 "storeId": 1,
-                                                "menuInfo": "Assorted bread set",
+                                                "menuInfo": "모둠빵 세트",
                                                 "originalPrice": 5000,
                                                 "discountPrice": 3000,
                                                 "pickupAvailableTime": "10:00 ~ 15:00",
                                                 "maxParticipants": 5,
-                                                "recruitmentDeadline": "30 minutes before pickup",
-                                                "paymentMethod": "Card / Easy payment",
+                                                "recruitmentDeadline": "픽업 30분 전",
+                                                "paymentMethod": "카드 / 간편결제",
                                                 "currentParticipants": 1
                                               }
                                             }
@@ -66,28 +66,28 @@ public class MenuController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "400", description = "Invalid request"),
-            @ApiResponse(responseCode = "404", description = "Store not found")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "404", description = "가게를 찾을 수 없음")
     })
     @PostMapping
     public ResponseEntity<ResponseDTO<MenuResponse>> createMenu(
-            @Parameter(description = "Store ID", example = "1")
+            @Parameter(description = "가게 ID", example = "1")
             @RequestParam Long storeId,
-            @Parameter(description = "Menu description", example = "Assorted bread set")
+            @Parameter(description = "메뉴 설명", example = "모둠빵 세트")
             @RequestParam String menuInfo,
-            @Parameter(description = "Original price", example = "5000")
+            @Parameter(description = "정가", example = "5000")
             @RequestParam Integer originalPrice,
-            @Parameter(description = "Discount price", example = "3000")
+            @Parameter(description = "할인가", example = "3000")
             @RequestParam Integer discountPrice,
-            @Parameter(description = "Pickup available time", example = "10:00 ~ 15:00")
+            @Parameter(description = "픽업 가능 시간", example = "10:00 ~ 15:00")
             @RequestParam String pickupAvailableTime,
-            @Parameter(description = "Maximum participants", example = "5")
+            @Parameter(description = "최대 모집 인원", example = "5")
             @RequestParam Integer maxParticipants,
-            @Parameter(description = "Recruitment deadline", example = "30 minutes before pickup")
+            @Parameter(description = "모집 마감 시간", example = "픽업 30분 전")
             @RequestParam String recruitmentDeadline,
-            @Parameter(description = "Payment method", example = "Card / Easy payment")
+            @Parameter(description = "결제 수단", example = "카드 / 간편결제")
             @RequestParam String paymentMethod,
-            @Parameter(description = "Current participants", example = "1")
+            @Parameter(description = "현재 참여 인원", example = "1")
             @RequestParam Integer currentParticipants
     ) {
         MenuResponse response = menuService.createMenu(
@@ -108,16 +108,16 @@ public class MenuController {
     }
 
     @Operation(
-            summary = "List menus by store",
-            description = "Returns all menus registered for the given store."
+            summary = "가게별 메뉴 목록 조회",
+            description = "해당 가게에 등록된 전체 메뉴 목록을 조회합니다."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Menu list retrieved"),
-            @ApiResponse(responseCode = "404", description = "Store not found")
+            @ApiResponse(responseCode = "200", description = "메뉴 목록 조회 성공"),
+            @ApiResponse(responseCode = "404", description = "가게를 찾을 수 없음")
     })
     @GetMapping
     public ResponseEntity<ResponseDTO<List<MenuResponse>>> getMenus(
-            @Parameter(description = "Store ID", example = "1")
+            @Parameter(description = "가게 ID", example = "1")
             @RequestParam Long storeId
     ) {
         List<MenuResponse> response = menuService.getMenus(storeId);
@@ -125,33 +125,33 @@ public class MenuController {
     }
 
     @Operation(
-            summary = "Update menu",
-            description = "Updates a menu using menuId and query parameters."
+            summary = "메뉴 수정",
+            description = "메뉴 ID와 수정할 메뉴 정보를 받아 메뉴를 수정합니다."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Menu updated"),
-            @ApiResponse(responseCode = "400", description = "Invalid request"),
-            @ApiResponse(responseCode = "404", description = "Menu not found")
+            @ApiResponse(responseCode = "200", description = "메뉴 수정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "404", description = "메뉴를 찾을 수 없음")
     })
     @PutMapping
     public ResponseEntity<ResponseDTO<MenuResponse>> updateMenu(
-            @Parameter(description = "Menu ID", example = "1")
+            @Parameter(description = "메뉴 ID", example = "1")
             @RequestParam Long menuId,
-            @Parameter(description = "Menu description", example = "Assorted bread set")
+            @Parameter(description = "메뉴 설명", example = "모둠빵 세트")
             @RequestParam String menuInfo,
-            @Parameter(description = "Original price", example = "4500")
+            @Parameter(description = "정가", example = "4500")
             @RequestParam Integer originalPrice,
-            @Parameter(description = "Discount price", example = "2500")
+            @Parameter(description = "할인가", example = "2500")
             @RequestParam Integer discountPrice,
-            @Parameter(description = "Pickup available time", example = "11:00 ~ 16:00")
+            @Parameter(description = "픽업 가능 시간", example = "11:00 ~ 16:00")
             @RequestParam String pickupAvailableTime,
-            @Parameter(description = "Maximum participants", example = "4")
+            @Parameter(description = "최대 모집 인원", example = "4")
             @RequestParam Integer maxParticipants,
-            @Parameter(description = "Recruitment deadline", example = "1 hour before pickup")
+            @Parameter(description = "모집 마감 시간", example = "픽업 1시간 전")
             @RequestParam String recruitmentDeadline,
-            @Parameter(description = "Payment method", example = "Card")
+            @Parameter(description = "결제 수단", example = "카드")
             @RequestParam String paymentMethod,
-            @Parameter(description = "Current participants", example = "2")
+            @Parameter(description = "현재 참여 인원", example = "2")
             @RequestParam Integer currentParticipants
     ) {
         MenuResponse response = menuService.updateMenu(
@@ -171,16 +171,16 @@ public class MenuController {
     }
 
     @Operation(
-            summary = "Delete menu",
-            description = "Deletes a menu using menuId."
+            summary = "메뉴 삭제",
+            description = "메뉴 ID를 받아 해당 메뉴를 삭제합니다."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Menu deleted"),
-            @ApiResponse(responseCode = "404", description = "Menu not found")
+            @ApiResponse(responseCode = "200", description = "메뉴 삭제 성공"),
+            @ApiResponse(responseCode = "404", description = "메뉴를 찾을 수 없음")
     })
     @DeleteMapping
     public ResponseEntity<ResponseDTO<Void>> deleteMenu(
-            @Parameter(description = "Menu ID", example = "1")
+            @Parameter(description = "메뉴 ID", example = "1")
             @RequestParam Long menuId
     ) {
         menuService.deleteMenu(menuId);

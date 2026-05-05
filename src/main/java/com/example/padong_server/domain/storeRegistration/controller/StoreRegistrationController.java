@@ -26,10 +26,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Store Registration", description = "사장이 가게 정보를 등록, 조회, 수정, 삭제하는 API")
+@Tag(name = "가게 등록", description = "사장이 가게 정보를 등록, 조회, 수정, 삭제하는 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/stores")
+@RequestMapping("/stores")
 public class StoreRegistrationController {
 
     private final StoreRegistrationService storeRegistrationService;
@@ -37,7 +37,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 등록",
-            description = "사장이 가게명, 주소, 전화번호, 운영시간을 쿼리 파라미터로 전달해 가게를 등록합니다."
+            description = "가게명, 주소, 전화번호, 운영시간을 쿼리 파라미터로 받아 가게를 등록합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -91,7 +91,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 상세 조회",
-            description = "storeId로 가게를 조회하고, userId를 함께 보내면 해당 사용자의 좋아요 여부와 총 좋아요 수를 함께 반환합니다."
+            description = "storeId로 가게를 조회하고, userId가 있으면 해당 사용자의 좋아요 여부와 총 좋아요 수를 함께 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "가게 상세 조회 성공"),
@@ -110,7 +110,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 좋아요 토글",
-            description = "같은 userId가 같은 가게에 다시 요청하면 좋아요가 취소됩니다. 응답으로 현재 사용자의 좋아요 여부와 전체 좋아요 수를 반환합니다."
+            description = "같은 사용자가 같은 가게에 다시 요청하면 좋아요가 취소됩니다. 응답으로 현재 사용자의 좋아요 여부와 전체 좋아요 수를 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "가게 좋아요 토글 성공"),
@@ -130,7 +130,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 기본 정보 수정",
-            description = "사장이 storeId와 가게 기본 정보를 쿼리 파라미터로 전달해 수정합니다."
+            description = "storeId와 수정할 가게 기본 정보를 쿼리 파라미터로 받아 수정합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "가게 수정 성공"),
@@ -162,7 +162,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 삭제",
-            description = "사장이 storeId 쿼리 파라미터로 등록한 가게를 삭제합니다."
+            description = "storeId를 받아 등록된 가게를 삭제합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "가게 삭제 성공"),

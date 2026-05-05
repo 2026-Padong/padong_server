@@ -1,8 +1,10 @@
 package com.example.padong_server.domain.hotplace.service;
 
 import com.example.padong_server.domain.hotplace.dto.DistrictRealtimeResponse;
+import com.example.padong_server.domain.hotplace.entity.Category;
 import com.example.padong_server.domain.hotplace.entity.HotPlace;
 import com.example.padong_server.domain.hotplace.repository.HotPlaceRepository;
+import com.example.padong_server.domain.subway.service.SubwayTransferInfoService;
 import com.example.padong_server.global.client.seoul.SeoulRealtimeClient;
 import com.example.padong_server.global.client.seoul.SeoulRealtimeData;
 import com.example.padong_server.global.exception.CustomException;
@@ -31,24 +33,34 @@ class HotplaceRealtimeServiceTest {
     @Mock
     private SeoulRealtimeClient seoulRealtimeClient;
 
+    @Mock
+    private SubwayTransferInfoService subwayTransferInfoService;
+
     @InjectMocks
     private HotplaceRealtimeService hotplaceRealtimeService;
 
     @Test
-    @DisplayName("guName으로 조회하면 요약 정보와 핫플레이스 목록을 반환한다")
+    @DisplayName("guName으로 조회하면 요약 정보와 카드형 핫플레이스 목록을 반환한다")
     void getDistrictRealtime_returnsSummaryAndHotplaces() {
-        HotPlace museum = hotPlace("용산구", "국립 중앙박물관");
-        HotPlace park = hotPlace("용산구", "용산공원");
+        HotPlace palace = hotPlace("종로구", "광화문·덕수궁", Category.CULTURAL_HERITAGE_COMPLEX);
+        HotPlace market = hotPlace("종로구", "북촌한옥마을", Category.HANOK_VILLAGE);
 
-        given(hotPlaceRepository.findByGuName("용산구")).willReturn(List.of(museum, park));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("국립 중앙박물관"))
+        given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(palace, market));
+        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
                 .willReturn(realtimeData(
-                        "국립 중앙박물관",
-                        "https://example.com/museum.jpg",
-                        "서울 용산구 서빙고로 137",
-                        12000.0,
-                        18000.0,
+                        "광화문·덕수궁",
+                        "https://example.com/palace.jpg",
+                        "서울시 종로구·중구 일대",
+                        30000.0,
+                        34000.0,
                         "여유",
+                        "보행이 원활한 수준입니다.",
+                        "Y",
+                        28000.0,
+                        31000.0,
+                        "2026-05-04T14:00:00",
+                        49.9,
+                        50.1,
                         "맑음",
                         21.3,
                         22.0,
@@ -56,22 +68,34 @@ class HotplaceRealtimeServiceTest {
                         "좋음",
                         18.0,
                         10.0,
-                        12.5,
-                        31.2,
-                        20.1,
-                        15.0,
-                        11.7,
-                        9.5,
+                        11.2,
+                        18.8,
+                        23.8,
+                        23.5,
+                        14.1,
+                        8.6,
+                        0.0,
                         "원활",
-                        42.5));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("용산공원"))
+                        13.0,
+                        List.of("광화문역"),
+                        List.of("5호선"),
+                        List.of("세종문화회관", "광화문", "KT광화문지사"),
+                        List.of("광화문역 2번 출구", "세종문화회관", "종로구청 앞", "정부서울청사", "덕수궁 대한문", "서울시청 서소문청사")));
+        given(seoulRealtimeClient.getRealtimeDataByAreaNm("북촌한옥마을"))
                 .willReturn(realtimeData(
-                        "용산공원",
-                        "https://example.com/park.jpg",
-                        "서울 용산구 용산동6가",
+                        "북촌한옥마을",
+                        "https://example.com/village.jpg",
+                        "서울시 종로구 북촌로 일대",
                         8000.0,
                         10000.0,
                         "보통",
+                        "적정 수준입니다.",
+                        "N",
+                        null,
+                        null,
+                        null,
+                        45.0,
+                        55.0,
                         "구름많음",
                         20.1,
                         19.4,
@@ -85,13 +109,20 @@ class HotplaceRealtimeServiceTest {
                         21.0,
                         14.0,
                         13.5,
+                        0.0,
                         "서행",
-                        28.0));
+                        28.0,
+                        List.of("안국역"),
+                        List.of("3호선"),
+                        List.of("안국역", "재동초등학교"),
+                        List.of("안국역 1번 출구")));
+        given(subwayTransferInfoService.findLinesByStationName("광화문역")).willReturn(List.of("5호선"));
+        given(subwayTransferInfoService.findLinesByStationName("안국역")).willReturn(List.of("3호선"));
 
-        DistrictRealtimeResponse response = hotplaceRealtimeService.getDistrictRealtime("용산구");
+        DistrictRealtimeResponse response = hotplaceRealtimeService.getDistrictRealtime("종로구");
 
-        assertThat(response.getGuName()).isEqualTo("용산구");
-        assertThat(response.getSelectedAreaNm()).isEqualTo("국립 중앙박물관");
+        assertThat(response.getGuName()).isEqualTo("종로구");
+        assertThat(response.getSelectedAreaNm()).isEqualTo("광화문·덕수궁");
         assertThat(response.getSummary().getWeatherStatus()).isEqualTo("맑음");
         assertThat(response.getSummary().getTemperature()).isEqualTo("21.3");
         assertThat(response.getSummary().getSensibleTemperature()).isEqualTo("22.0");
@@ -99,40 +130,51 @@ class HotplaceRealtimeServiceTest {
         assertThat(response.getSummary().getFineDustStatus()).isEqualTo("좋음");
         assertThat(response.getSummary().getFineDust()).isEqualTo("18.0");
         assertThat(response.getSummary().getPrecipitationProbability()).isEqualTo("10%");
-        assertThat(response.getHotplaces()).hasSize(2);
-        assertThat(response.getHotplaces().get(0).getAreaNm()).isEqualTo("국립 중앙박물관");
-        assertThat(response.getHotplaces().get(0).getThumbnail()).isEqualTo("https://example.com/museum.jpg");
-        assertThat(response.getHotplaces().get(0).getRoadAddr()).isEqualTo("서울 용산구 서빙고로 137");
-        assertThat(response.getHotplaces().get(0).getAreaPpltnMin()).isEqualTo("12000");
-        assertThat(response.getHotplaces().get(0).getAreaPpltnMax()).isEqualTo("18000");
-        assertThat(response.getHotplaces().get(0).getCongestionLevel()).isEqualTo("여유");
-        assertThat(response.getHotplaces().get(0).getDominantAgeGroup()).isEqualTo("20대");
-        assertThat(response.getHotplaces().get(0).getDominantAgeRate()).isEqualTo("31.2%");
-        assertThat(response.getHotplaces().get(0).getRoadTrafficIdx()).isEqualTo("원활");
-        assertThat(response.getHotplaces().get(0).getRoadTrafficSpd()).isEqualTo("42.5");
-        assertThat(response.getHotplaces().get(1).getAreaNm()).isEqualTo("용산공원");
-        assertThat(response.getHotplaces().get(1).getCongestionLevel()).isEqualTo("보통");
-        assertThat(response.getHotplaces().get(1).getDominantAgeGroup()).isEqualTo("30대");
-        assertThat(response.getHotplaces().get(1).getDominantAgeRate()).isEqualTo("24.4%");
 
-        verify(hotPlaceRepository).findByGuName("용산구");
+        assertThat(response.getHotplaces()).hasSize(2);
+        assertThat(response.getHotplaces().get(0).getAreaNm()).isEqualTo("광화문·덕수궁");
+        assertThat(response.getHotplaces().get(0).getCategory()).isEqualTo("고궁·문화유산");
+        assertThat(response.getHotplaces().get(0).getRoadAddr()).isEqualTo("서울시 종로구·중구 일대");
+        assertThat(response.getHotplaces().get(0).getWeather().getWeatherStatus()).isEqualTo("맑음");
+        assertThat(response.getHotplaces().get(0).getPopulation().getDisplay()).isEqualTo("약 32,000명");
+        assertThat(response.getHotplaces().get(0).getPopulation().getForecast().getStatus()).isEqualTo("감소 예상");
+        assertThat(response.getHotplaces().get(0).getAge().getDominantGroup()).isEqualTo("30대");
+        assertThat(response.getHotplaces().get(0).getAge().getDominantRate()).isEqualTo("23.8%");
+        assertThat(response.getHotplaces().get(0).getAge().getTop3()).hasSize(3);
+        assertThat(response.getHotplaces().get(0).getAge().getTop3().get(1).getAgeGroup()).isEqualTo("40대");
+        assertThat(response.getHotplaces().get(0).getGender().getFemaleRate()).isEqualTo("50.1%");
+        assertThat(response.getHotplaces().get(0).getTransport().getSubway().getStationName()).isEqualTo("광화문역");
+        assertThat(response.getHotplaces().get(0).getTransport().getSubway().getLines()).containsExactly("5호선");
+        assertThat(response.getHotplaces().get(0).getTransport().getBus().getCount()).isEqualTo(3);
+        assertThat(response.getHotplaces().get(0).getTransport().getBike().getCount()).isEqualTo(6);
+        assertThat(response.getHotplaces().get(0).getRoadTraffic().getStatus()).isEqualTo("원활");
+        assertThat(response.getHotplaces().get(0).getRoadTraffic().getSpeed()).isEqualTo("13km/h");
+
+        verify(hotPlaceRepository).findByGuName("종로구");
     }
 
     @Test
     @DisplayName("같은 areaNm이 중복되면 외부 API는 한 번만 호출한다")
     void getDistrictRealtime_callsExternalApiOncePerAreaNm() {
-        HotPlace first = hotPlace("용산구", "국립 중앙박물관");
-        HotPlace second = hotPlace("용산구", "국립 중앙박물관");
+        HotPlace first = hotPlace("종로구", "광화문·덕수궁", Category.CULTURAL_HERITAGE_COMPLEX);
+        HotPlace second = hotPlace("종로구", "광화문·덕수궁", Category.CULTURAL_HERITAGE_COMPLEX);
 
-        given(hotPlaceRepository.findByGuName("용산구")).willReturn(List.of(first, second));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("국립 중앙박물관"))
+        given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(first, second));
+        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
                 .willReturn(realtimeData(
-                        "국립 중앙박물관",
+                        "광화문·덕수궁",
                         null,
                         null,
                         null,
                         null,
                         "여유",
+                        null,
+                        "N",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         "맑음",
                         21.3,
                         22.0,
@@ -147,19 +189,25 @@ class HotplaceRealtimeServiceTest {
                         12.0,
                         8.0,
                         null,
-                        null));
+                        null,
+                        null,
+                        List.of("광화문역"),
+                        List.of("5호선"),
+                        List.of(),
+                        List.of()));
+        given(subwayTransferInfoService.findLinesByStationName("광화문역")).willReturn(List.of("5호선"));
 
-        hotplaceRealtimeService.getDistrictRealtime("용산구");
+        hotplaceRealtimeService.getDistrictRealtime("종로구");
 
-        verify(seoulRealtimeClient, times(1)).getRealtimeDataByAreaNm("국립 중앙박물관");
+        verify(seoulRealtimeClient, times(1)).getRealtimeDataByAreaNm("광화문·덕수궁");
     }
 
     @Test
     @DisplayName("해당 구에 핫플레이스가 없으면 예외가 발생한다")
     void getDistrictRealtime_throwsWhenHotplaceNotFound() {
-        given(hotPlaceRepository.findByGuName("용산구")).willReturn(List.of());
+        given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of());
 
-        assertThatThrownBy(() -> hotplaceRealtimeService.getDistrictRealtime("용산구"))
+        assertThatThrownBy(() -> hotplaceRealtimeService.getDistrictRealtime("종로구"))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.HOTPLACE_NOT_FOUND);
@@ -168,12 +216,12 @@ class HotplaceRealtimeServiceTest {
     @Test
     @DisplayName("서울시 실시간 API 호출 실패 시 예외가 발생한다")
     void getDistrictRealtime_throwsWhenRealtimeApiFails() {
-        HotPlace museum = hotPlace("용산구", "국립 중앙박물관");
-        given(hotPlaceRepository.findByGuName("용산구")).willReturn(List.of(museum));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("국립 중앙박물관"))
+        HotPlace palace = hotPlace("종로구", "광화문·덕수궁", Category.CULTURAL_HERITAGE_COMPLEX);
+        given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(palace));
+        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
                 .willThrow(new CustomException(ErrorCode.SEOUL_REALTIME_API_CALL_FAILED));
 
-        assertThatThrownBy(() -> hotplaceRealtimeService.getDistrictRealtime("용산구"))
+        assertThatThrownBy(() -> hotplaceRealtimeService.getDistrictRealtime("종로구"))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SEOUL_REALTIME_API_CALL_FAILED);
@@ -182,34 +230,20 @@ class HotplaceRealtimeServiceTest {
     @Test
     @DisplayName("외부 API 응답 값이 null이면 정보 없음으로 변환한다")
     void getDistrictRealtime_convertsNullFieldsToDefaultText() {
-        HotPlace museum = hotPlace("용산구", "국립 중앙박물관");
+        HotPlace palace = hotPlace("종로구", "광화문·덕수궁", null);
 
-        given(hotPlaceRepository.findByGuName("용산구")).willReturn(List.of(museum));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("국립 중앙박물관"))
+        given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(palace));
+        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
                 .willReturn(SeoulRealtimeData.builder()
-                        .areaNm("국립 중앙박물관")
-                        .areaCongestLvl(null)
-                        .roadAddr(null)
-                        .areaPpltnMin(null)
-                        .areaPpltnMax(null)
-                        .weatherStatus(null)
-                        .temperature(null)
-                        .sensibleTemperature(null)
-                        .humidity(null)
-                        .pm10Status(null)
-                        .pm10(null)
-                        .ppltnRate10(null)
-                        .ppltnRate20(null)
-                        .ppltnRate30(null)
-                        .ppltnRate40(null)
-                        .ppltnRate50(null)
-                        .ppltnRate60(null)
-                        .roadTrafficIdx(null)
-                        .roadTrafficSpd(null)
-                        .rainChance(null)
+                        .areaNm("광화문·덕수궁")
+                        .subwayStationNames(List.of())
+                        .subwayLines(List.of())
+                        .busStopNames(List.of())
+                        .bikeStationNames(List.of())
                         .build());
+        given(subwayTransferInfoService.findLinesByStationName("정보 없음")).willReturn(List.of());
 
-        DistrictRealtimeResponse response = hotplaceRealtimeService.getDistrictRealtime("용산구");
+        DistrictRealtimeResponse response = hotplaceRealtimeService.getDistrictRealtime("종로구");
 
         assertThat(response.getSummary().getWeatherStatus()).isEqualTo("정보 없음");
         assertThat(response.getSummary().getTemperature()).isEqualTo("정보 없음");
@@ -218,20 +252,23 @@ class HotplaceRealtimeServiceTest {
         assertThat(response.getSummary().getFineDustStatus()).isEqualTo("정보 없음");
         assertThat(response.getSummary().getFineDust()).isEqualTo("정보 없음");
         assertThat(response.getSummary().getPrecipitationProbability()).isEqualTo("정보 없음");
-        assertThat(response.getHotplaces().get(0).getCongestionLevel()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getCategory()).isEqualTo("정보 없음");
         assertThat(response.getHotplaces().get(0).getRoadAddr()).isEqualTo("정보 없음");
-        assertThat(response.getHotplaces().get(0).getAreaPpltnMin()).isEqualTo("정보 없음");
-        assertThat(response.getHotplaces().get(0).getAreaPpltnMax()).isEqualTo("정보 없음");
-        assertThat(response.getHotplaces().get(0).getDominantAgeGroup()).isEqualTo("정보 없음");
-        assertThat(response.getHotplaces().get(0).getDominantAgeRate()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getPopulation().getMin()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getPopulation().getDisplay()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getAge().getDominantGroup()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getAge().getDominantRate()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getGender().getMaleRate()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getTransport().getSubway().getStationName()).isEqualTo("정보 없음");
+        assertThat(response.getHotplaces().get(0).getRoadTraffic().getSpeed()).isEqualTo("정보 없음");
     }
 
-    private HotPlace hotPlace(String guName, String areaNm) {
+    private HotPlace hotPlace(String guName, String areaNm, Category category) {
         return HotPlace.builder()
                 .id(1L)
                 .guName(guName)
                 .areaNm(areaNm)
-                .category(null)
+                .category(category)
                 .latitude(37.0)
                 .longitude(127.0)
                 .build();
@@ -243,6 +280,13 @@ class HotplaceRealtimeServiceTest {
                                            Double areaPpltnMin,
                                            Double areaPpltnMax,
                                            String congestionLevel,
+                                           String congestionMessage,
+                                           String fcstYn,
+                                           Double fcstPpltnMin,
+                                           Double fcstPpltnMax,
+                                           String fcstTime,
+                                           Double maleRate,
+                                           Double femaleRate,
                                            String weatherStatus,
                                            Double temperature,
                                            Double sensibleTemperature,
@@ -256,8 +300,13 @@ class HotplaceRealtimeServiceTest {
                                            Double ppltnRate40,
                                            Double ppltnRate50,
                                            Double ppltnRate60,
+                                           Double ppltnRate70,
                                            String roadTrafficIdx,
-                                           Double roadTrafficSpd) {
+                                           Double roadTrafficSpd,
+                                           List<String> subwayStationNames,
+                                           List<String> subwayLines,
+                                           List<String> busStopNames,
+                                           List<String> bikeStationNames) {
         return SeoulRealtimeData.builder()
                 .areaNm(areaNm)
                 .thumbnail(thumbnail)
@@ -265,6 +314,13 @@ class HotplaceRealtimeServiceTest {
                 .areaPpltnMin(areaPpltnMin)
                 .areaPpltnMax(areaPpltnMax)
                 .areaCongestLvl(congestionLevel)
+                .areaCongestMsg(congestionMessage)
+                .fcstYn(fcstYn)
+                .fcstPpltnMin(fcstPpltnMin)
+                .fcstPpltnMax(fcstPpltnMax)
+                .fcstTime(fcstTime)
+                .malePpltnRate(maleRate)
+                .femalePpltnRate(femaleRate)
                 .weatherStatus(weatherStatus)
                 .temperature(temperature)
                 .sensibleTemperature(sensibleTemperature)
@@ -278,8 +334,13 @@ class HotplaceRealtimeServiceTest {
                 .ppltnRate40(ppltnRate40)
                 .ppltnRate50(ppltnRate50)
                 .ppltnRate60(ppltnRate60)
+                .ppltnRate70(ppltnRate70)
                 .roadTrafficIdx(roadTrafficIdx)
                 .roadTrafficSpd(roadTrafficSpd)
+                .subwayStationNames(subwayStationNames)
+                .subwayLines(subwayLines)
+                .busStopNames(busStopNames)
+                .bikeStationNames(bikeStationNames)
                 .build();
     }
 }

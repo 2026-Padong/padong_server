@@ -11,6 +11,5 @@ public class AdminDongPictureResponse {
 
     private final String adminDongCode;
     private final String adminDongName;
-    private final int pictureCount;
     private final List<PictureItemResponse> pictures;
 }

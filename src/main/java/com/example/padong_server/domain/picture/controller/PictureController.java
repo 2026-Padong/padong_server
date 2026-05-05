@@ -20,21 +20,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Pictures", description = "행정동별 관광 사진 API")
+@Tag(name = "관광 사진", description = "행정동별 관광 사진 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/pictures")
+@RequestMapping("/pictures")
 public class PictureController {
 
     private final PictureService pictureService;
 
     @Operation(
             summary = "관광 사진 적재",
-            description = "TourAPI에서 서울특별시 관광 데이터의 contentId, addr1, title, firstImage를 수집하고 행정동 컬럼까지 저장합니다."
+            description = "Tour API에서 서울 관광 데이터의 contentId, 주소, 제목, 대표 이미지를 수집하고 행정동 정보와 함께 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "관광 사진 적재 성공"),
-            @ApiResponse(responseCode = "503", description = "주소 API 또는 관광 API 키 없음"),
+            @ApiResponse(responseCode = "503", description = "주소 API 또는 관광 API 키가 없음"),
             @ApiResponse(responseCode = "502", description = "주소 API 또는 관광 API 호출 실패")
     })
     @PostMapping("/data")
@@ -44,7 +44,7 @@ public class PictureController {
 
     @Operation(
             summary = "행정동별 관광 사진 조회",
-            description = "저장된 관광 사진 중 행정동 코드와 일치하는 목록을 반환합니다."
+            description = "저장된 관광 사진 중 행정동 코드가 일치하는 목록을 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -58,7 +58,6 @@ public class PictureController {
                                             {
                                               "adminDongCode": "1168052100",
                                               "adminDongName": "삼성1동",
-                                              "pictureCount": 1,
                                               "pictures": [
                                                 {
                                                   "contentId": "2456536",
@@ -74,7 +73,7 @@ public class PictureController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "해당 행정동 사진 없음")
+            @ApiResponse(responseCode = "404", description = "해당 행정동의 사진이 없음")
     })
     @GetMapping
     public ResponseEntity<AdminDongPictureResponse> getPicturesByAdminDongCode(

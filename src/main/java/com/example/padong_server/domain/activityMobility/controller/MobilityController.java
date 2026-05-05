@@ -32,13 +32,16 @@ import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/mobility")
-@Tag(name = "Mobility", description = "서울시 생활이동 데이터 관리 API")
+@Tag(name = "생활이동", description = "서울시 생활이동 데이터 관리 API")
 @RequiredArgsConstructor
 public class MobilityController {
     private final MobilityService mobilityService;

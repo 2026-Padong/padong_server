@@ -121,7 +121,6 @@ public class PictureService {
         return AdminDongPictureResponse.builder()
                 .adminDongCode(adminDongCode)
                 .adminDongName(adminDong.getAdminDongName())
-                .pictureCount(pictures.size())
                 .pictures(pictures.stream().map(this::toResponse).toList())
                 .build();
     }

@@ -6,7 +6,7 @@ import com.example.padong_server.domain.menu.dto.MenuUpdateRequest;
 import com.example.padong_server.domain.menu.entity.Menu;
 import com.example.padong_server.domain.menu.repository.MenuRepository;
 import com.example.padong_server.domain.orderFlow.service.OrderFlowService;
-import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
@@ -37,9 +37,9 @@ public class MenuService {
                 request.currentParticipants()
         );
 
-        StoreRegistration storeRegistration = findStore(request.storeId());
+        Store store = findStore(request.storeId());
         Menu menu = Menu.builder()
-                .storeRegistration(storeRegistration)
+                .store(store)
                 .menuInfo(request.menuInfo().trim())
                 .originalPrice(request.originalPrice())
                 .discountPrice(request.discountPrice())
@@ -97,7 +97,7 @@ public class MenuService {
         menuRepository.delete(findMenu(menuId));
     }
 
-    private StoreRegistration findStore(Long storeId) {
+    private Store findStore(Long storeId) {
         if (storeId == null) {
             throw new CustomException(ErrorCode.INVALID_MENU_REQUEST);
         }
@@ -145,7 +145,7 @@ public class MenuService {
     private MenuResponse toResponse(Menu menu) {
         return MenuResponse.builder()
                 .id(menu.getId())
-                .storeId(menu.getStoreRegistration().getId())
+                .storeId(menu.getStore().getId())
                 .menuInfo(menu.getMenuInfo())
                 .originalPrice(menu.getOriginalPrice())
                 .discountPrice(menu.getDiscountPrice())

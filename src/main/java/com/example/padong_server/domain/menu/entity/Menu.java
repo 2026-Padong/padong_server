@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.menu.entity;
 
-import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -30,7 +30,7 @@ public class Menu {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_registration_id", nullable = false)
-    private StoreRegistration storeRegistration;
+    private Store store;
 
     @Column(nullable = false, length = 255)
     private String menuInfo;

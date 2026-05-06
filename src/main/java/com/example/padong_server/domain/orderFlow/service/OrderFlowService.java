@@ -100,7 +100,7 @@ public class OrderFlowService {
         return OrderFlowResponse.builder()
                 .id(orderFlow.getId())
                 .menuId(menu.getId())
-                .storeId(menu.getStoreRegistration().getId())
+                .storeId(menu.getStore().getId())
                 .menuInfo(menu.getMenuInfo())
                 .status(status.name())
                 .canApprove(status == OrderFlowStatus.WAITING_APPROVAL)

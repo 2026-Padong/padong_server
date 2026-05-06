@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.example.padong_server.domain.storeLike.service.StoreLikeService;
-import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class StoreRegistrationServiceTest {
+class StoreServiceTest {
 
     @Mock
     private StoreRegistrationRepository storeRegistrationRepository;
@@ -33,7 +33,7 @@ class StoreRegistrationServiceTest {
     @Test
     @DisplayName("가게 상세 조회 시 총 좋아요 수와 내 좋아요 여부를 함께 반환한다")
     void getStore_returnsLikeMetadata() {
-        StoreRegistration store = StoreRegistration.builder()
+        Store store = Store.builder()
                 .id(1L)
                 .name("파동식당")
                 .roadAddress("서울시 송파구")

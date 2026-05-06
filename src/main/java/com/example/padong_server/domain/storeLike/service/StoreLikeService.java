@@ -3,7 +3,7 @@ package com.example.padong_server.domain.storeLike.service;
 import com.example.padong_server.domain.storeLike.dto.StoreLikeToggleResponse;
 import com.example.padong_server.domain.storeLike.entity.StoreLike;
 import com.example.padong_server.domain.storeLike.repository.StoreLikeRepository;
-import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
@@ -22,7 +22,7 @@ public class StoreLikeService {
     public StoreLikeToggleResponse toggleLike(Long storeId, Long userId) {
         validate(storeId, userId);
 
-        StoreRegistration storeRegistration = findStore(storeId);
+        Store store = findStore(storeId);
         StoreLike existingLike = storeLikeRepository.findByStoreRegistrationIdAndUserId(storeId, userId)
                 .orElse(null);
         boolean liked;
@@ -32,7 +32,7 @@ public class StoreLikeService {
             liked = false;
         } else {
             storeLikeRepository.save(StoreLike.builder()
-                    .storeRegistration(storeRegistration)
+                    .store(store)
                     .userId(userId)
                     .build());
             liked = true;
@@ -62,7 +62,7 @@ public class StoreLikeService {
         return storeLikeRepository.countByStoreRegistrationId(storeId);
     }
 
-    private StoreRegistration findStore(Long storeId) {
+    private Store findStore(Long storeId) {
         return storeRegistrationRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
     }

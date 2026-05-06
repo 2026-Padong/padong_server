@@ -4,7 +4,7 @@ import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationCreateRequest;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationResponse;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
-import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
@@ -24,14 +24,14 @@ public class StoreRegistrationService {
     public StoreRegistrationResponse createStore(StoreRegistrationCreateRequest request) {
         validate(request);
 
-        StoreRegistration storeRegistration = StoreRegistration.builder()
+        Store store = Store.builder()
                 .name(request.name().trim())
                 .roadAddress(request.address().trim())
                 .phoneNumber(request.phoneNumber().trim())
                 .operatingHours(request.operatingHours().trim())
                 .build();
 
-        return toResponse(storeRegistrationRepository.save(storeRegistration), null);
+        return toResponse(storeRegistrationRepository.save(store), null);
     }
 
     @Transactional(readOnly = true)
@@ -43,24 +43,24 @@ public class StoreRegistrationService {
     public StoreRegistrationResponse updateStore(Long storeId, StoreRegistrationUpdateRequest request) {
         validate(request);
 
-        StoreRegistration storeRegistration = findStore(storeId);
-        storeRegistration.updateBasicInfo(
+        Store store = findStore(storeId);
+        store.updateBasicInfo(
                 request.name().trim(),
                 request.address().trim(),
                 request.phoneNumber().trim(),
                 request.operatingHours().trim()
         );
 
-        return toResponse(storeRegistration, null);
+        return toResponse(store, null);
     }
 
     @Transactional
     public void deleteStore(Long storeId) {
-        StoreRegistration storeRegistration = findStore(storeId);
-        storeRegistrationRepository.delete(storeRegistration);
+        Store store = findStore(storeId);
+        storeRegistrationRepository.delete(store);
     }
 
-    private StoreRegistration findStore(Long storeId) {
+    private Store findStore(Long storeId) {
         return storeRegistrationRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
     }
@@ -111,15 +111,15 @@ public class StoreRegistrationService {
         }
     }
 
-    private StoreRegistrationResponse toResponse(StoreRegistration storeRegistration, Long userId) {
+    private StoreRegistrationResponse toResponse(Store store, Long userId) {
         return StoreRegistrationResponse.builder()
-                .id(storeRegistration.getId())
-                .name(storeRegistration.getName())
-                .address(storeRegistration.getRoadAddress())
-                .phoneNumber(storeRegistration.getPhoneNumber())
-                .operatingHours(storeRegistration.getOperatingHours())
-                .likeCount(storeLikeService.getLikeCount(storeRegistration.getId()))
-                .likedByCurrentUser(storeLikeService.isLikedByUser(storeRegistration.getId(), userId))
+                .id(store.getId())
+                .name(store.getName())
+                .address(store.getRoadAddress())
+                .phoneNumber(store.getPhoneNumber())
+                .operatingHours(store.getOperatingHours())
+                .likeCount(storeLikeService.getLikeCount(store.getId()))
+                .likedByCurrentUser(storeLikeService.isLikedByUser(store.getId(), userId))
                 .build();
     }
 }

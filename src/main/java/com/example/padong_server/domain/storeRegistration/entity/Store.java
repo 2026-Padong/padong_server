@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.storeRegistration.entity;
 
 import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.oauth.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class StoreRegistration {
+public class Store {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -79,6 +80,10 @@ public class StoreRegistration {
 
     @Column(length = 1000)
     private String imageUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_user_id", nullable = false)
+    private User owner;
 
     public void update(
             String name,

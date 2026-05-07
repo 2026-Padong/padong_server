@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.payment.entity;
 
+import com.example.padong_server.domain.menu.entity.Menu;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

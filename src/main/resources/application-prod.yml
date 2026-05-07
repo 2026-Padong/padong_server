@@ -72,6 +72,10 @@ naver:
 
 jwt:
   secret: ${JWT_SECRET}
+
+portone:
+  base-url: ${PORTONE_BASE_URL:https://api.portone.io}
+  api-secret: ${PORTONE_API_SECRET}
   
 sk-address-api:
   base-url: ${SK_ADDRESS_API_BASE_URL:https://apis.openapi.sk.com}

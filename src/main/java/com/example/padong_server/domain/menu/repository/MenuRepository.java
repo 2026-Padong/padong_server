@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MenuRepository extends JpaRepository<Menu, Long> {
 
-    List<Menu> findAllByStoreRegistrationId(Long storeId);
+    List<Menu> findAllByStoreId(Long storeId);
 }

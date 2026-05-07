@@ -44,35 +44,25 @@ public class Menu {
     @Column(nullable = false, length = 100)
     private String pickupAvailableTime;
 
-    @Column(nullable = false)
-    private Integer maxParticipants;
-
     @Column(nullable = false, length = 100)
     private String recruitmentDeadline;
 
     @Column(nullable = false, length = 100)
     private String paymentMethod;
 
-    @Column(nullable = false)
-    private Integer currentParticipants;
-
     public void update(
             String menuInfo,
             Integer originalPrice,
             Integer discountPrice,
             String pickupAvailableTime,
-            Integer maxParticipants,
             String recruitmentDeadline,
-            String paymentMethod,
-            Integer currentParticipants
+            String paymentMethod
     ) {
         this.menuInfo = menuInfo;
         this.originalPrice = originalPrice;
         this.discountPrice = discountPrice;
         this.pickupAvailableTime = pickupAvailableTime;
-        this.maxParticipants = maxParticipants;
         this.recruitmentDeadline = recruitmentDeadline;
         this.paymentMethod = paymentMethod;
-        this.currentParticipants = currentParticipants;
     }
 }

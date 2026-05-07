@@ -11,13 +11,9 @@ public record MenuUpdateRequest(
         Integer discountPrice,
         @Schema(description = "픽업 가능 시간", example = "11:00 ~ 16:00")
         String pickupAvailableTime,
-        @Schema(description = "최대 모집 인원", example = "4")
-        Integer maxParticipants,
         @Schema(description = "모집 마감 시간", example = "픽업 1시간 전")
         String recruitmentDeadline,
         @Schema(description = "결제 수단", example = "카드")
-        String paymentMethod,
-        @Schema(description = "현재 참여 인원", example = "2")
-        Integer currentParticipants
+        String paymentMethod
 ) {
 }

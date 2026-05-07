@@ -56,10 +56,8 @@ public class MenuController {
                                                 "originalPrice": 5000,
                                                 "discountPrice": 3000,
                                                 "pickupAvailableTime": "10:00 ~ 15:00",
-                                                "maxParticipants": 5,
                                                 "recruitmentDeadline": "픽업 30분 전",
-                                                "paymentMethod": "카드 / 간편결제",
-                                                "currentParticipants": 1
+                                                "paymentMethod": "카드 / 간편결제"
                                               }
                                             }
                                             """
@@ -81,14 +79,10 @@ public class MenuController {
             @RequestParam Integer discountPrice,
             @Parameter(description = "픽업 가능 시간", example = "10:00 ~ 15:00")
             @RequestParam String pickupAvailableTime,
-            @Parameter(description = "최대 모집 인원", example = "5")
-            @RequestParam Integer maxParticipants,
             @Parameter(description = "모집 마감 시간", example = "픽업 30분 전")
             @RequestParam String recruitmentDeadline,
             @Parameter(description = "결제 수단", example = "카드 / 간편결제")
-            @RequestParam String paymentMethod,
-            @Parameter(description = "현재 참여 인원", example = "1")
-            @RequestParam Integer currentParticipants
+            @RequestParam String paymentMethod
     ) {
         MenuResponse response = menuService.createMenu(
                 new MenuCreateRequest(
@@ -97,10 +91,8 @@ public class MenuController {
                         originalPrice,
                         discountPrice,
                         pickupAvailableTime,
-                        maxParticipants,
                         recruitmentDeadline,
-                        paymentMethod,
-                        currentParticipants
+                        paymentMethod
                 )
         );
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -145,14 +137,10 @@ public class MenuController {
             @RequestParam Integer discountPrice,
             @Parameter(description = "픽업 가능 시간", example = "11:00 ~ 16:00")
             @RequestParam String pickupAvailableTime,
-            @Parameter(description = "최대 모집 인원", example = "4")
-            @RequestParam Integer maxParticipants,
             @Parameter(description = "모집 마감 시간", example = "픽업 1시간 전")
             @RequestParam String recruitmentDeadline,
             @Parameter(description = "결제 수단", example = "카드")
-            @RequestParam String paymentMethod,
-            @Parameter(description = "현재 참여 인원", example = "2")
-            @RequestParam Integer currentParticipants
+            @RequestParam String paymentMethod
     ) {
         MenuResponse response = menuService.updateMenu(
                 menuId,
@@ -161,10 +149,8 @@ public class MenuController {
                         originalPrice,
                         discountPrice,
                         pickupAvailableTime,
-                        maxParticipants,
                         recruitmentDeadline,
-                        paymentMethod,
-                        currentParticipants
+                        paymentMethod
                 )
         );
         return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, "메뉴 수정이 완료되었습니다.", response));

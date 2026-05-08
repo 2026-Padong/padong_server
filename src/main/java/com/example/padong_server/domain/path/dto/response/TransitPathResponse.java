@@ -1,8 +1,8 @@
-package com.example.padong_server.domain.transitPath.dto.response;
+package com.example.padong_server.domain.path.dto.response;
 
 import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
-import com.example.padong_server.domain.transitPath.dto.internal.OdsayJson;
+import com.example.padong_server.domain.path.dto.internal.OdsayJson;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 

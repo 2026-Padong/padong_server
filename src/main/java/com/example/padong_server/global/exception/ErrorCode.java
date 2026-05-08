@@ -113,6 +113,18 @@ public enum ErrorCode {
             HttpStatus.NOT_FOUND,
             "SK_PEDESTRIAN_NO_RESULT",
             "보행자 경로 결과가 없습니다."),
+    SK_CAR_API_KEY_MISSING(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "SK_CAR_API_KEY_MISSING",
+            "자동차 경로 API 설정이 없습니다."),
+    SK_CAR_API_CALL_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "SK_CAR_API_CALL_FAILED",
+            "자동차 경로 API 호출에 실패했습니다."),
+    SK_CAR_NO_RESULT(
+            HttpStatus.NOT_FOUND,
+            "SK_CAR_NO_RESULT",
+            "자동차 경로 결과가 없습니다."),
 
     // RentPrice
     RENT_PRICE_TRADE_TYPE_REQUIRED(

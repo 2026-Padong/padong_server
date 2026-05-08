@@ -1,4 +1,4 @@
-package com.example.padong_server.domain.transitPath.dto.request;
+package com.example.padong_server.domain.path.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -15,8 +15,8 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "행정동 A → 행정동 B 보행자 경로 요청")
-public class PedestrianPathRequest {
+@Schema(description = "행정동 A → 행정동 B 자동차 경로 요청")
+public class CarPathRequest {
 
     @Schema(description = "출발 행정동 코드", example = "1162069500")
     @NotBlank

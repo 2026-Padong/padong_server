@@ -1,4 +1,4 @@
-package com.example.padong_server.domain.transitPath.dto.request;
+package com.example.padong_server.domain.path.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

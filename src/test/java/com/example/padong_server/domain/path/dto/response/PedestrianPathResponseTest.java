@@ -1,4 +1,4 @@
-package com.example.padong_server.domain.transitPath.dto.response;
+package com.example.padong_server.domain.path.dto.response;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

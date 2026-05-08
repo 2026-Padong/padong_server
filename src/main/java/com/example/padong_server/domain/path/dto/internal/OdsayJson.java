@@ -1,4 +1,4 @@
-package com.example.padong_server.domain.transitPath.dto.internal;
+package com.example.padong_server.domain.path.dto.internal;
 
 import java.util.ArrayList;
 import java.util.Collection;

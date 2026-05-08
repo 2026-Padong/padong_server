@@ -1,7 +1,6 @@
 package com.example.padong_server.global.exception;
 
 import lombok.Getter;
-
 import org.springframework.http.HttpStatus;
 
 @Getter
@@ -10,7 +9,7 @@ public enum ErrorCode {
     // Oauth
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     INVALID_SIGNUP_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_SIGNUP_REQUEST", "회원가입 요청이 올바르지 않습니다."),
-    UNAUTHORIZED_USER(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED_USER", "인증할 수 없는 사용자입니다."),
+    UNAUTHORIZED_USER(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED_USER", "인증 정보가 없는 사용자입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "유효하지 않은 refresh token입니다."),
 
     // Payment
@@ -35,7 +34,7 @@ public enum ErrorCode {
     INVALID_GU_NAME(HttpStatus.BAD_REQUEST, "INVALID_GU_NAME", "존재하지 않는 자치구 이름입니다."),
     ADMIN_DONG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_DONG_NOT_FOUND", "해당 행정동 정보를 찾을 수 없습니다."),
 
-    // Hotplace
+    // Hotplace / Store
     HOTPLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "HOTPLACE_NOT_FOUND", "해당 구에 등록된 핫플레이스가 없습니다."),
     STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "STORE_NOT_FOUND", "해당 가게 정보를 찾을 수 없습니다."),
     MENU_NOT_FOUND(HttpStatus.NOT_FOUND, "MENU_NOT_FOUND", "해당 메뉴 정보를 찾을 수 없습니다."),
@@ -47,9 +46,11 @@ public enum ErrorCode {
     INVALID_ORDER_FLOW_STATUS(
             HttpStatus.BAD_REQUEST, "INVALID_ORDER_FLOW_STATUS", "현재 주문 상태에서는 요청한 작업을 수행할 수 없습니다."),
 
-    // StoreLike
+    // Like
     INVALID_STORE_LIKE_REQUEST(
             HttpStatus.BAD_REQUEST, "INVALID_STORE_LIKE_REQUEST", "좋아요 요청값이 올바르지 않습니다."),
+    INVALID_DONGNE_LIKE_REQUEST(
+            HttpStatus.BAD_REQUEST, "INVALID_DONGNE_LIKE_REQUEST", "동네 좋아요 요청값이 올바르지 않습니다."),
 
     // Picture
     PICTURE_NOT_FOUND(HttpStatus.NOT_FOUND, "PICTURE_NOT_FOUND", "해당 행정동에 이용 가능한 사진이 없습니다."),
@@ -76,9 +77,9 @@ public enum ErrorCode {
 
     // RentPrice
     RENT_PRICE_TRADE_TYPE_REQUIRED(
-            HttpStatus.BAD_REQUEST, "RENT_PRICE_TRADE_TYPE_REQUIRED", "거래 형태는 비어 있을 수 없습니다."),
+            HttpStatus.BAD_REQUEST, "RENT_PRICE_TRADE_TYPE_REQUIRED", "거래 형태가 비어 있을 수 없습니다."),
     RESIDENCE_BUILDING_TYPE_REQUIRED(
-            HttpStatus.BAD_REQUEST, "RESIDENCE_BUILDING_TYPE_REQUIRED", "집 형태는 비어 있을 수 없습니다."),
+            HttpStatus.BAD_REQUEST, "RESIDENCE_BUILDING_TYPE_REQUIRED", "집 형태가 비어 있을 수 없습니다."),
     INVALID_RENT_PRICE_TRADE_TYPE(
             HttpStatus.BAD_REQUEST, "INVALID_RENT_PRICE_TRADE_TYPE", "지원하지 않는 거래 형태입니다."),
     INVALID_RESIDENCE_BUILDING_TYPE(

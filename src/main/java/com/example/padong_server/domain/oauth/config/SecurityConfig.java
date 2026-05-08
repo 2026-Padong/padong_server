@@ -40,7 +40,9 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/api/auth/reissue",
-                                "/api/auth/signup"
+                                "/api/auth/signup",
+                                "/dongne/detail",
+                                "/dongne/likes"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

@@ -40,6 +40,10 @@ public class PopulationService {
         return optional.map(PopulationDataDto::new).orElse(null);
     }
 
+    public Optional<Population> findPopulationByAdmin(AdminDong adminDong) {
+        return populationRepository.findByAdminDong(adminDong);
+    }
+
     public ResponseDTO<PopulationDetailDto> getPopulationDetailByAdminDongCode(String adminDongCode) {
         AdminDong adminDong = dongneService.findAdminDongByCode(adminDongCode);
         Population population = populationRepository.findByAdminDong(adminDong)

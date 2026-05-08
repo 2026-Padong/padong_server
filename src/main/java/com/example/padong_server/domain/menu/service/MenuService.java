@@ -5,7 +5,6 @@ import com.example.padong_server.domain.menu.dto.MenuResponse;
 import com.example.padong_server.domain.menu.dto.MenuUpdateRequest;
 import com.example.padong_server.domain.menu.entity.Menu;
 import com.example.padong_server.domain.menu.repository.MenuRepository;
-import com.example.padong_server.domain.orderFlow.service.OrderFlowService;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
@@ -22,7 +21,6 @@ public class MenuService {
 
     private final MenuRepository menuRepository;
     private final StoreRegistrationRepository storeRegistrationRepository;
-    private final OrderFlowService orderFlowService;
 
     @Transactional
     public MenuResponse createMenu(MenuCreateRequest request) {
@@ -31,10 +29,8 @@ public class MenuService {
                 request.originalPrice(),
                 request.discountPrice(),
                 request.pickupAvailableTime(),
-                request.maxParticipants(),
                 request.recruitmentDeadline(),
-                request.paymentMethod(),
-                request.currentParticipants()
+                request.paymentMethod()
         );
 
         Store store = findStore(request.storeId());
@@ -44,21 +40,18 @@ public class MenuService {
                 .originalPrice(request.originalPrice())
                 .discountPrice(request.discountPrice())
                 .pickupAvailableTime(request.pickupAvailableTime().trim())
-                .maxParticipants(request.maxParticipants())
                 .recruitmentDeadline(request.recruitmentDeadline().trim())
                 .paymentMethod(request.paymentMethod().trim())
-                .currentParticipants(request.currentParticipants())
                 .build();
 
         Menu savedMenu = menuRepository.save(menu);
-        orderFlowService.createOrderIfMenuIsFull(savedMenu);
         return toResponse(savedMenu);
     }
 
     @Transactional(readOnly = true)
     public List<MenuResponse> getMenus(Long storeId) {
         findStore(storeId);
-        return menuRepository.findAllByStoreRegistrationId(storeId).stream()
+        return menuRepository.findAllByStoreId(storeId).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -70,10 +63,8 @@ public class MenuService {
                 request.originalPrice(),
                 request.discountPrice(),
                 request.pickupAvailableTime(),
-                request.maxParticipants(),
                 request.recruitmentDeadline(),
-                request.paymentMethod(),
-                request.currentParticipants()
+                request.paymentMethod()
         );
 
         Menu menu = findMenu(menuId);
@@ -82,13 +73,10 @@ public class MenuService {
                 request.originalPrice(),
                 request.discountPrice(),
                 request.pickupAvailableTime().trim(),
-                request.maxParticipants(),
                 request.recruitmentDeadline().trim(),
-                request.paymentMethod().trim(),
-                request.currentParticipants()
+                request.paymentMethod().trim()
         );
 
-        orderFlowService.createOrderIfMenuIsFull(menu);
         return toResponse(menu);
     }
 
@@ -116,28 +104,21 @@ public class MenuService {
             Integer originalPrice,
             Integer discountPrice,
             String pickupAvailableTime,
-            Integer maxParticipants,
             String recruitmentDeadline,
-            String paymentMethod,
-            Integer currentParticipants
+            String paymentMethod
     ) {
         if (!StringUtils.hasText(menuInfo)
                 || originalPrice == null
                 || discountPrice == null
                 || !StringUtils.hasText(pickupAvailableTime)
-                || maxParticipants == null
                 || !StringUtils.hasText(recruitmentDeadline)
-                || !StringUtils.hasText(paymentMethod)
-                || currentParticipants == null) {
+                || !StringUtils.hasText(paymentMethod)) {
             throw new CustomException(ErrorCode.INVALID_MENU_REQUEST);
         }
 
         if (originalPrice < 0
                 || discountPrice < 0
-                || discountPrice > originalPrice
-                || maxParticipants < 1
-                || currentParticipants < 0
-                || currentParticipants > maxParticipants) {
+                || discountPrice > originalPrice) {
             throw new CustomException(ErrorCode.INVALID_MENU_REQUEST);
         }
     }
@@ -150,10 +131,8 @@ public class MenuService {
                 .originalPrice(menu.getOriginalPrice())
                 .discountPrice(menu.getDiscountPrice())
                 .pickupAvailableTime(menu.getPickupAvailableTime())
-                .maxParticipants(menu.getMaxParticipants())
                 .recruitmentDeadline(menu.getRecruitmentDeadline())
                 .paymentMethod(menu.getPaymentMethod())
-                .currentParticipants(menu.getCurrentParticipants())
                 .build();
     }
 }

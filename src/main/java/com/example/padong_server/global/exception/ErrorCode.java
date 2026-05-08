@@ -12,6 +12,19 @@ public enum ErrorCode {
     UNAUTHORIZED_USER(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED_USER", "인증 정보가 없는 사용자입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "유효하지 않은 refresh token입니다."),
 
+    // Payment
+    GROUP_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "GROUP_ORDER_NOT_FOUND", "공구 정보를 찾을 수 없습니다."),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "결제 정보를 찾을 수 없습니다."),
+    INVALID_PAYMENT_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT_REQUEST", "결제 요청값이 올바르지 않습니다."),
+    INVALID_PAYMENT_STATUS(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT_STATUS", "현재 결제 상태에서는 요청한 작업을 수행할 수 없습니다."),
+    INVALID_PAYMENT_AMOUNT(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT_AMOUNT", "결제 금액이 일치하지 않습니다."),
+    PAYMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PAYMENT_ACCESS_DENIED", "결제 정보에 접근할 수 없습니다."),
+    INVALID_GROUP_ORDER_STATUS(HttpStatus.BAD_REQUEST, "INVALID_GROUP_ORDER_STATUS", "현재 공구 상태에서는 결제할 수 없습니다."),
+    GROUP_ORDER_FULL(HttpStatus.BAD_REQUEST, "GROUP_ORDER_FULL", "공구 참여 가능 인원이 초과되었습니다."),
+    INVALID_GROUP_ORDER_MENU(HttpStatus.BAD_REQUEST, "INVALID_GROUP_ORDER_MENU", "공구에 포함되지 않은 메뉴입니다."),
+    SOLD_OUT_MENU(HttpStatus.BAD_REQUEST, "SOLD_OUT_MENU", "품절된 메뉴는 주문할 수 없습니다."),
+    MIN_ORDER_AMOUNT_NOT_MET(HttpStatus.BAD_REQUEST, "MIN_ORDER_AMOUNT_NOT_MET", "최소 주문 금액을 만족하지 않습니다."),
+
     // Common
     INTERNAL_SERVER_ERROR(
             HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),

@@ -6,9 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StoreLikeRepository extends JpaRepository<StoreLike, Long> {
 
-    Optional<StoreLike> findByStoreRegistrationIdAndUserId(Long storeId, Long userId);
+    Optional<StoreLike> findByStoreIdAndUserId(Long storeId, Long userId);
 
-    boolean existsByStoreRegistrationIdAndUserId(Long storeId, Long userId);
+    boolean existsByStoreIdAndUserId(Long storeId, Long userId);
 
-    long countByStoreRegistrationId(Long storeId);
+    long countByStoreId(Long storeId);
 }

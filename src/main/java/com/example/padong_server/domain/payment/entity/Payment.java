@@ -39,10 +39,6 @@ public class Payment {
     @Column(name = "pg_tx_id")
     private String pgTxId;
 
-    // 상점 아이디
-    @Column(name = "store_id")
-    private String storeId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentStatus status;
@@ -68,14 +64,18 @@ public class Payment {
         this.paidAt = paidAt;
     }
 
+    public void updateConfirmRequest(String txId) {
+        this.txId = txId;
+    }
+
     public void markFailed(String reason) {
         this.status = PaymentStatus.FAILED;
         this.failureReason = reason;
         this.failedAt = LocalDateTime.now();
     }
 
-    public void markCanceled() {
+    public void markCanceled(LocalDateTime canceledAt) {
         this.status = PaymentStatus.CANCELED;
-        this.canceledAt = LocalDateTime.now();
+        this.canceledAt = canceledAt == null ? LocalDateTime.now() : canceledAt;
     }
 }

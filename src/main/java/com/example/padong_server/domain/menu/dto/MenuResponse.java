@@ -13,8 +13,6 @@ public class MenuResponse {
     private Integer originalPrice;
     private Integer discountPrice;
     private String pickupAvailableTime;
-    private Integer maxParticipants;
     private String recruitmentDeadline;
     private String paymentMethod;
-    private Integer currentParticipants;
 }

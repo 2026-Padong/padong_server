@@ -75,6 +75,7 @@ public class AuthService {
                                 .nickname(request.nickname())
                                 .picture(request.picture())
                                 .email(request.email())
+                                .role(request.role())
                                 .build()
                 ));
 

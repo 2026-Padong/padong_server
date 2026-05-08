@@ -43,8 +43,8 @@ class StoreLikeServiceTest {
     void toggleLike_createsLikeWhenMissing() {
         Store store = store(1L);
         when(storeRegistrationRepository.findById(1L)).thenReturn(Optional.of(store));
-        when(storeLikeRepository.findByStoreRegistrationIdAndUserId(1L, 10L)).thenReturn(Optional.empty());
-        when(storeLikeRepository.countByStoreRegistrationId(1L)).thenReturn(1L);
+        when(storeLikeRepository.findByStoreIdAndUserId(1L, 10L)).thenReturn(Optional.empty());
+        when(storeLikeRepository.countByStoreId(1L)).thenReturn(1L);
 
         StoreLikeToggleResponse response = storeLikeService.toggleLike(1L, 10L);
 
@@ -64,8 +64,8 @@ class StoreLikeServiceTest {
                 .userId(10L)
                 .build();
         when(storeRegistrationRepository.findById(1L)).thenReturn(Optional.of(store(1L)));
-        when(storeLikeRepository.findByStoreRegistrationIdAndUserId(1L, 10L)).thenReturn(Optional.of(storeLike));
-        when(storeLikeRepository.countByStoreRegistrationId(1L)).thenReturn(0L);
+        when(storeLikeRepository.findByStoreIdAndUserId(1L, 10L)).thenReturn(Optional.of(storeLike));
+        when(storeLikeRepository.countByStoreId(1L)).thenReturn(0L);
 
         StoreLikeToggleResponse response = storeLikeService.toggleLike(1L, 10L);
 
@@ -81,7 +81,7 @@ class StoreLikeServiceTest {
         boolean liked = storeLikeService.isLikedByUser(1L, null);
 
         assertThat(liked).isFalse();
-        verify(storeLikeRepository, never()).existsByStoreRegistrationIdAndUserId(any(), any());
+        verify(storeLikeRepository, never()).existsByStoreIdAndUserId(any(), any());
     }
 
     @Test

@@ -21,10 +21,7 @@ public class OrderFlowService {
 
     @Transactional
     public void createOrderIfMenuIsFull(Menu menu) {
-        if (menu.getCurrentParticipants() == null
-                || menu.getMaxParticipants() == null
-                || menu.getCurrentParticipants() < menu.getMaxParticipants()
-                || orderFlowRepository.existsByMenuId(menu.getId())) {
+        if (orderFlowRepository.existsByMenuId(menu.getId())) {
             return;
         }
 

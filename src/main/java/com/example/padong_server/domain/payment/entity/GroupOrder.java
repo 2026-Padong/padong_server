@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.payment.entity;
 
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,11 +22,15 @@ public class GroupOrder {
 
     private int minOrderAmount;
 
-    private int currentCount;
+    private int currentAmount;
 
-    private int maxCount;
+    private int currentParticipants;
 
-    private String status;
+    private int maxParticipants;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private GroupOrderStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)

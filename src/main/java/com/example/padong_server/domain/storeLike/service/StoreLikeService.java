@@ -23,7 +23,7 @@ public class StoreLikeService {
         validate(storeId, userId);
 
         Store store = findStore(storeId);
-        StoreLike existingLike = storeLikeRepository.findByStoreRegistrationIdAndUserId(storeId, userId)
+        StoreLike existingLike = storeLikeRepository.findByStoreIdAndUserId(storeId, userId)
                 .orElse(null);
         boolean liked;
 
@@ -42,7 +42,7 @@ public class StoreLikeService {
                 .storeId(storeId)
                 .userId(userId)
                 .liked(liked)
-                .likeCount(storeLikeRepository.countByStoreRegistrationId(storeId))
+                .likeCount(storeLikeRepository.countByStoreId(storeId))
                 .build();
     }
 
@@ -53,13 +53,13 @@ public class StoreLikeService {
         }
 
         validateStoreId(storeId);
-        return storeLikeRepository.existsByStoreRegistrationIdAndUserId(storeId, userId);
+        return storeLikeRepository.existsByStoreIdAndUserId(storeId, userId);
     }
 
     @Transactional(readOnly = true)
     public long getLikeCount(Long storeId) {
         validateStoreId(storeId);
-        return storeLikeRepository.countByStoreRegistrationId(storeId);
+        return storeLikeRepository.countByStoreId(storeId);
     }
 
     private Store findStore(Long storeId) {

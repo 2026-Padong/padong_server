@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.storeLike.entity;
 
-import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -36,7 +36,7 @@ public class StoreLike {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
-    private StoreRegistration storeRegistration;
+    private Store store;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;

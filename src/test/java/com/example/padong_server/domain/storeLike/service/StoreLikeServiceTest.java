@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import com.example.padong_server.domain.storeLike.dto.StoreLikeToggleResponse;
 import com.example.padong_server.domain.storeLike.entity.StoreLike;
 import com.example.padong_server.domain.storeLike.repository.StoreLikeRepository;
-import com.example.padong_server.domain.storeRegistration.entity.StoreRegistration;
+import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
@@ -41,7 +41,7 @@ class StoreLikeServiceTest {
     @Test
     @DisplayName("좋아요가 없으면 새로 추가하고 좋아요 수를 올린다")
     void toggleLike_createsLikeWhenMissing() {
-        StoreRegistration store = store(1L);
+        Store store = store(1L);
         when(storeRegistrationRepository.findById(1L)).thenReturn(Optional.of(store));
         when(storeLikeRepository.findByStoreRegistrationIdAndUserId(1L, 10L)).thenReturn(Optional.empty());
         when(storeLikeRepository.countByStoreRegistrationId(1L)).thenReturn(1L);
@@ -60,7 +60,7 @@ class StoreLikeServiceTest {
     void toggleLike_removesLikeWhenAlreadyExists() {
         StoreLike storeLike = StoreLike.builder()
                 .id(7L)
-                .storeRegistration(store(1L))
+                .store(store(1L))
                 .userId(10L)
                 .build();
         when(storeRegistrationRepository.findById(1L)).thenReturn(Optional.of(store(1L)));
@@ -93,8 +93,8 @@ class StoreLikeServiceTest {
                 .isEqualTo(ErrorCode.INVALID_STORE_LIKE_REQUEST);
     }
 
-    private StoreRegistration store(Long id) {
-        return StoreRegistration.builder()
+    private Store store(Long id) {
+        return Store.builder()
                 .id(id)
                 .name("테스트 가게")
                 .roadAddress("서울시 강남구")

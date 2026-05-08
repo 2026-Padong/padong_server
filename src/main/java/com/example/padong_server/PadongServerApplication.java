@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@EnableScheduling
+//@EnableScheduling
 public class PadongServerApplication {
 
     public static void main(String[] args) {

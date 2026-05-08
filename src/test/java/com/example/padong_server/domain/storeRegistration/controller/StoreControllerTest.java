@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @ExtendWith(MockitoExtension.class)
-class StoreRegistrationControllerTest {
+class StoreControllerTest {
 
     @Mock
     private StoreRegistrationService storeRegistrationService;

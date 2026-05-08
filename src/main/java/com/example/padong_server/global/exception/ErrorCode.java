@@ -61,6 +61,46 @@ public enum ErrorCode {
             HttpStatus.NOT_FOUND,
             "SEOUL_REALTIME_DATA_NOT_FOUND",
             "해당 AREA_NM의 실시간 데이터를 찾을 수 없습니다."),
+    ODSAY_API_KEY_MISSING(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "ODSAY_API_KEY_MISSING",
+            "대중교통 길찾기 API 설정이 없습니다."),
+    ODSAY_API_CALL_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "ODSAY_API_CALL_FAILED",
+            "대중교통 길찾기 API 호출에 실패했습니다."),
+    ODSAY_API_INVALID_PARAM(
+            HttpStatus.BAD_REQUEST,
+            "ODSAY_API_INVALID_PARAM",
+            "대중교통 길찾기 요청 값이 올바르지 않습니다."),
+    ODSAY_NO_DEPARTURE_STATION(
+            HttpStatus.NOT_FOUND,
+            "ODSAY_NO_DEPARTURE_STATION",
+            "출발 행정동 근처에 대중교통 정류장이 없습니다."),
+    ODSAY_NO_ARRIVAL_STATION(
+            HttpStatus.NOT_FOUND,
+            "ODSAY_NO_ARRIVAL_STATION",
+            "도착 행정동 근처에 대중교통 정류장이 없습니다."),
+    ODSAY_NO_STATION(
+            HttpStatus.NOT_FOUND,
+            "ODSAY_NO_STATION",
+            "출/도착 행정동 근처에 대중교통 정류장이 없습니다."),
+    ODSAY_OUT_OF_SERVICE_AREA(
+            HttpStatus.NOT_FOUND,
+            "ODSAY_OUT_OF_SERVICE_AREA",
+            "대중교통 길찾기 서비스 지역이 아닙니다."),
+    ODSAY_TOO_CLOSE(
+            HttpStatus.BAD_REQUEST,
+            "ODSAY_TOO_CLOSE",
+            "출발 행정동과 도착 행정동이 700m 이내입니다."),
+    ODSAY_NO_RESULT(
+            HttpStatus.NOT_FOUND,
+            "ODSAY_NO_RESULT",
+            "대중교통 길찾기 결과가 없습니다."),
+    TRANSIT_PATH_SAME_DONG(
+            HttpStatus.BAD_REQUEST,
+            "TRANSIT_PATH_SAME_DONG",
+            "출발 행정동과 도착 행정동이 같습니다."),
 
     // RentPrice
     RENT_PRICE_TRADE_TYPE_REQUIRED(

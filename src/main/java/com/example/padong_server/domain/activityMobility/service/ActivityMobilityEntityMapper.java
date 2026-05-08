@@ -4,6 +4,7 @@ import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityRep
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import lombok.RequiredArgsConstructor;
@@ -96,8 +97,7 @@ public class ActivityMobilityEntityMapper {
         for (AdminDong adminDong : adminDongRepository.findAll()) {
             String adminDongCode = adminDong.getAdminDongCode();
             Preconditions.validate(
-                    adminDongCode != null && !adminDongCode.isBlank(),
-                    INVALID_ADMIN_DONG_CODE_MESSAGE_FORMAT.formatted(adminDongCode));
+                    adminDongCode != null && !adminDongCode.isBlank(), ErrorCode.VALIDATION_ERROR);
             adminDongByCode.put(adminDongCode, adminDong);
             adminDongByDistrictAndName.put(
                     new AdminDongNameKey(
@@ -150,20 +150,14 @@ public class ActivityMobilityEntityMapper {
 
         ActivityMobilityCodebookRow codebookRow =
                 codebookByMobilityCode.get(normalizedMobilityDongCode);
-        Preconditions.validate(
-                codebookRow != null,
-                MISSING_CODEBOOK_ADMIN_DONG_CODE_MESSAGE_FORMAT.formatted(
-                        fieldName, normalizedMobilityDongCode));
+        Preconditions.validate(codebookRow != null, ErrorCode.VALIDATION_ERROR);
 
         String districtName =
                 extractDistrictName(codebookRow.fullName(), normalizedMobilityDongCode, fieldName);
         AdminDongNameKey key =
                 new AdminDongNameKey(districtName, normalizeDongName(codebookRow.name()));
         AdminDong adminDong = adminDongIndex.byDistrictAndName().get(key);
-        Preconditions.validate(
-                adminDong != null,
-                MISSING_CURRENT_ADMIN_DONG_BY_NAME_MESSAGE_FORMAT.formatted(
-                        fieldName, normalizedMobilityDongCode, codebookRow.fullName()));
+        Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
         return adminDong;
     }
 
@@ -173,10 +167,7 @@ public class ActivityMobilityEntityMapper {
             String mobilityDongCode,
             String fieldName) {
         AdminDong adminDong = adminDongIndex.byCode().get(adminDongCode);
-        Preconditions.validate(
-                adminDong != null,
-                MISSING_OVERRIDE_ADMIN_DONG_MESSAGE_FORMAT.formatted(
-                        fieldName, mobilityDongCode, adminDongCode));
+        Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
         return adminDong;
     }
 
@@ -207,7 +198,7 @@ public class ActivityMobilityEntityMapper {
         }
         Preconditions.validate(
                 entries.containsKey(SHARED_STRINGS_ENTRY) && entries.containsKey(SHEET_ENTRY),
-                INVALID_CODEBOOK_XLSX_STRUCTURE_MESSAGE_FORMAT.formatted(CODEBOOK_PATH));
+                ErrorCode.VALIDATION_ERROR);
         return entries;
     }
 
@@ -283,7 +274,7 @@ public class ActivityMobilityEntityMapper {
             int sharedStringIndex = Integer.parseInt(rawValue);
             Preconditions.validate(
                     sharedStringIndex >= 0 && sharedStringIndex < sharedStrings.size(),
-                    INVALID_SHARED_STRING_INDEX_MESSAGE_FORMAT.formatted(sharedStringIndex));
+                    ErrorCode.VALIDATION_ERROR);
             return sharedStrings.get(sharedStringIndex);
         }
         return rawValue;
@@ -306,15 +297,12 @@ public class ActivityMobilityEntityMapper {
 
     private Map<String, ActivityMobilityCodebookRow> toCodebookByMobilityCode(
             List<List<String>> sheetRows) {
-        Preconditions.validate(
-                !sheetRows.isEmpty(), EMPTY_CODEBOOK_MESSAGE_FORMAT.formatted(CODEBOOK_PATH));
+        Preconditions.validate(!sheetRows.isEmpty(), ErrorCode.VALIDATION_ERROR);
 
         List<String> headers =
                 sheetRows.get(0).stream().map(ActivityMobilityEntityMapper::normalize).toList();
         Preconditions.validate(
-                headers.equals(EXPECTED_CODEBOOK_HEADERS),
-                INVALID_CODEBOOK_HEADERS_MESSAGE_FORMAT.formatted(
-                        EXPECTED_CODEBOOK_HEADERS, headers));
+                headers.equals(EXPECTED_CODEBOOK_HEADERS), ErrorCode.VALIDATION_ERROR);
 
         Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode = new LinkedHashMap<>();
         for (int i = 1; i < sheetRows.size(); i++) {
@@ -335,29 +323,25 @@ public class ActivityMobilityEntityMapper {
                                     mobilityDongCode,
                                     normalize(row.get(3)),
                                     normalize(row.get(4))));
-            Preconditions.validate(
-                    previous == null,
-                    DUPLICATE_CODEBOOK_CODE_MESSAGE_FORMAT.formatted(mobilityDongCode));
+            Preconditions.validate(previous == null, ErrorCode.VALIDATION_ERROR);
         }
         return codebookByMobilityCode;
     }
 
     String normalizeMobilityDongCode(String mobilityDongCode) {
-        Preconditions.validate(mobilityDongCode != null, CSV_ADMIN_DONG_CODE_REQUIRED_MESSAGE);
+        Preconditions.validate(mobilityDongCode != null, ErrorCode.VALIDATION_ERROR);
         String normalized = normalize(mobilityDongCode);
         Preconditions.validate(
                 normalized.length() == CSV_DONG_CODE_LENGTH
                         && normalized.chars().allMatch(Character::isDigit),
-                INVALID_CSV_ADMIN_DONG_CODE_MESSAGE_FORMAT.formatted(mobilityDongCode));
+                ErrorCode.VALIDATION_ERROR);
         return normalized;
     }
 
     private String extractDistrictName(String fullName, String mobilityDongCode, String fieldName) {
         String[] parts = normalize(fullName).split(" ");
         Preconditions.validate(
-                parts.length >= 3 && "서울특별시".equals(parts[0]),
-                INVALID_CODEBOOK_ADDRESS_MESSAGE_FORMAT.formatted(
-                        fieldName, mobilityDongCode, fullName));
+                parts.length >= 3 && "서울특별시".equals(parts[0]), ErrorCode.VALIDATION_ERROR);
         return parts[1];
     }
 

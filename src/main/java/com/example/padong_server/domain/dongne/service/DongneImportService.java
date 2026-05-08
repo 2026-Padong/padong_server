@@ -11,6 +11,7 @@ import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
 import com.example.padong_server.domain.dongne.repository.LegalDongRepository;
 import com.example.padong_server.domain.dongne.util.DongneDataUtil;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import lombok.RequiredArgsConstructor;
@@ -86,25 +87,20 @@ public class DongneImportService {
         for (T row : rows) {
             String key = keyExtractor.apply(row);
             T existing = result.putIfAbsent(key, row);
-            Preconditions.validate(
-                    existing == null, DUPLICATE_KEY_MESSAGE_FORMAT.formatted(label, key));
+            Preconditions.validate(existing == null, ErrorCode.VALIDATION_ERROR);
         }
         return result;
     }
 
     private AdminDong requireAdmin(Map<String, AdminDong> adminByCode, String adminDongCode) {
         AdminDong adminDong = adminByCode.get(adminDongCode);
-        Preconditions.validate(
-                adminDong != null,
-                MAPPING_ADMIN_DONG_NOT_FOUND_MESSAGE_FORMAT.formatted(adminDongCode));
+        Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
         return adminDong;
     }
 
     private LegalDong requireLegal(Map<String, LegalDong> legalByCode, String legalDongCode) {
         LegalDong legalDong = legalByCode.get(legalDongCode);
-        Preconditions.validate(
-                legalDong != null,
-                MAPPING_LEGAL_DONG_NOT_FOUND_MESSAGE_FORMAT.formatted(legalDongCode));
+        Preconditions.validate(legalDong != null, ErrorCode.VALIDATION_ERROR);
         return legalDong;
     }
 }

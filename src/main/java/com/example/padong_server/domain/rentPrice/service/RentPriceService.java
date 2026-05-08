@@ -16,6 +16,7 @@ import com.example.padong_server.domain.rentPrice.entity.RentPriceTradeType;
 import com.example.padong_server.domain.rentPrice.entity.ResidenceBuildingType;
 import com.example.padong_server.domain.rentPrice.policy.RentPriceDisplayPolicy;
 import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import lombok.RequiredArgsConstructor;
@@ -47,9 +48,7 @@ public class RentPriceService {
 
     public List<AdminDongRentPriceSummaryResponse> getSummaries(
             List<String> requestedAdminDongCodes, String buildingTypeLabel, String tradeTypeLabel) {
-        Preconditions.validate(
-                requestedAdminDongCodes != null,
-                AdminDongRepository.ADMIN_DONG_CODE_REQUIRED_MESSAGE);
+        Preconditions.validate(requestedAdminDongCodes != null, ErrorCode.VALIDATION_ERROR);
         ResidenceBuildingType buildingType = selectedBuildingType(buildingTypeLabel);
         RentPriceTradeType tradeType = selectedTradeType(tradeTypeLabel);
         List<String> adminDongCodes = sanitizeAdminDongCodes(requestedAdminDongCodes);
@@ -97,9 +96,7 @@ public class RentPriceService {
     }
 
     public List<AdminDongRentPriceDetailResponse> getDetails(List<String> requestedAdminDongCodes) {
-        Preconditions.validate(
-                requestedAdminDongCodes != null,
-                AdminDongRepository.ADMIN_DONG_CODE_REQUIRED_MESSAGE);
+        Preconditions.validate(requestedAdminDongCodes != null, ErrorCode.VALIDATION_ERROR);
         List<String> adminDongCodes = sanitizeAdminDongCodes(requestedAdminDongCodes);
         if (adminDongCodes.isEmpty()) {
             return List.of();
@@ -122,7 +119,7 @@ public class RentPriceService {
 
     public Map<String, SelectedRentPriceResponse> getSelectedRentPrices(
             List<String> requestedAdminDongCodes, RentPriceFilterCriteria criteria) {
-        Preconditions.validate(criteria != null, RENT_PRICE_FILTER_REQUIRED_MESSAGE);
+        Preconditions.validate(criteria != null, ErrorCode.VALIDATION_ERROR);
         Map<String, SelectedRentPriceResponse> rentPriceByAdminDongCode = new LinkedHashMap<>();
         for (AdminDongRentPriceDetailResponse detail : getDetails(requestedAdminDongCodes)) {
             SelectedRentPriceResponse rentPrice = toSelectedRentPriceResponse(detail, criteria);
@@ -135,7 +132,7 @@ public class RentPriceService {
 
     public Set<String> findMatchedAdminDongCodes(
             List<String> requestedAdminDongCodes, RentPriceFilterCriteria criteria) {
-        Preconditions.validate(criteria != null, RENT_PRICE_FILTER_REQUIRED_MESSAGE);
+        Preconditions.validate(criteria != null, ErrorCode.VALIDATION_ERROR);
         Set<String> matchedAdminDongCodes = new LinkedHashSet<>();
         for (AdminDongRentPriceDetailResponse detail : getDetails(requestedAdminDongCodes)) {
             if (matchesRentPrice(detail, criteria)) {
@@ -260,7 +257,7 @@ public class RentPriceService {
     private String sanitizeAdminDongCode(String adminDongCode) {
         Preconditions.validate(
                 adminDongCode != null && !adminDongCode.trim().isEmpty(),
-                AdminDongRepository.ADMIN_DONG_CODE_REQUIRED_MESSAGE);
+                ErrorCode.VALIDATION_ERROR);
         return adminDongCode.trim();
     }
 
@@ -271,9 +268,7 @@ public class RentPriceService {
         }
         for (String adminDongCode : adminDongCodes) {
             Preconditions.validate(
-                    adminDongByCode.containsKey(adminDongCode),
-                    AdminDongRepository.ADMIN_DONG_NOT_FOUND_MESSAGE_FORMAT.formatted(
-                            adminDongCode));
+                    adminDongByCode.containsKey(adminDongCode), ErrorCode.VALIDATION_ERROR);
         }
         return adminDongByCode;
     }

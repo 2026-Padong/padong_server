@@ -2,6 +2,7 @@ package com.example.padong_server.domain.activityMobility.service;
 
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityCsvRow;
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityRepresentativeRow;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import lombok.extern.slf4j.Slf4j;
@@ -72,8 +73,7 @@ public class ActivityMobilityAggregator {
     int countWeekdays(String startMonth, String endMonth) {
         YearMonth start = parseMonth(startMonth, "startMonth");
         YearMonth end = parseMonth(endMonth, "endMonth");
-        Preconditions.validate(
-                !start.isAfter(end), INVALID_PERIOD_MESSAGE_FORMAT.formatted(startMonth, endMonth));
+        Preconditions.validate(!start.isAfter(end), ErrorCode.VALIDATION_ERROR);
 
         int count = 0;
         LocalDate date = start.atDay(1);
@@ -98,9 +98,7 @@ public class ActivityMobilityAggregator {
         YearMonth start = parseMonth(startMonth, "startMonth");
         YearMonth end = parseMonth(endMonth, "endMonth");
         Preconditions.validate(
-                !rowMonth.isBefore(start) && !rowMonth.isAfter(end),
-                ROW_MONTH_OUTSIDE_PERIOD_MESSAGE_FORMAT.formatted(
-                        row.month(), startMonth, endMonth));
+                !rowMonth.isBefore(start) && !rowMonth.isAfter(end), ErrorCode.VALIDATION_ERROR);
     }
 
     private YearMonth parseMonth(String month, String label) {

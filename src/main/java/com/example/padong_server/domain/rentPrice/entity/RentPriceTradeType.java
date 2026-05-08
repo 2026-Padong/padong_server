@@ -39,7 +39,7 @@ public enum RentPriceTradeType {
     public static RentPriceTradeType from(String value) {
         String normalizedValue = trimToNull(value);
         Preconditions.validate(
-                normalizedValue != null, ErrorCode.RENT_PRICE_TRADE_TYPE_REQUIRED.getMessage());
+                normalizedValue != null, ErrorCode.RENT_PRICE_TRADE_TYPE_REQUIRED);
         return Arrays.stream(values())
                 .filter(
                         type ->

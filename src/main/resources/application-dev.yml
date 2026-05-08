@@ -72,3 +72,7 @@ jwt:
 sk-address-api:
   base-url: ${SK_ADDRESS_API_BASE_URL:https://apis.openapi.sk.com}
   app-key: ${SK_OPEN_API_KEY:}
+
+odsay-api:
+  base-url: ${ODSAY_API_BASE_URL:https://api.odsay.com}
+  api-key: ${ODSAY_API_KEY:}

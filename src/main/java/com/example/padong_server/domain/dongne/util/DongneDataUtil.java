@@ -3,6 +3,7 @@ package com.example.padong_server.domain.dongne.util;
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.dto.DongMappingCsvRow;
 import com.example.padong_server.domain.dongne.dto.LegalDongCsvRow;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import org.springframework.core.io.ClassPathResource;
@@ -110,8 +111,7 @@ public class DongneDataUtil {
                 new BufferedReader(
                         new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
-            Preconditions.validate(
-                    headerLine != null, CSV_HEADER_MISSING_MESSAGE_FORMAT.formatted(path));
+            Preconditions.validate(headerLine != null, ErrorCode.VALIDATION_ERROR);
 
             List<String> headers = parseCsvLine(headerLine).stream().map(this::normalize).toList();
             validateHeaders(path, headers, expectedHeaders);
@@ -138,16 +138,11 @@ public class DongneDataUtil {
 
     private void validateHeaders(
             String path, List<String> actualHeaders, List<String> expectedHeaders) {
-        Preconditions.validate(
-                actualHeaders.equals(expectedHeaders),
-                UNEXPECTED_CSV_HEADERS_MESSAGE_FORMAT.formatted(
-                        path, expectedHeaders, actualHeaders));
+        Preconditions.validate(actualHeaders.equals(expectedHeaders), ErrorCode.VALIDATION_ERROR);
     }
 
     private Map<String, String> toRowMap(List<String> headers, List<String> values) {
-        Preconditions.validate(
-                values.size() == headers.size(),
-                CSV_COLUMN_COUNT_MISMATCH_MESSAGE_FORMAT.formatted(headers.size(), values.size()));
+        Preconditions.validate(values.size() == headers.size(), ErrorCode.VALIDATION_ERROR);
 
         Map<String, String> row = new LinkedHashMap<>();
         for (int i = 0; i < headers.size(); i++) {

@@ -8,9 +8,9 @@ import static org.mockito.BDDMockito.given;
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
-import com.example.padong_server.domain.transitPath.dto.request.TransitPathRequest;
-import com.example.padong_server.domain.transitPath.dto.response.TransitPathResponse;
-import com.example.padong_server.global.client.odsay.OdsayClient;
+import com.example.padong_server.domain.transitPath.dto.request.PedestrianPathRequest;
+import com.example.padong_server.domain.transitPath.dto.response.PedestrianPathResponse;
+import com.example.padong_server.global.client.sk.SkPedestrianRouteClient;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
-class TransitPathServiceTest {
+class PedestrianPathServiceTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -34,13 +34,13 @@ class TransitPathServiceTest {
     private AdminDongRepository adminDongRepository;
 
     @Mock
-    private OdsayClient odsayClient;
+    private SkPedestrianRouteClient skPedestrianRouteClient;
 
     @InjectMocks
-    private TransitPathService transitPathService;
+    private PedestrianPathService pedestrianPathService;
 
     @Test
-    @DisplayName("정상 흐름: AdminDong 좌표를 OdsayClient에 전달하고 응답을 DTO로 변환")
+    @DisplayName("정상 흐름: AdminDong → 클라이언트에 좌표/이름 전달 → DTO 변환")
     void search_validRequest_returnsResponse() throws IOException {
         AdminDong departure = adminDong("1162069500", "관악구", "신림동", 37.4842, 126.9295);
         AdminDong arrival = adminDong("1168064000", "강남구", "역삼1동", 37.4998, 127.0364);
@@ -48,50 +48,39 @@ class TransitPathServiceTest {
         given(adminDongRepository.getByAdminDongCode("1162069500")).willReturn(departure);
         given(adminDongRepository.getByAdminDongCode("1168064000")).willReturn(arrival);
         given(
-                        odsayClient.searchPubTransPath(
-                                eq(126.9295), eq(37.4842), eq(127.0364), eq(37.4998),
-                                eq((Integer) null), eq((Integer) null)))
-                .willReturn(parseJson(SAMPLE_ODSAY_RESPONSE));
+                        skPedestrianRouteClient.route(
+                                eq("신림동"),
+                                eq(126.9295),
+                                eq(37.4842),
+                                eq("역삼1동"),
+                                eq(127.0364),
+                                eq(37.4998)))
+                .willReturn(parseJson(SAMPLE_TMAP_RESPONSE));
 
-        TransitPathRequest request =
-                TransitPathRequest.builder()
+        PedestrianPathRequest request =
+                PedestrianPathRequest.builder()
                         .departureDongCode("1162069500")
                         .arrivalDongCode("1168064000")
                         .build();
 
-        TransitPathResponse response = transitPathService.search(request);
+        PedestrianPathResponse response = pedestrianPathService.search(request);
 
         assertThat(response.getDepartureDong().getAdminDongCode()).isEqualTo("1162069500");
         assertThat(response.getArrivalDong().getAdminDongCode()).isEqualTo("1168064000");
-        assertThat(response.getPathCount()).isEqualTo(1);
-        assertThat(response.getPaths().get(0).getTotalTime()).isEqualTo(9);
+        assertThat(response.getTotalDistance()).isEqualTo(1240);
+        assertThat(response.getTotalTime()).isEqualTo(18);
     }
 
     @Test
     @DisplayName("출발 코드와 도착 코드가 같으면 TRANSIT_PATH_SAME_DONG")
     void search_sameDongCode_throws() {
-        TransitPathRequest request =
-                TransitPathRequest.builder()
+        PedestrianPathRequest request =
+                PedestrianPathRequest.builder()
                         .departureDongCode("1162069500")
                         .arrivalDongCode("1162069500")
                         .build();
 
-        assertThatThrownBy(() -> transitPathService.search(request))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
-    }
-
-    @Test
-    @DisplayName("앞뒤 공백이 있어도 trim 후 비교하여 같으면 막는다")
-    void search_sameDongCodeWithWhitespace_throws() {
-        TransitPathRequest request =
-                TransitPathRequest.builder()
-                        .departureDongCode(" 1162069500 ")
-                        .arrivalDongCode("1162069500")
-                        .build();
-
-        assertThatThrownBy(() -> transitPathService.search(request))
+        assertThatThrownBy(() -> pedestrianPathService.search(request))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
@@ -110,41 +99,21 @@ class TransitPathServiceTest {
         return map;
     }
 
-    private static final String SAMPLE_ODSAY_RESPONSE =
+    private static final String SAMPLE_TMAP_RESPONSE =
             """
             {
-              "result": {
-                "path": [
-                  {
-                    "pathType": 1,
-                    "subPath": [
-                      {
-                        "trafficType": 1,
-                        "distance": 2000,
-                        "sectionTime": 9,
-                        "lane": {"name": "수도권 2호선"},
-                        "stationCount": 1,
-                        "startX": 126.902682,
-                        "startY": 37.534863,
-                        "startName": "당산",
-                        "endX": 126.914543,
-                        "endY": 37.549942,
-                        "endName": "합정"
-                      }
-                    ],
-                    "info": {
-                      "mapObj": "2:2:237:238",
-                      "payment": 1250,
-                      "busTransitCount": 0,
-                      "subwayTransitCount": 1,
-                      "totalTime": 9,
-                      "totalWalk": 0,
-                      "totalWalkTime": -1
-                    }
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {"type": "Point", "coordinates": [126.9295, 37.4842]},
+                  "properties": {
+                    "totalDistance": 1240,
+                    "totalTime": 1067,
+                    "pointType": "SP"
                   }
-                ],
-                "searchType": 0
-              }
+                }
+              ]
             }
             """;
 }

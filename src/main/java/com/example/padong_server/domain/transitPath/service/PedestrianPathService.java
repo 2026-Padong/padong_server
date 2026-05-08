@@ -2,9 +2,9 @@ package com.example.padong_server.domain.transitPath.service;
 
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
-import com.example.padong_server.domain.transitPath.dto.request.TransitPathRequest;
-import com.example.padong_server.domain.transitPath.dto.response.TransitPathResponse;
-import com.example.padong_server.global.client.odsay.OdsayClient;
+import com.example.padong_server.domain.transitPath.dto.request.PedestrianPathRequest;
+import com.example.padong_server.domain.transitPath.dto.response.PedestrianPathResponse;
+import com.example.padong_server.global.client.sk.SkPedestrianRouteClient;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 import lombok.RequiredArgsConstructor;
@@ -14,12 +14,12 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class TransitPathService {
+public class PedestrianPathService {
 
     private final AdminDongRepository adminDongRepository;
-    private final OdsayClient odsayClient;
+    private final SkPedestrianRouteClient skPedestrianRouteClient;
 
-    public TransitPathResponse search(TransitPathRequest request) {
+    public PedestrianPathResponse search(PedestrianPathRequest request) {
         String departureCode = request.getDepartureDongCode().trim();
         String arrivalCode = request.getArrivalDongCode().trim();
         Preconditions.validate(
@@ -28,14 +28,14 @@ public class TransitPathService {
         AdminDong departureDong = adminDongRepository.getByAdminDongCode(departureCode);
         AdminDong arrivalDong = adminDongRepository.getByAdminDongCode(arrivalCode);
 
-        Map<String, Object> raw = odsayClient.searchPubTransPath(
+        Map<String, Object> raw = skPedestrianRouteClient.route(
+                departureDong.getAdminDongName(),
                 departureDong.getLongitude(),
                 departureDong.getLatitude(),
+                arrivalDong.getAdminDongName(),
                 arrivalDong.getLongitude(),
-                arrivalDong.getLatitude(),
-                request.getOpt(),
-                request.getSearchPathType());
+                arrivalDong.getLatitude());
 
-        return TransitPathResponse.from(departureDong, arrivalDong, raw);
+        return PedestrianPathResponse.from(departureDong, arrivalDong, raw);
     }
 }

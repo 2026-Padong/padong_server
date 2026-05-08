@@ -101,6 +101,18 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "TRANSIT_PATH_SAME_DONG",
             "출발 행정동과 도착 행정동이 같습니다."),
+    SK_PEDESTRIAN_API_KEY_MISSING(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "SK_PEDESTRIAN_API_KEY_MISSING",
+            "보행자 경로 API 설정이 없습니다."),
+    SK_PEDESTRIAN_API_CALL_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "SK_PEDESTRIAN_API_CALL_FAILED",
+            "보행자 경로 API 호출에 실패했습니다."),
+    SK_PEDESTRIAN_NO_RESULT(
+            HttpStatus.NOT_FOUND,
+            "SK_PEDESTRIAN_NO_RESULT",
+            "보행자 경로 결과가 없습니다."),
 
     // RentPrice
     RENT_PRICE_TRADE_TYPE_REQUIRED(

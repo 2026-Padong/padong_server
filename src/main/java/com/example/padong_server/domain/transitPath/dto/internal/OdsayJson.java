@@ -1,4 +1,4 @@
-package com.example.padong_server.domain.transitPath.dto;
+package com.example.padong_server.domain.transitPath.dto.internal;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -7,12 +7,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-final class OdsayJson {
+public final class OdsayJson {
 
     private OdsayJson() {}
 
     @SuppressWarnings("unchecked")
-    static Map<String, Object> map(Object value) {
+    public static Map<String, Object> map(Object value) {
         if (value instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
         }
@@ -20,7 +20,7 @@ final class OdsayJson {
     }
 
     @SuppressWarnings("unchecked")
-    static List<Map<String, Object>> mapList(Object value) {
+    public static List<Map<String, Object>> mapList(Object value) {
         if (!(value instanceof List<?> list)) {
             return Collections.emptyList();
         }
@@ -34,7 +34,7 @@ final class OdsayJson {
     }
 
     @SuppressWarnings("unchecked")
-    static Map<String, Object> firstMap(Object value) {
+    public static Map<String, Object> firstMap(Object value) {
         if (value instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
         }
@@ -48,11 +48,11 @@ final class OdsayJson {
         return Map.of();
     }
 
-    static int intValue(Object value, int defaultValue) {
+    public static int intValue(Object value, int defaultValue) {
         return value instanceof Number number ? number.intValue() : defaultValue;
     }
 
-    static Integer nullableNonNegativeInt(Object value) {
+    public static Integer nullableNonNegativeInt(Object value) {
         if (!(value instanceof Number number)) {
             return null;
         }
@@ -60,11 +60,11 @@ final class OdsayJson {
         return intValue < 0 ? null : intValue;
     }
 
-    static double doubleValue(Object value, double defaultValue) {
+    public static double doubleValue(Object value, double defaultValue) {
         return value instanceof Number number ? number.doubleValue() : defaultValue;
     }
 
-    static String stringValue(Object value) {
+    public static String stringValue(Object value) {
         return Objects.toString(value, "");
     }
 }

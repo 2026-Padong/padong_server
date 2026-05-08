@@ -1,4 +1,4 @@
-package com.example.padong_server.domain.transitPath.dto;
+package com.example.padong_server.domain.transitPath.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -15,8 +15,8 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "행정동 A → 행정동 B 대중교통 길찾기 요청")
-public class TransitPathRequest {
+@Schema(description = "행정동 A → 행정동 B 보행자 경로 요청")
+public class PedestrianPathRequest {
 
     @Schema(description = "출발 행정동 코드", example = "1162069500")
     @NotBlank
@@ -25,10 +25,4 @@ public class TransitPathRequest {
     @Schema(description = "도착 행정동 코드", example = "1168064000")
     @NotBlank
     private String arrivalDongCode;
-
-    @Schema(description = "정렬 방식 (0: 추천경로, 1: 타입별 정렬)", example = "0")
-    private Integer opt;
-
-    @Schema(description = "도시내 경로수단 (0: 모두, 1: 지하철, 2: 버스)", example = "0")
-    private Integer searchPathType;
 }

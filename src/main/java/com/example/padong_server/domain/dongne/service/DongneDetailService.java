@@ -37,12 +37,12 @@ public class DongneDetailService {
     @Transactional(readOnly = true)
     public ResponseDTO<DongneDetailResponse> getDetail(
             String adminDongCode,
-            String workAdminDongCode,
+            String arrivalAdminDongCode,
             Long userId
     ) {
         AdminDong selectedDong = dongneService.findAdminDongByCode(adminDongCode);
-        AdminDong workDong = hasText(workAdminDongCode)
-                ? dongneService.findAdminDongByCode(workAdminDongCode)
+        AdminDong workDong = hasText(arrivalAdminDongCode)
+                ? dongneService.findAdminDongByCode(arrivalAdminDongCode)
                 : null;
 
         Optional<Mobility> mobility = workDong == null

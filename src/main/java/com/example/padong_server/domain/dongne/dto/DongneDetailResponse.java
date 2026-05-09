@@ -30,7 +30,7 @@ public class DongneDetailResponse {
     private AdminDongRentPriceDetailResponse rentPrice;
 
     @Schema(description = "선택 동네 → 직장 행정동 통합 길찾기 (대중교통/보행자/자동차). "
-            + "workAdminDongCode 미입력이거나 출발=도착(같은 행정동)이면 null.")
+            + "arrivalAdminDongCode 미입력이거나 출발=도착(같은 행정동)이면 null.")
     private PathAllResponse.Paths paths;
 
     @Schema(description = "좋아요 수", example = "23")

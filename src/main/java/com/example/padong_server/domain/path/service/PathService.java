@@ -4,9 +4,11 @@ import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.path.dto.internal.PathSummary;
 import com.example.padong_server.domain.path.dto.request.CarPathRequest;
+import com.example.padong_server.domain.path.dto.request.PathAllRequest;
 import com.example.padong_server.domain.path.dto.request.PedestrianPathRequest;
 import com.example.padong_server.domain.path.dto.request.TransitPathRequest;
 import com.example.padong_server.domain.path.dto.response.CarPathResponse;
+import com.example.padong_server.domain.path.dto.response.PathAllResponse;
 import com.example.padong_server.domain.path.dto.response.PedestrianPathResponse;
 import com.example.padong_server.domain.path.dto.response.TransitPathResponse;
 import com.example.padong_server.domain.path.entity.PathMode;
@@ -14,6 +16,7 @@ import com.example.padong_server.domain.path.repository.PathRecordRepository;
 import com.example.padong_server.global.client.odsay.OdsayClient;
 import com.example.padong_server.global.client.sk.SkCarRouteClient;
 import com.example.padong_server.global.client.sk.SkPedestrianRouteClient;
+import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
@@ -39,64 +43,89 @@ public class PathService {
     @Transactional
     public TransitPathResponse searchTransit(TransitPathRequest request) {
         DongPair dongs = lookup(request.getDepartureDongCode(), request.getArrivalDongCode());
-        PathSummary summary =
-                findFresh(PathMode.TRANSIT, dongs.depCode(), dongs.arrCode())
-                        .orElseGet(() -> {
-                            PathSummary fresh =
-                                    TransitPathResponse.parseSummary(
-                                            odsayClient.searchPubTransPath(
-                                                    dongs.departure().getLongitude(),
-                                                    dongs.departure().getLatitude(),
-                                                    dongs.arrival().getLongitude(),
-                                                    dongs.arrival().getLatitude(),
-                                                    request.getOpt(),
-                                                    request.getSearchPathType()));
-                            upsert(PathMode.TRANSIT, dongs.depCode(), dongs.arrCode(), fresh);
-                            return fresh;
-                        });
+        PathSummary summary = transitSummary(dongs, request.getOpt(), request.getSearchPathType());
         return TransitPathResponse.of(dongs.departure(), dongs.arrival(), summary);
     }
 
     @Transactional
     public PedestrianPathResponse searchPedestrian(PedestrianPathRequest request) {
         DongPair dongs = lookup(request.getDepartureDongCode(), request.getArrivalDongCode());
-        PathSummary summary =
-                findFresh(PathMode.PEDESTRIAN, dongs.depCode(), dongs.arrCode())
-                        .orElseGet(() -> {
-                            PathSummary fresh =
-                                    PedestrianPathResponse.parseSummary(
-                                            skPedestrianRouteClient.route(
-                                                    dongs.departure().getAdminDongName(),
-                                                    dongs.departure().getLongitude(),
-                                                    dongs.departure().getLatitude(),
-                                                    dongs.arrival().getAdminDongName(),
-                                                    dongs.arrival().getLongitude(),
-                                                    dongs.arrival().getLatitude()));
-                            upsert(PathMode.PEDESTRIAN, dongs.depCode(), dongs.arrCode(), fresh);
-                            return fresh;
-                        });
+        PathSummary summary = pedestrianSummary(dongs);
         return PedestrianPathResponse.of(dongs.departure(), dongs.arrival(), summary);
     }
 
     @Transactional
     public CarPathResponse searchCar(CarPathRequest request) {
         DongPair dongs = lookup(request.getDepartureDongCode(), request.getArrivalDongCode());
-        PathSummary summary =
-                findFresh(PathMode.CAR, dongs.depCode(), dongs.arrCode())
-                        .orElseGet(() -> {
-                            PathSummary fresh =
-                                    CarPathResponse.parseSummary(
-                                            skCarRouteClient.route(
-                                                    dongs.departure().getAdminDongName(),
-                                                    dongs.departure().getLongitude(),
-                                                    dongs.departure().getLatitude(),
-                                                    dongs.arrival().getAdminDongName(),
-                                                    dongs.arrival().getLongitude(),
-                                                    dongs.arrival().getLatitude()));
-                            upsert(PathMode.CAR, dongs.depCode(), dongs.arrCode(), fresh);
-                            return fresh;
-                        });
+        PathSummary summary = carSummary(dongs);
         return CarPathResponse.of(dongs.departure(), dongs.arrival(), summary);
+    }
+
+    @Transactional
+    public PathAllResponse searchAll(PathAllRequest request) {
+        DongPair dongs = lookup(request.getDepartureDongCode(), request.getArrivalDongCode());
+        PathSummary transit = transitSummary(dongs, null, null);
+        PathSummary pedestrian = pedestrianSummary(dongs);
+        PathSummary car = carSummary(dongs);
+        return PathAllResponse.of(dongs.departure(), dongs.arrival(), transit, pedestrian, car);
+    }
+
+    private PathSummary transitSummary(DongPair dongs, Integer opt, Integer searchPathType) {
+        try {
+            return summaryFor(
+                    PathMode.TRANSIT,
+                    dongs,
+                    () -> TransitPathResponse.parseSummary(
+                            odsayClient.searchPubTransPath(
+                                    dongs.departure().getLongitude(),
+                                    dongs.departure().getLatitude(),
+                                    dongs.arrival().getLongitude(),
+                                    dongs.arrival().getLatitude(),
+                                    opt,
+                                    searchPathType)));
+        } catch (CustomException exception) {
+            if (exception.getErrorCode().name().startsWith("ODSAY_")) {
+                return new PathSummary(0, 0);
+            }
+            throw exception;
+        }
+    }
+
+    private PathSummary pedestrianSummary(DongPair dongs) {
+        return summaryFor(
+                PathMode.PEDESTRIAN,
+                dongs,
+                () -> PedestrianPathResponse.parseSummary(
+                        skPedestrianRouteClient.route(
+                                dongs.departure().getAdminDongName(),
+                                dongs.departure().getLongitude(),
+                                dongs.departure().getLatitude(),
+                                dongs.arrival().getAdminDongName(),
+                                dongs.arrival().getLongitude(),
+                                dongs.arrival().getLatitude())));
+    }
+
+    private PathSummary carSummary(DongPair dongs) {
+        return summaryFor(
+                PathMode.CAR,
+                dongs,
+                () -> CarPathResponse.parseSummary(
+                        skCarRouteClient.route(
+                                dongs.departure().getAdminDongName(),
+                                dongs.departure().getLongitude(),
+                                dongs.departure().getLatitude(),
+                                dongs.arrival().getAdminDongName(),
+                                dongs.arrival().getLongitude(),
+                                dongs.arrival().getLatitude())));
+    }
+
+    private PathSummary summaryFor(PathMode mode, DongPair dongs, Supplier<PathSummary> fetcher) {
+        return findFresh(mode, dongs.depCode(), dongs.arrCode())
+                .orElseGet(() -> {
+                    PathSummary fresh = fetcher.get();
+                    upsert(mode, dongs.depCode(), dongs.arrCode(), fresh);
+                    return fresh;
+                });
     }
 
     private Optional<PathSummary> findFresh(

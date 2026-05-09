@@ -1,9 +1,11 @@
 package com.example.padong_server.domain.path.controller;
 
 import com.example.padong_server.domain.path.dto.request.CarPathRequest;
+import com.example.padong_server.domain.path.dto.request.PathAllRequest;
 import com.example.padong_server.domain.path.dto.request.PedestrianPathRequest;
 import com.example.padong_server.domain.path.dto.request.TransitPathRequest;
 import com.example.padong_server.domain.path.dto.response.CarPathResponse;
+import com.example.padong_server.domain.path.dto.response.PathAllResponse;
 import com.example.padong_server.domain.path.dto.response.PedestrianPathResponse;
 import com.example.padong_server.domain.path.dto.response.TransitPathResponse;
 import com.example.padong_server.domain.path.service.PathService;
@@ -36,6 +38,59 @@ import org.springframework.web.bind.annotation.RestController;
 public class PathController {
 
     private final PathService pathService;
+
+    @GetMapping
+    @Operation(
+            summary = "행정동 A → 행정동 B 통합 길찾기 (대중교통/보행자/자동차)",
+            description =
+                    """
+                    행정동 코드 2개를 입력받아 대중교통/보행자/자동차 3개 모드의
+                    소요시간(분)과 거리(m)를 한번에 반환한다.
+                    각 모드는 DB record (1일 EXPIRATION) 우선 조회 후 miss 시 외부 API 호출.
+                    """)
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "통합 길찾기 조회 성공",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema = @Schema(implementation = ResponseDTO.class),
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                                                        {
+                                                          "statusCode": "200",
+                                                          "message": "통합 길찾기 조회 성공",
+                                                          "data": {
+                                                            "departureDong": {
+                                                              "adminDongCode": "1162069500",
+                                                              "address": "서울특별시 관악구 신림동"
+                                                            },
+                                                            "arrivalDong": {
+                                                              "adminDongCode": "1168064000",
+                                                              "address": "서울특별시 강남구 역삼1동"
+                                                            },
+                                                            "paths": {
+                                                              "transit":    { "totalTime": 9,  "totalDistance": 2000 },
+                                                              "pedestrian": { "totalTime": 18, "totalDistance": 1240 },
+                                                              "car":        { "totalTime": 18, "totalDistance": 12500 }
+                                                            }
+                                                          }
+                                                        }
+                                                        """))),
+        @ApiResponse(responseCode = "400", description = "필수값 누락 / 출발=도착 / 700m 이내"),
+        @ApiResponse(responseCode = "404", description = "행정동 미존재 또는 결과 없음"),
+        @ApiResponse(responseCode = "502", description = "외부 API 호출 실패"),
+        @ApiResponse(responseCode = "503", description = "외부 API 키 미설정")
+    })
+    public ResponseEntity<ResponseDTO<PathAllResponse>> searchAllPath(
+            @Valid @ParameterObject PathAllRequest request) {
+        PathAllResponse response = pathService.searchAll(request);
+        return ResponseEntity.ok(
+                ResponseDTO.res(HttpStatus.OK, "통합 길찾기 조회 성공", response));
+    }
 
     @GetMapping("/transit")
     @Operation(

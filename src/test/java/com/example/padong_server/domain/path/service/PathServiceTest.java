@@ -14,9 +14,11 @@ import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.path.dto.request.CarPathRequest;
+import com.example.padong_server.domain.path.dto.request.PathAllRequest;
 import com.example.padong_server.domain.path.dto.request.PedestrianPathRequest;
 import com.example.padong_server.domain.path.dto.request.TransitPathRequest;
 import com.example.padong_server.domain.path.dto.response.CarPathResponse;
+import com.example.padong_server.domain.path.dto.response.PathAllResponse;
 import com.example.padong_server.domain.path.dto.response.PedestrianPathResponse;
 import com.example.padong_server.domain.path.dto.response.TransitPathResponse;
 import com.example.padong_server.domain.path.entity.PathMode;
@@ -257,6 +259,110 @@ class PathServiceTest {
             verify(pathRecordRepository).upsert(
                     eq("CAR"), eq("1162069500"), eq("1168064000"),
                     eq(18), eq(12500), any(LocalDateTime.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("통합 (searchAll)")
+    class All {
+
+        @Test
+        @DisplayName("3개 모드 모두 DB hit: 외부 API 호출 0회")
+        void search_allFresh_skipsAllExternalCalls() {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.TRANSIT, "1162069500", "1168064000"))
+                    .willReturn(Optional.of(record(PathMode.TRANSIT, 9, 2000, LocalDateTime.now())));
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.PEDESTRIAN, "1162069500", "1168064000"))
+                    .willReturn(Optional.of(record(PathMode.PEDESTRIAN, 18, 1240, LocalDateTime.now())));
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.CAR, "1162069500", "1168064000"))
+                    .willReturn(Optional.of(record(PathMode.CAR, 18, 12500, LocalDateTime.now())));
+
+            PathAllResponse response =
+                    pathService.searchAll(
+                            PathAllRequest.builder()
+                                    .departureDongCode("1162069500")
+                                    .arrivalDongCode("1168064000")
+                                    .build());
+
+            assertThat(response.getDepartureDong().getAdminDongCode()).isEqualTo("1162069500");
+            assertThat(response.getArrivalDong().getAdminDongCode()).isEqualTo("1168064000");
+            assertThat(response.getPaths().getTransit().totalTime()).isEqualTo(9);
+            assertThat(response.getPaths().getTransit().totalDistance()).isEqualTo(2000);
+            assertThat(response.getPaths().getPedestrian().totalTime()).isEqualTo(18);
+            assertThat(response.getPaths().getPedestrian().totalDistance()).isEqualTo(1240);
+            assertThat(response.getPaths().getCar().totalTime()).isEqualTo(18);
+            assertThat(response.getPaths().getCar().totalDistance()).isEqualTo(12500);
+
+            verify(odsayClient, never()).searchPubTransPath(
+                    any(Double.class), any(Double.class), any(Double.class), any(Double.class),
+                    any(), any());
+            verify(skPedestrianRouteClient, never()).route(
+                    any(), any(Double.class), any(Double.class),
+                    any(), any(Double.class), any(Double.class));
+            verify(skCarRouteClient, never()).route(
+                    any(), any(Double.class), any(Double.class),
+                    any(), any(Double.class), any(Double.class));
+            verify(pathRecordRepository, never()).upsert(
+                    anyString(), anyString(), anyString(), anyInt(), anyInt(), any());
+        }
+
+        @Test
+        @DisplayName("모두 DB miss: 3개 모드 모두 외부 API 호출 + 각각 UPSERT")
+        void search_allMiss_callsAllExternalAndUpserts() throws IOException {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            any(), eq("1162069500"), eq("1168064000")))
+                    .willReturn(Optional.empty());
+            given(odsayClient.searchPubTransPath(
+                            any(Double.class), any(Double.class), any(Double.class),
+                            any(Double.class), any(), any()))
+                    .willReturn(parseJson(SAMPLE_ODSAY_RESPONSE));
+            given(skPedestrianRouteClient.route(
+                            any(), any(Double.class), any(Double.class),
+                            any(), any(Double.class), any(Double.class)))
+                    .willReturn(parseJson(SAMPLE_TMAP_PEDESTRIAN_RESPONSE));
+            given(skCarRouteClient.route(
+                            any(), any(Double.class), any(Double.class),
+                            any(), any(Double.class), any(Double.class)))
+                    .willReturn(parseJson(SAMPLE_TMAP_CAR_RESPONSE));
+
+            PathAllResponse response =
+                    pathService.searchAll(
+                            PathAllRequest.builder()
+                                    .departureDongCode("1162069500")
+                                    .arrivalDongCode("1168064000")
+                                    .build());
+
+            assertThat(response.getPaths().getTransit().totalTime()).isEqualTo(9);
+            assertThat(response.getPaths().getPedestrian().totalTime()).isEqualTo(18);
+            assertThat(response.getPaths().getCar().totalTime()).isEqualTo(18);
+
+            verify(pathRecordRepository).upsert(
+                    eq("TRANSIT"), eq("1162069500"), eq("1168064000"),
+                    eq(9), eq(2000), any(LocalDateTime.class));
+            verify(pathRecordRepository).upsert(
+                    eq("PEDESTRIAN"), eq("1162069500"), eq("1168064000"),
+                    eq(18), eq(1240), any(LocalDateTime.class));
+            verify(pathRecordRepository).upsert(
+                    eq("CAR"), eq("1162069500"), eq("1168064000"),
+                    eq(18), eq(12500), any(LocalDateTime.class));
+        }
+
+        @Test
+        @DisplayName("출발=도착이면 TRANSIT_PATH_SAME_DONG")
+        void search_sameDongCode_throws() {
+            assertThatThrownBy(
+                            () -> pathService.searchAll(
+                                    PathAllRequest.builder()
+                                            .departureDongCode("1162069500")
+                                            .arrivalDongCode("1162069500")
+                                            .build()))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
         }
     }
 

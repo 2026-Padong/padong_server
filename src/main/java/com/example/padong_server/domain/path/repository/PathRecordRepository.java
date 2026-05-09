@@ -21,12 +21,13 @@ public interface PathRecordRepository extends JpaRepository<PathRecord, Long> {
             value =
                     "INSERT INTO path_record "
                             + "(mode, departure_dong_code, arrival_dong_code, total_time,"
-                            + " total_distance, created_at, updated_at) "
+                            + " total_distance, source, created_at, updated_at) "
                             + "VALUES (:mode, :departureDongCode, :arrivalDongCode, :totalTime,"
-                            + " :totalDistance, :now, :now) "
+                            + " :totalDistance, :source, :now, :now) "
                             + "ON DUPLICATE KEY UPDATE "
                             + "total_time = VALUES(total_time), "
                             + "total_distance = VALUES(total_distance), "
+                            + "source = VALUES(source), "
                             + "updated_at = VALUES(updated_at)",
             nativeQuery = true)
     void upsert(
@@ -35,5 +36,6 @@ public interface PathRecordRepository extends JpaRepository<PathRecord, Long> {
             @Param("arrivalDongCode") String arrivalDongCode,
             @Param("totalTime") int totalTime,
             @Param("totalDistance") int totalDistance,
+            @Param("source") String source,
             @Param("now") LocalDateTime now);
 }

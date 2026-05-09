@@ -4,6 +4,7 @@ import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.path.dto.internal.OdsayJson;
 import com.example.padong_server.domain.path.dto.internal.PathSummary;
+import com.example.padong_server.domain.path.entity.PathSource;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
@@ -52,7 +53,8 @@ public class CarPathResponse {
 
         int totalTimeSeconds = OdsayJson.intValue(startProperties.get("totalTime"), 0);
         int totalDistance = OdsayJson.intValue(startProperties.get("totalDistance"), 0);
-        return new PathSummary(roundSecondsToMinutes(totalTimeSeconds), totalDistance);
+        return new PathSummary(
+                roundSecondsToMinutes(totalTimeSeconds), totalDistance, PathSource.TMAP);
     }
 
     private static Map<String, Object> findStartFeatureProperties(

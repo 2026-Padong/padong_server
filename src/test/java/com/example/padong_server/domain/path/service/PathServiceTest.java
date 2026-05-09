@@ -23,7 +23,9 @@ import com.example.padong_server.domain.path.dto.response.PedestrianPathResponse
 import com.example.padong_server.domain.path.dto.response.TransitPathResponse;
 import com.example.padong_server.domain.path.entity.PathMode;
 import com.example.padong_server.domain.path.entity.PathRecord;
+import com.example.padong_server.domain.path.entity.PathSource;
 import com.example.padong_server.domain.path.repository.PathRecordRepository;
+import com.example.padong_server.global.client.google.GoogleRoutesClient;
 import com.example.padong_server.global.client.odsay.OdsayClient;
 import com.example.padong_server.global.client.sk.SkCarRouteClient;
 import com.example.padong_server.global.client.sk.SkPedestrianRouteClient;
@@ -62,6 +64,9 @@ class PathServiceTest {
     private SkCarRouteClient skCarRouteClient;
 
     @Mock
+    private GoogleRoutesClient googleRoutesClient;
+
+    @Mock
     private PathRecordRepository pathRecordRepository;
 
     @InjectMocks
@@ -92,7 +97,7 @@ class PathServiceTest {
                     any(Double.class), any(Double.class), any(Double.class), any(Double.class),
                     any(), any());
             verify(pathRecordRepository, never()).upsert(
-                    anyString(), anyString(), anyString(), anyInt(), anyInt(), any());
+                    anyString(), anyString(), anyString(), anyInt(), anyInt(), anyString(), any());
         }
 
         @Test
@@ -118,7 +123,7 @@ class PathServiceTest {
             assertThat(response.getTotalDistance()).isEqualTo(2000);
             verify(pathRecordRepository).upsert(
                     eq("TRANSIT"), eq("1162069500"), eq("1168064000"),
-                    eq(9), eq(2000), any(LocalDateTime.class));
+                    eq(9), eq(2000), eq("ODSAY"), any(LocalDateTime.class));
         }
 
         @Test
@@ -143,7 +148,7 @@ class PathServiceTest {
                             .build());
 
             verify(pathRecordRepository).upsert(
-                    eq("TRANSIT"), anyString(), anyString(), anyInt(), anyInt(),
+                    eq("TRANSIT"), anyString(), anyString(), anyInt(), anyInt(), anyString(),
                     any(LocalDateTime.class));
         }
 
@@ -159,6 +164,38 @@ class PathServiceTest {
                     .isInstanceOf(CustomException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
+        }
+
+        @Test
+        @DisplayName("ODsay 실패 → Google fallback 호출")
+        void search_odsayFails_fallsBackToGoogle() {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.TRANSIT, "1162069500", "1168064000"))
+                    .willReturn(Optional.empty());
+            given(odsayClient.searchPubTransPath(
+                            any(Double.class), any(Double.class), any(Double.class),
+                            any(Double.class), any(), any()))
+                    .willThrow(new CustomException(ErrorCode.ODSAY_NO_RESULT));
+            given(googleRoutesClient.route(
+                            eq(GoogleRoutesClient.TravelMode.TRANSIT),
+                            eq(37.4842), eq(126.9295),
+                            eq(37.4998), eq(127.0364)))
+                    .willReturn(new com.example.padong_server.domain.path.dto.internal.PathSummary(
+                            25, 8500, PathSource.GOOGLE));
+
+            TransitPathResponse response =
+                    pathService.searchTransit(
+                            TransitPathRequest.builder()
+                                    .departureDongCode("1162069500")
+                                    .arrivalDongCode("1168064000")
+                                    .build());
+
+            assertThat(response.getTotalTime()).isEqualTo(25);
+            assertThat(response.getTotalDistance()).isEqualTo(8500);
+            verify(pathRecordRepository).upsert(
+                    eq("TRANSIT"), eq("1162069500"), eq("1168064000"),
+                    eq(25), eq(8500), eq("GOOGLE"), any(LocalDateTime.class));
         }
     }
 
@@ -208,7 +245,7 @@ class PathServiceTest {
 
             verify(pathRecordRepository).upsert(
                     eq("PEDESTRIAN"), eq("1162069500"), eq("1168064000"),
-                    eq(18), eq(1240), any(LocalDateTime.class));
+                    eq(18), eq(1240), eq("TMAP"), any(LocalDateTime.class));
         }
     }
 
@@ -258,7 +295,7 @@ class PathServiceTest {
 
             verify(pathRecordRepository).upsert(
                     eq("CAR"), eq("1162069500"), eq("1168064000"),
-                    eq(18), eq(12500), any(LocalDateTime.class));
+                    eq(18), eq(12500), eq("TMAP"), any(LocalDateTime.class));
         }
     }
 
@@ -306,7 +343,7 @@ class PathServiceTest {
                     any(), any(Double.class), any(Double.class),
                     any(), any(Double.class), any(Double.class));
             verify(pathRecordRepository, never()).upsert(
-                    anyString(), anyString(), anyString(), anyInt(), anyInt(), any());
+                    anyString(), anyString(), anyString(), anyInt(), anyInt(), anyString(), any());
         }
 
         @Test
@@ -342,13 +379,13 @@ class PathServiceTest {
 
             verify(pathRecordRepository).upsert(
                     eq("TRANSIT"), eq("1162069500"), eq("1168064000"),
-                    eq(9), eq(2000), any(LocalDateTime.class));
+                    eq(9), eq(2000), eq("ODSAY"), any(LocalDateTime.class));
             verify(pathRecordRepository).upsert(
                     eq("PEDESTRIAN"), eq("1162069500"), eq("1168064000"),
-                    eq(18), eq(1240), any(LocalDateTime.class));
+                    eq(18), eq(1240), eq("TMAP"), any(LocalDateTime.class));
             verify(pathRecordRepository).upsert(
                     eq("CAR"), eq("1162069500"), eq("1168064000"),
-                    eq(18), eq(12500), any(LocalDateTime.class));
+                    eq(18), eq(12500), eq("TMAP"), any(LocalDateTime.class));
         }
 
         @Test
@@ -381,12 +418,14 @@ class PathServiceTest {
     }
 
     private PathRecord record(PathMode mode, int totalTime, int totalDistance, LocalDateTime updatedAt) {
+        PathSource source = mode == PathMode.TRANSIT ? PathSource.ODSAY : PathSource.TMAP;
         return PathRecord.builder()
                 .mode(mode)
                 .departureDongCode("1162069500")
                 .arrivalDongCode("1168064000")
                 .totalTime(totalTime)
                 .totalDistance(totalDistance)
+                .source(source)
                 .createdAt(updatedAt)
                 .updatedAt(updatedAt)
                 .build();

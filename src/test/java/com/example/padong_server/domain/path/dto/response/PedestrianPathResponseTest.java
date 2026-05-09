@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.path.dto.internal.PathSummary;
+import com.example.padong_server.domain.path.entity.PathSource;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,7 +69,7 @@ class PedestrianPathResponseTest {
     @Test
     @DisplayName("of() 로 응답 DTO 빌드")
     void of_buildsDto() {
-        PathSummary summary = new PathSummary(18, 1240);
+        PathSummary summary = new PathSummary(18, 1240, PathSource.TMAP);
 
         PedestrianPathResponse response = PedestrianPathResponse.of(DEPARTURE, ARRIVAL, summary);
 

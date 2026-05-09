@@ -13,6 +13,7 @@ import com.example.padong_server.domain.path.dto.response.PedestrianPathResponse
 import com.example.padong_server.domain.path.dto.response.TransitPathResponse;
 import com.example.padong_server.domain.path.entity.PathMode;
 import com.example.padong_server.domain.path.repository.PathRecordRepository;
+import com.example.padong_server.global.client.google.GoogleRoutesClient;
 import com.example.padong_server.global.client.odsay.OdsayClient;
 import com.example.padong_server.global.client.sk.SkCarRouteClient;
 import com.example.padong_server.global.client.sk.SkPedestrianRouteClient;
@@ -38,6 +39,7 @@ public class PathService {
     private final OdsayClient odsayClient;
     private final SkPedestrianRouteClient skPedestrianRouteClient;
     private final SkCarRouteClient skCarRouteClient;
+    private final GoogleRoutesClient googleRoutesClient;
     private final PathRecordRepository pathRecordRepository;
 
     @Transactional
@@ -71,52 +73,77 @@ public class PathService {
     }
 
     private PathSummary transitSummary(DongPair dongs, Integer opt, Integer searchPathType) {
-        try {
-            return summaryFor(
-                    PathMode.TRANSIT,
-                    dongs,
-                    () -> TransitPathResponse.parseSummary(
-                            odsayClient.searchPubTransPath(
-                                    dongs.departure().getLongitude(),
-                                    dongs.departure().getLatitude(),
-                                    dongs.arrival().getLongitude(),
-                                    dongs.arrival().getLatitude(),
-                                    opt,
-                                    searchPathType)));
-        } catch (CustomException exception) {
-            if (exception.getErrorCode().name().startsWith("ODSAY_")) {
-                return new PathSummary(0, 0);
-            }
-            throw exception;
-        }
+        return summaryFor(
+                PathMode.TRANSIT,
+                dongs,
+                () -> withGoogleFallback(
+                        "ODSAY_",
+                        () -> TransitPathResponse.parseSummary(
+                                odsayClient.searchPubTransPath(
+                                        dongs.departure().getLongitude(),
+                                        dongs.departure().getLatitude(),
+                                        dongs.arrival().getLongitude(),
+                                        dongs.arrival().getLatitude(),
+                                        opt,
+                                        searchPathType)),
+                        GoogleRoutesClient.TravelMode.TRANSIT,
+                        dongs));
     }
 
     private PathSummary pedestrianSummary(DongPair dongs) {
         return summaryFor(
                 PathMode.PEDESTRIAN,
                 dongs,
-                () -> PedestrianPathResponse.parseSummary(
-                        skPedestrianRouteClient.route(
-                                dongs.departure().getAdminDongName(),
-                                dongs.departure().getLongitude(),
-                                dongs.departure().getLatitude(),
-                                dongs.arrival().getAdminDongName(),
-                                dongs.arrival().getLongitude(),
-                                dongs.arrival().getLatitude())));
+                () -> withGoogleFallback(
+                        "SK_PEDESTRIAN_",
+                        () -> PedestrianPathResponse.parseSummary(
+                                skPedestrianRouteClient.route(
+                                        dongs.departure().getAdminDongName(),
+                                        dongs.departure().getLongitude(),
+                                        dongs.departure().getLatitude(),
+                                        dongs.arrival().getAdminDongName(),
+                                        dongs.arrival().getLongitude(),
+                                        dongs.arrival().getLatitude())),
+                        GoogleRoutesClient.TravelMode.WALK,
+                        dongs));
     }
 
     private PathSummary carSummary(DongPair dongs) {
         return summaryFor(
                 PathMode.CAR,
                 dongs,
-                () -> CarPathResponse.parseSummary(
-                        skCarRouteClient.route(
-                                dongs.departure().getAdminDongName(),
-                                dongs.departure().getLongitude(),
-                                dongs.departure().getLatitude(),
-                                dongs.arrival().getAdminDongName(),
-                                dongs.arrival().getLongitude(),
-                                dongs.arrival().getLatitude())));
+                () -> withGoogleFallback(
+                        "SK_CAR_",
+                        () -> CarPathResponse.parseSummary(
+                                skCarRouteClient.route(
+                                        dongs.departure().getAdminDongName(),
+                                        dongs.departure().getLongitude(),
+                                        dongs.departure().getLatitude(),
+                                        dongs.arrival().getAdminDongName(),
+                                        dongs.arrival().getLongitude(),
+                                        dongs.arrival().getLatitude())),
+                        GoogleRoutesClient.TravelMode.DRIVE,
+                        dongs));
+    }
+
+    private PathSummary withGoogleFallback(
+            String primaryErrorPrefix,
+            Supplier<PathSummary> primary,
+            GoogleRoutesClient.TravelMode googleMode,
+            DongPair dongs) {
+        try {
+            return primary.get();
+        } catch (CustomException exception) {
+            if (exception.getErrorCode().name().startsWith(primaryErrorPrefix)) {
+                return googleRoutesClient.route(
+                        googleMode,
+                        dongs.departure().getLatitude(),
+                        dongs.departure().getLongitude(),
+                        dongs.arrival().getLatitude(),
+                        dongs.arrival().getLongitude());
+            }
+            throw exception;
+        }
     }
 
     private PathSummary summaryFor(PathMode mode, DongPair dongs, Supplier<PathSummary> fetcher) {
@@ -135,7 +162,8 @@ public class PathService {
                 .findByModeAndDepartureDongCodeAndArrivalDongCode(
                         mode, departureDongCode, arrivalDongCode)
                 .filter(record -> record.getUpdatedAt().isAfter(threshold))
-                .map(record -> new PathSummary(record.getTotalTime(), record.getTotalDistance()));
+                .map(record -> new PathSummary(
+                        record.getTotalTime(), record.getTotalDistance(), record.getSource()));
     }
 
     private void upsert(
@@ -149,6 +177,7 @@ public class PathService {
                 arrivalDongCode,
                 summary.totalTime(),
                 summary.totalDistance(),
+                summary.source().name(),
                 LocalDateTime.now());
     }
 

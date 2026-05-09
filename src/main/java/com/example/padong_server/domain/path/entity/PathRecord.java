@@ -52,6 +52,10 @@ public class PathRecord {
 	@Column(name = "total_distance", nullable = false)
 	private int totalDistance;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "source", nullable = false, length = 16)
+	private PathSource source;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 

@@ -125,6 +125,18 @@ public enum ErrorCode {
             HttpStatus.NOT_FOUND,
             "SK_CAR_NO_RESULT",
             "자동차 경로 결과가 없습니다."),
+    GOOGLE_ROUTES_API_KEY_MISSING(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "GOOGLE_ROUTES_API_KEY_MISSING",
+            "Google Routes API 설정이 없습니다."),
+    GOOGLE_ROUTES_API_CALL_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "GOOGLE_ROUTES_API_CALL_FAILED",
+            "Google Routes API 호출에 실패했습니다."),
+    GOOGLE_ROUTES_NO_RESULT(
+            HttpStatus.NOT_FOUND,
+            "GOOGLE_ROUTES_NO_RESULT",
+            "Google Routes 결과가 없습니다."),
 
     // RentPrice
     RENT_PRICE_TRADE_TYPE_REQUIRED(

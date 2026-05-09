@@ -27,7 +27,7 @@ public class TourPicture {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String contentId;
 
     @Column(nullable = false)
@@ -39,10 +39,10 @@ public class TourPicture {
     @Column(length = 1000)
     private String firstImageUrl;
 
-    @Column(nullable = false)
+    @Column
     private String adminDongName;
 
-    @Column(nullable = false)
+    @Column
     private String adminDongCode;
 
     @Builder
@@ -60,5 +60,21 @@ public class TourPicture {
         this.firstImageUrl = firstImageUrl;
         this.adminDongName = adminDongName;
         this.adminDongCode = adminDongCode;
+    }
+
+    public void updateBasicInfo(String title, String roadAddress, String firstImageUrl) {
+        this.title = title;
+        this.roadAddress = roadAddress;
+        this.firstImageUrl = firstImageUrl;
+    }
+
+    public void updateAdminDongMapping(String adminDongName, String adminDongCode) {
+        this.adminDongName = adminDongName;
+        this.adminDongCode = adminDongCode;
+    }
+
+    public void clearAdminDongMapping() {
+        this.adminDongName = "";
+        this.adminDongCode = "";
     }
 }

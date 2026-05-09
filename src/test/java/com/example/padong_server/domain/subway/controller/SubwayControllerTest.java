@@ -9,8 +9,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.nio.charset.StandardCharsets;
 
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,7 +37,10 @@ class SubwayControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(subwayController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(subwayController)
+                .setMessageConverters(new StringHttpMessageConverter(StandardCharsets.UTF_8))
+                .defaultResponseCharacterEncoding(StandardCharsets.UTF_8)
+                .build();
     }
 
     @Test

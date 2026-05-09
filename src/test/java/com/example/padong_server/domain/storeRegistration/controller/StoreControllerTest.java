@@ -20,6 +20,7 @@ import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationResponse;
 import com.example.padong_server.domain.storeRegistration.service.StoreRegistrationService;
 import com.example.padong_server.global.exception.GlobalExceptionHandler;
+import java.time.LocalTime;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,7 +72,8 @@ class StoreControllerTest {
                 .name("Padong")
                 .address("Seoul")
                 .phoneNumber("02-1234-5678")
-                .operatingHours("10:00-20:00")
+                .openTime(LocalTime.of(10, 0))
+                .closeTime(LocalTime.of(20, 0))
                 .likeCount(7L)
                 .likedByCurrentUser(true)
                 .build();
@@ -83,7 +85,9 @@ class StoreControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.likeCount").value(7))
-                .andExpect(jsonPath("$.data.likedByCurrentUser").value(true));
+                .andExpect(jsonPath("$.data.likedByCurrentUser").value(true))
+                .andExpect(jsonPath("$.data.openTime").value("10:00:00"))
+                .andExpect(jsonPath("$.data.closeTime").value("20:00:00"));
     }
 
     @Test
@@ -95,7 +99,8 @@ class StoreControllerTest {
                 .name("Padong")
                 .address("Seoul")
                 .phoneNumber("02-9999-9999")
-                .operatingHours("09:00-18:00")
+                .openTime(LocalTime.of(9, 0))
+                .closeTime(LocalTime.of(18, 0))
                 .likeCount(0L)
                 .likedByCurrentUser(false)
                 .build();
@@ -105,11 +110,14 @@ class StoreControllerTest {
                         .param("name", "Padong")
                         .param("address", "Seoul")
                         .param("phoneNumber", "02-9999-9999")
-                        .param("operatingHours", "09:00-18:00")
+                        .param("openTime", "09:00")
+                        .param("closeTime", "18:00")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").value(5))
-                .andExpect(jsonPath("$.data.name").value("Padong"));
+                .andExpect(jsonPath("$.data.name").value("Padong"))
+                .andExpect(jsonPath("$.data.openTime").value("09:00:00"))
+                .andExpect(jsonPath("$.data.closeTime").value("18:00:00"));
 
         verify(storeRegistrationService).createStore(same(user), any());
     }
@@ -144,7 +152,8 @@ class StoreControllerTest {
                 .name("Updated Store")
                 .address("New Address")
                 .phoneNumber("02-2222-2222")
-                .operatingHours("10:00-19:00")
+                .openTime(LocalTime.of(10, 0))
+                .closeTime(LocalTime.of(19, 0))
                 .likeCount(0L)
                 .likedByCurrentUser(false)
                 .build();
@@ -155,11 +164,14 @@ class StoreControllerTest {
                         .param("name", "Updated Store")
                         .param("address", "New Address")
                         .param("phoneNumber", "02-2222-2222")
-                        .param("operatingHours", "10:00-19:00")
+                        .param("openTime", "10:00")
+                        .param("closeTime", "19:00")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(3))
-                .andExpect(jsonPath("$.data.name").value("Updated Store"));
+                .andExpect(jsonPath("$.data.name").value("Updated Store"))
+                .andExpect(jsonPath("$.data.openTime").value("10:00:00"))
+                .andExpect(jsonPath("$.data.closeTime").value("19:00:00"));
 
         verify(storeRegistrationService).updateStore(eq(3L), any());
     }

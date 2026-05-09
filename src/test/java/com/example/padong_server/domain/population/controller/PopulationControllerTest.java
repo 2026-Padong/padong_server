@@ -1,7 +1,6 @@
 package com.example.padong_server.domain.population.controller;
 
 import com.example.padong_server.domain.population.dto.response.PopulationDetailDto;
-import com.example.padong_server.domain.population.entity.Population;
 import com.example.padong_server.domain.population.service.PopulationService;
 import com.example.padong_server.global.ResponseDTO;
 import com.example.padong_server.global.exception.CustomException;
@@ -14,12 +13,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,9 +46,9 @@ class PopulationControllerTest {
     @Test
     @DisplayName("행정동별 인구밀도와 축구장 기준 인구수를 조회한다")
     void getPopulationDetail_returnsPopulationResponse() throws Exception {
-        PopulationDetailDto dto = new PopulationDetailDto(populationWithCode("1111053000", 7_230.081301));
+        PopulationDetailDto dto = new PopulationDetailDto("1111053000", 7_230.081301, 51.62);
         ResponseDTO<PopulationDetailDto> response = ResponseDTO.res(
-                org.springframework.http.HttpStatus.OK,
+                HttpStatus.OK,
                 "population 조회 성공",
                 dto
         );
@@ -77,21 +79,12 @@ class PopulationControllerTest {
                 .andExpect(jsonPath("$.message").value("해당 행정동의 인구 정보가 없습니다."));
     }
 
-    private Population populationWithCode(String adminDongCode, double density) {
-        return Population.builder()
-                .adminDong(new com.example.padong_server.domain.dongne.entity.AdminDong(
-                        new com.example.padong_server.domain.dongne.dto.AdminDongCsvRow(
-                                adminDongCode,
-                                "서울특별시",
-                                "종로구",
-                                "사직동",
-                                37.58,
-                                126.97,
-                                "20081101",
-                                ""
-                        )
-                ))
-                .density(density)
-                .build();
+    @Test
+    @DisplayName("동네별 인구밀도 데이터 저장 API를 호출한다")
+    void uploadDensityData_returnsSuccessMessage() throws Exception {
+        mockMvc.perform(post("/population/density/data")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Success to save Density data"));
     }
 }

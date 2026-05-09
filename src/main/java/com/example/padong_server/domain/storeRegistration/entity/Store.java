@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,8 +46,11 @@ public class Store {
     @Column(nullable = false, length = 30)
     private String phoneNumber;
 
-    @Column(nullable = false, length = 100)
-    private String operatingHours;
+    @Column(nullable = false)
+    private LocalTime openTime;
+
+    @Column(nullable = false)
+    private LocalTime closeTime;
 
     @Column(length = 100)
     private String category;
@@ -90,7 +94,8 @@ public class Store {
             String roadAddress,
             String detailAddress,
             String phoneNumber,
-            String operatingHours,
+            LocalTime openTime,
+            LocalTime closeTime,
             String category,
             String description,
             Integer originalPrice,
@@ -108,7 +113,8 @@ public class Store {
         this.roadAddress = roadAddress;
         this.detailAddress = detailAddress;
         this.phoneNumber = phoneNumber;
-        this.operatingHours = operatingHours;
+        this.openTime = openTime;
+        this.closeTime = closeTime;
         this.category = category;
         this.description = description;
         this.originalPrice = originalPrice;
@@ -127,11 +133,13 @@ public class Store {
             String name,
             String roadAddress,
             String phoneNumber,
-            String operatingHours
+            LocalTime openTime,
+            LocalTime closeTime
     ) {
         this.name = name;
         this.roadAddress = roadAddress;
         this.phoneNumber = phoneNumber;
-        this.operatingHours = operatingHours;
+        this.openTime = openTime;
+        this.closeTime = closeTime;
     }
 }

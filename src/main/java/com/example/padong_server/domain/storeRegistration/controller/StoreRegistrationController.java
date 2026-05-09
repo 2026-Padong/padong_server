@@ -16,7 +16,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "가게 등록", description = "사장이 가게 정보를 등록, 조회, 수정, 삭제하는 API")
+@Tag(name = "가게 등록", description = "사장의 가게 정보를 등록, 조회, 수정, 삭제하는 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/stores")
@@ -39,7 +41,7 @@ public class StoreRegistrationController {
 
     @Operation(
             summary = "가게 등록",
-            description = "가게명, 주소, 전화번호, 운영시간을 쿼리 파라미터로 받아 가게를 등록합니다."
+            description = "가게명, 주소, 전화번호, 오픈 시간, 마감 시간을 쿼리 파라미터로 받아 가게를 등록합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -58,7 +60,8 @@ public class StoreRegistrationController {
                                                 "name": "파동 식당",
                                                 "address": "서울 송파구 올림픽로 300",
                                                 "phoneNumber": "0507-2093-9485",
-                                                "operatingHours": "10:00 ~ 15:00",
+                                                "openTime": "10:00:00",
+                                                "closeTime": "15:00:00",
                                                 "likeCount": 0,
                                                 "likedByCurrentUser": false
                                               }
@@ -78,14 +81,19 @@ public class StoreRegistrationController {
             @RequestParam String address,
             @Parameter(description = "가게 전화번호", example = "0507-2093-9485")
             @RequestParam String phoneNumber,
-            @Parameter(description = "운영시간", example = "10:00 ~ 15:00")
-            @RequestParam String operatingHours
+            @Parameter(description = "오픈 시간", example = "10:00")
+            @DateTimeFormat(pattern = "HH:mm")
+            @RequestParam LocalTime openTime,
+            @Parameter(description = "마감 시간", example = "15:00")
+            @DateTimeFormat(pattern = "HH:mm")
+            @RequestParam LocalTime closeTime
     ) {
         StoreRegistrationCreateRequest request = new StoreRegistrationCreateRequest(
                 name,
                 address,
                 phoneNumber,
-                operatingHours
+                openTime,
+                closeTime
         );
         StoreRegistrationResponse response = storeRegistrationService.createStore(userDetails.getUser(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -150,14 +158,19 @@ public class StoreRegistrationController {
             @RequestParam String address,
             @Parameter(description = "가게 전화번호", example = "0507-2093-9485")
             @RequestParam String phoneNumber,
-            @Parameter(description = "운영시간", example = "10:00 ~ 15:00")
-            @RequestParam String operatingHours
+            @Parameter(description = "오픈 시간", example = "10:00")
+            @DateTimeFormat(pattern = "HH:mm")
+            @RequestParam LocalTime openTime,
+            @Parameter(description = "마감 시간", example = "15:00")
+            @DateTimeFormat(pattern = "HH:mm")
+            @RequestParam LocalTime closeTime
     ) {
         StoreRegistrationUpdateRequest request = new StoreRegistrationUpdateRequest(
                 name,
                 address,
                 phoneNumber,
-                operatingHours
+                openTime,
+                closeTime
         );
         StoreRegistrationResponse response = storeRegistrationService.updateStore(storeId, request);
         return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, "가게 수정이 완료되었습니다.", response));

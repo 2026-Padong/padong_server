@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.activityMobility.util;
 
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityCsvRow;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +63,7 @@ public class ActivityMobilityDataUtil {
         try (BufferedReader reader =
                 new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
-            Preconditions.validate(headerLine != null, "CSV header is missing: " + sourceName);
+            Preconditions.validate(headerLine != null, ErrorCode.VALIDATION_ERROR);
 
             List<String> headers =
                     parseCsvLine(headerLine).stream()
@@ -93,16 +94,7 @@ public class ActivityMobilityDataUtil {
     private ActivityMobilityCsvRow toCsvRow(
             String expectedMonth, String sourceName, int lineNumber, Map<String, String> row) {
         String month = requireNonBlank(row, "기준년월", sourceName, lineNumber);
-        Preconditions.validate(
-                month.equals(expectedMonth),
-                "Unexpected month in "
-                        + sourceName
-                        + " line "
-                        + lineNumber
-                        + ". expected="
-                        + expectedMonth
-                        + ", actual="
-                        + month);
+        Preconditions.validate(month.equals(expectedMonth), ErrorCode.VALIDATION_ERROR);
 
         return new ActivityMobilityCsvRow(
                 month,
@@ -116,27 +108,12 @@ public class ActivityMobilityDataUtil {
 
     private void validateHeaders(String sourceName, List<String> actualHeaders) {
         Preconditions.validate(
-                actualHeaders.equals(EXPECTED_CSV_HEADERS),
-                "Unexpected CSV headers for "
-                        + sourceName
-                        + ". expected="
-                        + EXPECTED_CSV_HEADERS
-                        + ", actual="
-                        + actualHeaders);
+                actualHeaders.equals(EXPECTED_CSV_HEADERS), ErrorCode.VALIDATION_ERROR);
     }
 
     private Map<String, String> toRowMap(
             String sourceName, int lineNumber, List<String> headers, List<String> values) {
-        Preconditions.validate(
-                values.size() == headers.size(),
-                "CSV column count mismatch in "
-                        + sourceName
-                        + " line "
-                        + lineNumber
-                        + ". expected="
-                        + headers.size()
-                        + ", actual="
-                        + values.size());
+        Preconditions.validate(values.size() == headers.size(), ErrorCode.VALIDATION_ERROR);
 
         Map<String, String> row = new LinkedHashMap<>();
         for (int i = 0; i < headers.size(); i++) {
@@ -183,27 +160,13 @@ public class ActivityMobilityDataUtil {
     private String requireNonBlank(
             Map<String, String> row, String column, String sourceName, int lineNumber) {
         String value = normalize(row.get(column));
-        Preconditions.validate(
-                !value.isBlank(),
-                "Required CSV value is blank in "
-                        + sourceName
-                        + " line "
-                        + lineNumber
-                        + ": "
-                        + column);
+        Preconditions.validate(!value.isBlank(), ErrorCode.VALIDATION_ERROR);
         return value;
     }
 
     private double parseDouble(String value, String column, String sourceName, int lineNumber) {
         String normalized = normalize(value).replace(",", "");
-        Preconditions.validate(
-                !normalized.isBlank(),
-                "Required decimal is blank in "
-                        + sourceName
-                        + " line "
-                        + lineNumber
-                        + ": "
-                        + column);
+        Preconditions.validate(!normalized.isBlank(), ErrorCode.VALIDATION_ERROR);
         try {
             return Double.parseDouble(normalized);
         } catch (NumberFormatException exception) {

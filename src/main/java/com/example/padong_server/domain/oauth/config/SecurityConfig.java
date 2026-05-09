@@ -42,7 +42,11 @@ public class SecurityConfig {
                                 "/api/auth/reissue",
                                 "/api/auth/signup",
                                 "/dongne/detail",
-                                "/dongne/likes"
+                                "/dongne/likes",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/path/**"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

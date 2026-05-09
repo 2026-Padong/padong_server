@@ -6,10 +6,10 @@ import lombok.Builder;
 @Builder
 @Schema(description = "생활이동 요약 정보")
 public record DongneMobilityResponse(
-        @Schema(description = "최근 대표 이동량", example = "8920.12")
+        @Schema(description = "최근 대표 이동량(통행수)", example = "1240.50")
         Double totalMobility,
 
-        @Schema(description = "평균 이동 시간(분)", example = "35.20")
+        @Schema(description = "평균 이동 시간(분)", example = "47.80")
         Double avgTime,
 
         @Schema(description = "집계 시작월", example = "202601")

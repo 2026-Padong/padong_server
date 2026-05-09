@@ -13,6 +13,7 @@ import com.example.padong_server.domain.rentPrice.dto.response.RentPriceImportRe
 import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
 import com.example.padong_server.domain.rentPrice.util.RentPriceDataUtil;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import lombok.RequiredArgsConstructor;
@@ -127,10 +128,7 @@ public class RentPriceDataImportService {
 
         for (AdminStatKey key : keys) {
             AdminDong adminDong = adminByCode.get(key.adminDongCode());
-            Preconditions.validate(
-                    adminDong != null,
-                    AdminDongRepository.ADMIN_DONG_NOT_FOUND_MESSAGE_FORMAT.formatted(
-                            key.adminDongCode()));
+            Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
             stats.add(buildStat(key.buildingType(), adminDong, accumulators.get(key)));
         }
         return stats;
@@ -170,8 +168,7 @@ public class RentPriceDataImportService {
             Map<String, List<AdminDong>> adminDongsByLegalCode, String legalDongCode) {
         List<AdminDong> adminDongs = adminDongsByLegalCode.get(legalDongCode);
         Preconditions.validate(
-                adminDongs != null && !adminDongs.isEmpty(),
-                LEGAL_DONG_MAPPING_NOT_FOUND_MESSAGE_FORMAT.formatted(legalDongCode));
+                adminDongs != null && !adminDongs.isEmpty(), ErrorCode.VALIDATION_ERROR);
         return adminDongs;
     }
 

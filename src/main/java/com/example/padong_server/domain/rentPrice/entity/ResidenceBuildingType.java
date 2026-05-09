@@ -44,7 +44,7 @@ public enum ResidenceBuildingType {
     public static ResidenceBuildingType from(String value) {
         String normalizedLabel = trimToNull(value);
         Preconditions.validate(
-                normalizedLabel != null, ErrorCode.RESIDENCE_BUILDING_TYPE_REQUIRED.getMessage());
+                normalizedLabel != null, ErrorCode.RESIDENCE_BUILDING_TYPE_REQUIRED);
         return Arrays.stream(values())
                 .filter(
                         type ->

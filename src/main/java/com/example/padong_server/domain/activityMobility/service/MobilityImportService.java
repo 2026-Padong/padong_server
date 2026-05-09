@@ -5,6 +5,7 @@ import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityRep
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
 import com.example.padong_server.domain.activityMobility.util.ActivityMobilityDataUtil;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import lombok.RequiredArgsConstructor;
@@ -61,7 +62,7 @@ public class MobilityImportService {
     }
 
     private ImportPeriod resolveImportPeriod(List<ActivityMobilityCsvRow> rows) {
-        Preconditions.validate(!rows.isEmpty(), EMPTY_ACTIVITY_MOBILITY_CSV_ROW_MESSAGE);
+        Preconditions.validate(!rows.isEmpty(), ErrorCode.VALIDATION_ERROR);
         String startMonth =
                 rows.stream()
                         .map(ActivityMobilityCsvRow::month)

@@ -21,7 +21,7 @@ public interface AdminDongRepository extends JpaRepository<AdminDong, Long> {
     default AdminDong getByAdminDongCode(String adminDongCode) {
         Preconditions.validate(
                 adminDongCode != null && !adminDongCode.trim().isEmpty(),
-                ADMIN_DONG_CODE_REQUIRED_MESSAGE);
+                ErrorCode.VALIDATION_ERROR);
         String sanitizedAdminDongCode = adminDongCode.trim();
         return findByAdminDongCode(sanitizedAdminDongCode)
                 .orElseThrow(

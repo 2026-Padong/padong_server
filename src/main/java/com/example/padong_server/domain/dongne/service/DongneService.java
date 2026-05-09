@@ -36,7 +36,7 @@ public class DongneService {
 
     public AdminDong findAdminDongByAddress(String address) {
         String[] addressParts = address.split(" ");
-        Preconditions.validate(addressParts.length >= 3, INVALID_ADDRESS_FORMAT_MESSAGE);
+        Preconditions.validate(addressParts.length >= 3, ErrorCode.VALIDATION_ERROR);
 
         return adminDongRepository
                 .findByCityNameAndDistrictNameAndAdminDongName(

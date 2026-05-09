@@ -4,6 +4,7 @@ import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
+import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
 import org.springframework.core.io.ClassPathResource;
@@ -169,15 +170,11 @@ public class RentPriceDataUtil {
                 continue;
             }
             Preconditions.validate(
-                    columns.size() == headerIndex.size(),
-                    CSV_COLUMN_COUNT_MISMATCH_MESSAGE_FORMAT.formatted(
-                            file.resourcePath(), lineNumber, headerIndex.size(), columns.size()));
+                    columns.size() == headerIndex.size(), ErrorCode.VALIDATION_ERROR);
             readDataRow(file, headerIndex, columns, builder);
         }
 
-        Preconditions.validate(
-                headerIndex != null,
-                CSV_HEADER_NOT_FOUND_MESSAGE_FORMAT.formatted(file.resourcePath()));
+        Preconditions.validate(headerIndex != null, ErrorCode.VALIDATION_ERROR);
     }
 
     private Map<String, Integer> mapHeader(RentPriceCsvFile file, List<String> header) {
@@ -201,10 +198,7 @@ public class RentPriceDataUtil {
 
     private void requireColumn(
             RentPriceCsvFile file, Map<String, Integer> headerIndex, String columnName) {
-        Preconditions.validate(
-                headerIndex.containsKey(columnName),
-                REQUIRED_CSV_COLUMN_MISSING_MESSAGE_FORMAT.formatted(
-                        file.resourcePath(), columnName));
+        Preconditions.validate(headerIndex.containsKey(columnName), ErrorCode.VALIDATION_ERROR);
     }
 
     private void readDataRow(
@@ -294,7 +288,7 @@ public class RentPriceDataUtil {
             }
             current.append(character);
         }
-        Preconditions.validate(!quoted, UNCLOSED_CSV_QUOTE_MESSAGE);
+        Preconditions.validate(!quoted, ErrorCode.VALIDATION_ERROR);
         columns.add(current.toString());
         return columns;
     }

@@ -79,16 +79,81 @@ public class DongneController {
     }
 
     @GetMapping("/detail")
-    @Operation(summary = "동네 상세 조회")
+    @Operation(
+            summary = "동네 상세 조회",
+            description = """
+                    선택된 거주지 후보(adminDongCode)와 직장(arrivalAdminDongCode)을 기반으로
+                    동네 요약 / 인구 / 임대료 / 생활이동 / 통합 길찾기(대중교통·보행자·자동차)를 반환한다.
+                    arrivalAdminDongCode 미입력 또는 출발=도착인 경우 paths 와 mobility 는 null/empty.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "동네 상세 조회 성공",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseDTO.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "statusCode": "200",
+                                      "message": "동네 상세 조회 성공",
+                                      "data": {
+                                        "departureDong": {
+                                          "adminDongCode": "1162069500",
+                                          "cityName": "서울특별시",
+                                          "districtName": "관악구",
+                                          "adminDongName": "신림동",
+                                          "address": "서울특별시 관악구 신림동",
+                                          "latitude": 37.4842,
+                                          "longitude": 126.9295
+                                        },
+                                        "arrivalDong": {
+                                          "adminDongCode": "1168064000",
+                                          "cityName": "서울특별시",
+                                          "districtName": "강남구",
+                                          "adminDongName": "역삼1동",
+                                          "address": "서울특별시 강남구 역삼1동",
+                                          "latitude": 37.4998,
+                                          "longitude": 127.0364
+                                        },
+                                        "mobility": {
+                                          "totalMobility": 1240.50,
+                                          "avgTime": 47.80,
+                                          "startMonth": "202601",
+                                          "endMonth": "202603"
+                                        },
+                                        "totalPopulation": 41250.0,
+                                        "density": 23150.4,
+                                        "rentPrice": {
+                                          "adminDongCode": "1162069500",
+                                          "periodLabel": "최근 2년 기준",
+                                          "contractPeriodStart": "2024-04-18",
+                                          "contractPeriodEnd": "2026-04-17",
+                                          "excludedCancelledSales": true
+                                        },
+                                        "paths": {
+                                          "transit":    { "totalTime": 42,  "totalDistance": 10800, "source": "ODSAY" },
+                                          "pedestrian": { "totalTime": 132, "totalDistance": 10400, "source": "TMAP" },
+                                          "car":        { "totalTime": 28,  "totalDistance": 11500, "source": "TMAP" }
+                                        },
+                                        "likeCount": 23,
+                                        "likedByCurrentUser": true
+                                      }
+                                    }
+                                    """)
+                    )
+            )
+    })
     public ResponseEntity<ResponseDTO<DongneDetailResponse>> getDongneDetail(
             @RequestParam String adminDongCode,
-            @RequestParam(required = false) String workAdminDongCode,
+            @RequestParam(required = false) String arrivalAdminDongCode,
             @RequestParam(required = false) Long userId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         Long resolvedUserId = userDetails != null ? userDetails.getUserId() : userId;
         return ResponseEntity.ok(
-                dongneDetailService.getDetail(adminDongCode, workAdminDongCode, resolvedUserId));
+                dongneDetailService.getDetail(adminDongCode, arrivalAdminDongCode, resolvedUserId));
     }
 
     @PostMapping("/likes")

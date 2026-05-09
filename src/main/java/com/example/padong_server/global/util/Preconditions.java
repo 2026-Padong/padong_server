@@ -7,9 +7,9 @@ public final class Preconditions {
 
     private Preconditions() {}
 
-    public static void validate(boolean condition, String message) {
-        if (!condition) {
-            throw new CustomException(ErrorCode.VALIDATION_ERROR, message);
+    public static void validate(boolean expression, ErrorCode errorCode) {
+        if (!expression) {
+            throw new CustomException(errorCode);
         }
     }
 }

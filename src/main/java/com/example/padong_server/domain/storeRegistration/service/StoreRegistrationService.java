@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.storeRegistration.service;
 
 import com.example.padong_server.domain.storeLike.service.StoreLikeService;
+import com.example.padong_server.domain.oauth.entity.User;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationCreateRequest;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationResponse;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
@@ -21,7 +22,7 @@ public class StoreRegistrationService {
     private final StoreLikeService storeLikeService;
 
     @Transactional
-    public StoreRegistrationResponse createStore(StoreRegistrationCreateRequest request) {
+    public StoreRegistrationResponse createStore(User owner, StoreRegistrationCreateRequest request) {
         validate(request);
 
         Store store = Store.builder()
@@ -29,6 +30,7 @@ public class StoreRegistrationService {
                 .roadAddress(request.address().trim())
                 .phoneNumber(request.phoneNumber().trim())
                 .operatingHours(request.operatingHours().trim())
+                .owner(owner)
                 .build();
 
         return toResponse(storeRegistrationRepository.save(store), null);

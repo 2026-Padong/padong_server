@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.storeRegistration.controller;
 
+import com.example.padong_server.domain.oauth.entity.CustomUserDetails;
 import com.example.padong_server.domain.storeLike.dto.StoreLikeToggleResponse;
 import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationCreateRequest;
@@ -18,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -69,6 +71,7 @@ public class StoreRegistrationController {
     })
     @PostMapping
     public ResponseEntity<ResponseDTO<StoreRegistrationResponse>> createStore(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "가게명", example = "파동 식당")
             @RequestParam String name,
             @Parameter(description = "가게 주소", example = "서울 송파구 올림픽로 300")
@@ -84,7 +87,7 @@ public class StoreRegistrationController {
                 phoneNumber,
                 operatingHours
         );
-        StoreRegistrationResponse response = storeRegistrationService.createStore(request);
+        StoreRegistrationResponse response = storeRegistrationService.createStore(userDetails.getUser(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDTO.res(HttpStatus.CREATED, "가게 등록이 완료되었습니다.", response));
     }

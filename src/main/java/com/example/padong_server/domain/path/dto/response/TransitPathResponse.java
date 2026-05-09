@@ -27,10 +27,10 @@ public class TransitPathResponse {
     @Schema(description = "도착 행정동")
     private AdminDongDto arrivalDong;
 
-    @Schema(description = "총 소요시간(분)", example = "9")
+    @Schema(description = "총 소요시간(분)", example = "42")
     private int totalTime;
 
-    @Schema(description = "총 거리(m)", example = "2000")
+    @Schema(description = "총 거리(m)", example = "10800")
     private int totalDistance;
 
     public static TransitPathResponse of(

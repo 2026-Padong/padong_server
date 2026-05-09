@@ -73,9 +73,9 @@ public class PathController {
                                                               "address": "서울특별시 강남구 역삼1동"
                                                             },
                                                             "paths": {
-                                                              "transit":    { "totalTime": 9,  "totalDistance": 2000 },
-                                                              "pedestrian": { "totalTime": 18, "totalDistance": 1240 },
-                                                              "car":        { "totalTime": 18, "totalDistance": 12500 }
+                                                              "transit":    { "totalTime": 42,  "totalDistance": 10800, "source": "ODSAY" },
+                                                              "pedestrian": { "totalTime": 132, "totalDistance": 10400, "source": "TMAP" },
+                                                              "car":        { "totalTime": 28,  "totalDistance": 11500, "source": "TMAP" }
                                                             }
                                                           }
                                                         }
@@ -125,8 +125,8 @@ public class PathController {
                                                               "adminDongCode": "1168064000",
                                                               "address": "서울특별시 강남구 역삼1동"
                                                             },
-                                                            "totalTime": 9,
-                                                            "totalDistance": 2000
+                                                            "totalTime": 42,
+                                                            "totalDistance": 10800
                                                           }
                                                         }
                                                         """))),
@@ -175,8 +175,8 @@ public class PathController {
                                                               "adminDongCode": "1168064000",
                                                               "address": "서울특별시 강남구 역삼1동"
                                                             },
-                                                            "totalTime": 18,
-                                                            "totalDistance": 1240
+                                                            "totalTime": 132,
+                                                            "totalDistance": 10400
                                                           }
                                                         }
                                                         """))),
@@ -225,8 +225,8 @@ public class PathController {
                                                               "adminDongCode": "1168064000",
                                                               "address": "서울특별시 강남구 역삼1동"
                                                             },
-                                                            "totalTime": 18,
-                                                            "totalDistance": 12500
+                                                            "totalTime": 28,
+                                                            "totalDistance": 11500
                                                           }
                                                         }
                                                         """))),

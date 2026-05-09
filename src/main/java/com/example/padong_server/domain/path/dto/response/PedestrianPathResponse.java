@@ -31,10 +31,10 @@ public class PedestrianPathResponse {
     @Schema(description = "도착 행정동")
     private AdminDongDto arrivalDong;
 
-    @Schema(description = "총 소요시간(분, 반올림)", example = "18")
+    @Schema(description = "총 소요시간(분, 반올림)", example = "132")
     private int totalTime;
 
-    @Schema(description = "총 거리(m)", example = "1240")
+    @Schema(description = "총 거리(m)", example = "10400")
     private int totalDistance;
 
     public static PedestrianPathResponse of(

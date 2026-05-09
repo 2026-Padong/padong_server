@@ -31,10 +31,10 @@ public class CarPathResponse {
     @Schema(description = "도착 행정동")
     private AdminDongDto arrivalDong;
 
-    @Schema(description = "총 소요시간(분, 반올림)", example = "18")
+    @Schema(description = "총 소요시간(분, 반올림)", example = "28")
     private int totalTime;
 
-    @Schema(description = "총 거리(m)", example = "12500")
+    @Schema(description = "총 거리(m)", example = "11500")
     private int totalDistance;
 
     public static CarPathResponse of(

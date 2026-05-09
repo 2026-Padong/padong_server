@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.dongne.dto;
 
+import com.example.padong_server.domain.path.dto.response.PathAllResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -10,25 +11,29 @@ import lombok.Getter;
 @Schema(description = "동네 상세 응답")
 public class DongneDetailResponse {
 
-    @Schema(description = "선택된 동네 정보")
-    private DongneSummaryResponse dongne;
+    @Schema(description = "출발 행정동 (선택된 거주지 후보)")
+    private DongneSummaryResponse departureDong;
 
-    @Schema(description = "직장 위치 기준 동네 정보")
-    private DongneSummaryResponse workDong;
+    @Schema(description = "도착 행정동 (직장 위치)")
+    private DongneSummaryResponse arrivalDong;
 
     @Schema(description = "직장-거주지 기준 생활이동 정보")
     private DongneMobilityResponse mobility;
 
-    @Schema(description = "총 인구", example = "12340.0")
+    @Schema(description = "총 인구(명)", example = "41250.0")
     private Double totalPopulation;
 
-    @Schema(description = "인구 밀도", example = "8920.0")
+    @Schema(description = "인구 밀도(명/km²)", example = "23150.4")
     private Double density;
 
     @Schema(description = "임대료 상세 정보")
     private AdminDongRentPriceDetailResponse rentPrice;
 
-    @Schema(description = "좋아요 수", example = "12")
+    @Schema(description = "선택 동네 → 직장 행정동 통합 길찾기 (대중교통/보행자/자동차). "
+            + "workAdminDongCode 미입력이거나 출발=도착(같은 행정동)이면 null.")
+    private PathAllResponse.Paths paths;
+
+    @Schema(description = "좋아요 수", example = "23")
     private long likeCount;
 
     @Schema(description = "현재 사용자의 좋아요 여부", example = "true")

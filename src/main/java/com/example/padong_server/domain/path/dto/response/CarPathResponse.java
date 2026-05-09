@@ -3,6 +3,7 @@ package com.example.padong_server.domain.path.dto.response;
 import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.path.dto.internal.OdsayJson;
+import com.example.padong_server.domain.path.dto.internal.PathSummary;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
@@ -35,20 +36,23 @@ public class CarPathResponse {
     @Schema(description = "총 거리(m)", example = "12500")
     private int totalDistance;
 
-    public static CarPathResponse from(
-            AdminDong departureDong, AdminDong arrivalDong, Map<String, Object> body) {
+    public static CarPathResponse of(
+            AdminDong departureDong, AdminDong arrivalDong, PathSummary summary) {
+        return CarPathResponse.builder()
+                .departureDong(AdminDongDto.from(departureDong))
+                .arrivalDong(AdminDongDto.from(arrivalDong))
+                .totalTime(summary.totalTime())
+                .totalDistance(summary.totalDistance())
+                .build();
+    }
+
+    public static PathSummary parseSummary(Map<String, Object> body) {
         List<Map<String, Object>> features = OdsayJson.mapList(body.get("features"));
         Map<String, Object> startProperties = findStartFeatureProperties(features);
 
         int totalTimeSeconds = OdsayJson.intValue(startProperties.get("totalTime"), 0);
         int totalDistance = OdsayJson.intValue(startProperties.get("totalDistance"), 0);
-
-        return CarPathResponse.builder()
-                .departureDong(AdminDongDto.from(departureDong))
-                .arrivalDong(AdminDongDto.from(arrivalDong))
-                .totalTime(roundSecondsToMinutes(totalTimeSeconds))
-                .totalDistance(totalDistance)
-                .build();
+        return new PathSummary(roundSecondsToMinutes(totalTimeSeconds), totalDistance);
     }
 
     private static Map<String, Object> findStartFeatureProperties(

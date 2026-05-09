@@ -43,9 +43,8 @@ public class PathController {
             description =
                     """
                     행정동 코드 2개를 입력받아 ODsay 대중교통 길찾기 API를 호출하여
-                    추천 경로를 반환한다.
-                    좌표는 AdminDong.latitude/longitude 를 사용한다.
-                    도시내(SearchType=0)만 우선 지원한다.
+                    총 소요시간(분)과 총 거리(m)를 반환한다.
+                    캐시(1일 TTL) 우선 조회 후 miss 시 외부 API 호출.
                     """)
     @ApiResponses({
         @ApiResponse(
@@ -71,32 +70,8 @@ public class PathController {
                                                               "adminDongCode": "1168064000",
                                                               "address": "서울특별시 강남구 역삼1동"
                                                             },
-                                                            "searchType": 0,
-                                                            "pathCount": 1,
-                                                            "paths": [
-                                                              {
-                                                                "pathType": 1,
-                                                                "totalTime": 9,
-                                                                "totalWalk": 0,
-                                                                "totalWalkTime": null,
-                                                                "payment": 1250,
-                                                                "transferCount": 0,
-                                                                "mapObj": "2:2:237:238",
-                                                                "subPaths": [
-                                                                  {
-                                                                    "trafficType": 1,
-                                                                    "distance": 2000,
-                                                                    "sectionTime": 9,
-                                                                    "startName": "당산",
-                                                                    "endName": "합정",
-                                                                    "startCoord": { "x": 126.902682, "y": 37.534863 },
-                                                                    "endCoord":   { "x": 126.914543, "y": 37.549942 },
-                                                                    "laneName": "수도권 2호선",
-                                                                    "stationCount": 1
-                                                                  }
-                                                                ]
-                                                              }
-                                                            ]
+                                                            "totalTime": 9,
+                                                            "totalDistance": 2000
                                                           }
                                                         }
                                                         """))),

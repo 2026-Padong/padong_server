@@ -3,6 +3,7 @@ package com.example.padong_server.domain.path.dto.response;
 import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.path.dto.internal.OdsayJson;
+import com.example.padong_server.domain.path.dto.internal.PathSummary;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
@@ -25,31 +26,32 @@ public class TransitPathResponse {
     @Schema(description = "도착 행정동")
     private AdminDongDto arrivalDong;
 
-    @Schema(description = "검색 종류 (0: 도시내, 1: 도시간)", example = "0")
-    private int searchType;
+    @Schema(description = "총 소요시간(분)", example = "9")
+    private int totalTime;
 
-    @Schema(description = "응답 경로 개수", example = "1")
-    private int pathCount;
+    @Schema(description = "총 거리(m)", example = "2000")
+    private int totalDistance;
 
-    @Schema(description = "추천 경로 목록")
-    private List<TransitPath> paths;
-
-    public static TransitPathResponse from(
-            AdminDong departureDong, AdminDong arrivalDong, Map<String, Object> body) {
-        Map<String, Object> result = OdsayJson.map(body.get("result"));
-        Preconditions.validate(!result.isEmpty(), ErrorCode.ODSAY_NO_RESULT);
-
-        List<TransitPath> paths = OdsayJson.mapList(result.get("path")).stream()
-                .map(TransitPath::from)
-                .toList();
-        Preconditions.validate(!paths.isEmpty(), ErrorCode.ODSAY_NO_RESULT);
-
+    public static TransitPathResponse of(
+            AdminDong departureDong, AdminDong arrivalDong, PathSummary summary) {
         return TransitPathResponse.builder()
                 .departureDong(AdminDongDto.from(departureDong))
                 .arrivalDong(AdminDongDto.from(arrivalDong))
-                .searchType(OdsayJson.intValue(result.get("searchType"), 0))
-                .pathCount(paths.size())
-                .paths(paths)
+                .totalTime(summary.totalTime())
+                .totalDistance(summary.totalDistance())
                 .build();
+    }
+
+    public static PathSummary parseSummary(Map<String, Object> body) {
+        Map<String, Object> result = OdsayJson.map(body.get("result"));
+        Preconditions.validate(!result.isEmpty(), ErrorCode.ODSAY_NO_RESULT);
+
+        List<Map<String, Object>> paths = OdsayJson.mapList(result.get("path"));
+        Preconditions.validate(!paths.isEmpty(), ErrorCode.ODSAY_NO_RESULT);
+
+        Map<String, Object> info = OdsayJson.map(paths.get(0).get("info"));
+        int totalTime = OdsayJson.intValue(info.get("totalTime"), 0);
+        int totalDistance = OdsayJson.intValue(info.get("totalDistance"), 0);
+        return new PathSummary(totalTime, totalDistance);
     }
 }

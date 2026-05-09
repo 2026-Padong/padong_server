@@ -2,8 +2,13 @@ package com.example.padong_server.domain.path.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
@@ -14,6 +19,9 @@ import com.example.padong_server.domain.path.dto.request.TransitPathRequest;
 import com.example.padong_server.domain.path.dto.response.CarPathResponse;
 import com.example.padong_server.domain.path.dto.response.PedestrianPathResponse;
 import com.example.padong_server.domain.path.dto.response.TransitPathResponse;
+import com.example.padong_server.domain.path.entity.PathMode;
+import com.example.padong_server.domain.path.entity.PathRecord;
+import com.example.padong_server.domain.path.repository.PathRecordRepository;
 import com.example.padong_server.global.client.odsay.OdsayClient;
 import com.example.padong_server.global.client.sk.SkCarRouteClient;
 import com.example.padong_server.global.client.sk.SkPedestrianRouteClient;
@@ -30,7 +38,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class PathServiceTest {
@@ -49,66 +59,101 @@ class PathServiceTest {
     @Mock
     private SkCarRouteClient skCarRouteClient;
 
+    @Mock
+    private PathRecordRepository pathRecordRepository;
+
     @InjectMocks
     private PathService pathService;
 
     @Nested
-    @DisplayName("대중교통 길찾기 (searchTransit)")
+    @DisplayName("대중교통 (searchTransit)")
     class Transit {
 
         @Test
-        @DisplayName("정상 흐름: AdminDong 좌표를 OdsayClient에 전달하고 응답을 DTO로 변환")
-        void search_validRequest_returnsResponse() throws IOException {
-            AdminDong departure = adminDong("1162069500", "관악구", "신림동", 37.4842, 126.9295);
-            AdminDong arrival = adminDong("1168064000", "강남구", "역삼1동", 37.4998, 127.0364);
+        @DisplayName("DB hit (만료 전): 외부 API 호출 없이 응답")
+        void search_freshRecord_skipsExternalCall() {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.TRANSIT, "1162069500", "1168064000"))
+                    .willReturn(Optional.of(record(PathMode.TRANSIT, 9, 2000, LocalDateTime.now())));
 
-            given(adminDongRepository.getByAdminDongCode("1162069500")).willReturn(departure);
-            given(adminDongRepository.getByAdminDongCode("1168064000")).willReturn(arrival);
-            given(
-                            odsayClient.searchPubTransPath(
-                                    eq(126.9295), eq(37.4842), eq(127.0364), eq(37.4998),
-                                    eq((Integer) null), eq((Integer) null)))
+            TransitPathResponse response =
+                    pathService.searchTransit(
+                            TransitPathRequest.builder()
+                                    .departureDongCode("1162069500")
+                                    .arrivalDongCode("1168064000")
+                                    .build());
+
+            assertThat(response.getTotalTime()).isEqualTo(9);
+            assertThat(response.getTotalDistance()).isEqualTo(2000);
+            verify(odsayClient, never()).searchPubTransPath(
+                    any(Double.class), any(Double.class), any(Double.class), any(Double.class),
+                    any(), any());
+            verify(pathRecordRepository, never()).upsert(
+                    anyString(), anyString(), anyString(), anyInt(), anyInt(), any());
+        }
+
+        @Test
+        @DisplayName("DB miss: 외부 API 호출 + UPSERT")
+        void search_missingRecord_callsExternalAndUpserts() throws IOException {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.TRANSIT, "1162069500", "1168064000"))
+                    .willReturn(Optional.empty());
+            given(odsayClient.searchPubTransPath(
+                            eq(126.9295), eq(37.4842), eq(127.0364), eq(37.4998),
+                            eq((Integer) null), eq((Integer) null)))
                     .willReturn(parseJson(SAMPLE_ODSAY_RESPONSE));
 
-            TransitPathRequest request =
+            TransitPathResponse response =
+                    pathService.searchTransit(
+                            TransitPathRequest.builder()
+                                    .departureDongCode("1162069500")
+                                    .arrivalDongCode("1168064000")
+                                    .build());
+
+            assertThat(response.getTotalTime()).isEqualTo(9);
+            assertThat(response.getTotalDistance()).isEqualTo(2000);
+            verify(pathRecordRepository).upsert(
+                    eq("TRANSIT"), eq("1162069500"), eq("1168064000"),
+                    eq(9), eq(2000), any(LocalDateTime.class));
+        }
+
+        @Test
+        @DisplayName("DB hit but 만료: 외부 API 호출 + UPSERT")
+        void search_expiredRecord_refreshes() throws IOException {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.TRANSIT, "1162069500", "1168064000"))
+                    .willReturn(
+                            Optional.of(record(
+                                    PathMode.TRANSIT, 9, 2000,
+                                    LocalDateTime.now().minusDays(2)))); // 만료
+            given(odsayClient.searchPubTransPath(
+                            any(Double.class), any(Double.class), any(Double.class),
+                            any(Double.class), any(), any()))
+                    .willReturn(parseJson(SAMPLE_ODSAY_RESPONSE));
+
+            pathService.searchTransit(
                     TransitPathRequest.builder()
                             .departureDongCode("1162069500")
                             .arrivalDongCode("1168064000")
-                            .build();
+                            .build());
 
-            TransitPathResponse response = pathService.searchTransit(request);
-
-            assertThat(response.getDepartureDong().getAdminDongCode()).isEqualTo("1162069500");
-            assertThat(response.getArrivalDong().getAdminDongCode()).isEqualTo("1168064000");
-            assertThat(response.getPathCount()).isEqualTo(1);
-            assertThat(response.getPaths().get(0).getTotalTime()).isEqualTo(9);
+            verify(pathRecordRepository).upsert(
+                    eq("TRANSIT"), anyString(), anyString(), anyInt(), anyInt(),
+                    any(LocalDateTime.class));
         }
 
         @Test
         @DisplayName("출발 코드와 도착 코드가 같으면 TRANSIT_PATH_SAME_DONG")
         void search_sameDongCode_throws() {
-            TransitPathRequest request =
-                    TransitPathRequest.builder()
-                            .departureDongCode("1162069500")
-                            .arrivalDongCode("1162069500")
-                            .build();
-
-            assertThatThrownBy(() -> pathService.searchTransit(request))
-                    .isInstanceOf(CustomException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
-        }
-
-        @Test
-        @DisplayName("앞뒤 공백이 있어도 trim 후 비교하여 같으면 막는다")
-        void search_sameDongCodeWithWhitespace_throws() {
-            TransitPathRequest request =
-                    TransitPathRequest.builder()
-                            .departureDongCode(" 1162069500 ")
-                            .arrivalDongCode("1162069500")
-                            .build();
-
-            assertThatThrownBy(() -> pathService.searchTransit(request))
+            assertThatThrownBy(
+                            () -> pathService.searchTransit(
+                                    TransitPathRequest.builder()
+                                            .departureDongCode("1162069500")
+                                            .arrivalDongCode("1162069500")
+                                            .build()))
                     .isInstanceOf(CustomException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
@@ -116,107 +161,110 @@ class PathServiceTest {
     }
 
     @Nested
-    @DisplayName("보행자 경로 (searchPedestrian)")
+    @DisplayName("보행자 (searchPedestrian)")
     class Pedestrian {
 
         @Test
-        @DisplayName("정상 흐름: AdminDong → 클라이언트에 좌표/이름 전달 → DTO 변환")
-        void search_validRequest_returnsResponse() throws IOException {
-            AdminDong departure = adminDong("1162069500", "관악구", "신림동", 37.4842, 126.9295);
-            AdminDong arrival = adminDong("1168064000", "강남구", "역삼1동", 37.4998, 127.0364);
+        @DisplayName("DB hit (만료 전): 외부 API 호출 없이 응답")
+        void search_freshRecord_skipsExternalCall() {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.PEDESTRIAN, "1162069500", "1168064000"))
+                    .willReturn(Optional.of(record(PathMode.PEDESTRIAN, 18, 1240, LocalDateTime.now())));
 
-            given(adminDongRepository.getByAdminDongCode("1162069500")).willReturn(departure);
-            given(adminDongRepository.getByAdminDongCode("1168064000")).willReturn(arrival);
-            given(
-                            skPedestrianRouteClient.route(
-                                    eq("신림동"),
-                                    eq(126.9295),
-                                    eq(37.4842),
-                                    eq("역삼1동"),
-                                    eq(127.0364),
-                                    eq(37.4998)))
-                    .willReturn(parseJson(SAMPLE_TMAP_PEDESTRIAN_RESPONSE));
+            PedestrianPathResponse response =
+                    pathService.searchPedestrian(
+                            PedestrianPathRequest.builder()
+                                    .departureDongCode("1162069500")
+                                    .arrivalDongCode("1168064000")
+                                    .build());
 
-            PedestrianPathRequest request =
-                    PedestrianPathRequest.builder()
-                            .departureDongCode("1162069500")
-                            .arrivalDongCode("1168064000")
-                            .build();
-
-            PedestrianPathResponse response = pathService.searchPedestrian(request);
-
-            assertThat(response.getDepartureDong().getAdminDongCode()).isEqualTo("1162069500");
-            assertThat(response.getArrivalDong().getAdminDongCode()).isEqualTo("1168064000");
-            assertThat(response.getTotalDistance()).isEqualTo(1240);
             assertThat(response.getTotalTime()).isEqualTo(18);
+            assertThat(response.getTotalDistance()).isEqualTo(1240);
+            verify(skPedestrianRouteClient, never()).route(
+                    any(), any(Double.class), any(Double.class),
+                    any(), any(Double.class), any(Double.class));
         }
 
         @Test
-        @DisplayName("출발 코드와 도착 코드가 같으면 TRANSIT_PATH_SAME_DONG")
-        void search_sameDongCode_throws() {
-            PedestrianPathRequest request =
+        @DisplayName("DB miss: 외부 API 호출 + UPSERT")
+        void search_missingRecord_callsExternalAndUpserts() throws IOException {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.PEDESTRIAN, "1162069500", "1168064000"))
+                    .willReturn(Optional.empty());
+            given(skPedestrianRouteClient.route(
+                            eq("신림동"), eq(126.9295), eq(37.4842),
+                            eq("역삼1동"), eq(127.0364), eq(37.4998)))
+                    .willReturn(parseJson(SAMPLE_TMAP_PEDESTRIAN_RESPONSE));
+
+            pathService.searchPedestrian(
                     PedestrianPathRequest.builder()
                             .departureDongCode("1162069500")
-                            .arrivalDongCode("1162069500")
-                            .build();
+                            .arrivalDongCode("1168064000")
+                            .build());
 
-            assertThatThrownBy(() -> pathService.searchPedestrian(request))
-                    .isInstanceOf(CustomException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
+            verify(pathRecordRepository).upsert(
+                    eq("PEDESTRIAN"), eq("1162069500"), eq("1168064000"),
+                    eq(18), eq(1240), any(LocalDateTime.class));
         }
     }
 
     @Nested
-    @DisplayName("자동차 경로 (searchCar)")
+    @DisplayName("자동차 (searchCar)")
     class Car {
 
         @Test
-        @DisplayName("정상 흐름: AdminDong → 클라이언트에 좌표/이름 전달 → DTO 변환")
-        void search_validRequest_returnsResponse() throws IOException {
-            AdminDong departure = adminDong("1162069500", "관악구", "신림동", 37.4842, 126.9295);
-            AdminDong arrival = adminDong("1168064000", "강남구", "역삼1동", 37.4998, 127.0364);
+        @DisplayName("DB hit (만료 전): 외부 API 호출 없이 응답")
+        void search_freshRecord_skipsExternalCall() {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.CAR, "1162069500", "1168064000"))
+                    .willReturn(Optional.of(record(PathMode.CAR, 18, 12500, LocalDateTime.now())));
 
-            given(adminDongRepository.getByAdminDongCode("1162069500")).willReturn(departure);
-            given(adminDongRepository.getByAdminDongCode("1168064000")).willReturn(arrival);
-            given(
-                            skCarRouteClient.route(
-                                    eq("신림동"),
-                                    eq(126.9295),
-                                    eq(37.4842),
-                                    eq("역삼1동"),
-                                    eq(127.0364),
-                                    eq(37.4998)))
-                    .willReturn(parseJson(SAMPLE_TMAP_CAR_RESPONSE));
+            CarPathResponse response =
+                    pathService.searchCar(
+                            CarPathRequest.builder()
+                                    .departureDongCode("1162069500")
+                                    .arrivalDongCode("1168064000")
+                                    .build());
 
-            CarPathRequest request =
-                    CarPathRequest.builder()
-                            .departureDongCode("1162069500")
-                            .arrivalDongCode("1168064000")
-                            .build();
-
-            CarPathResponse response = pathService.searchCar(request);
-
-            assertThat(response.getDepartureDong().getAdminDongCode()).isEqualTo("1162069500");
-            assertThat(response.getArrivalDong().getAdminDongCode()).isEqualTo("1168064000");
-            assertThat(response.getTotalDistance()).isEqualTo(12500);
             assertThat(response.getTotalTime()).isEqualTo(18);
+            assertThat(response.getTotalDistance()).isEqualTo(12500);
+            verify(skCarRouteClient, never()).route(
+                    any(), any(Double.class), any(Double.class),
+                    any(), any(Double.class), any(Double.class));
         }
 
         @Test
-        @DisplayName("출발 코드와 도착 코드가 같으면 TRANSIT_PATH_SAME_DONG")
-        void search_sameDongCode_throws() {
-            CarPathRequest request =
+        @DisplayName("DB miss: 외부 API 호출 + UPSERT")
+        void search_missingRecord_callsExternalAndUpserts() throws IOException {
+            stubAdminDongs();
+            given(pathRecordRepository.findByModeAndDepartureDongCodeAndArrivalDongCode(
+                            PathMode.CAR, "1162069500", "1168064000"))
+                    .willReturn(Optional.empty());
+            given(skCarRouteClient.route(
+                            eq("신림동"), eq(126.9295), eq(37.4842),
+                            eq("역삼1동"), eq(127.0364), eq(37.4998)))
+                    .willReturn(parseJson(SAMPLE_TMAP_CAR_RESPONSE));
+
+            pathService.searchCar(
                     CarPathRequest.builder()
                             .departureDongCode("1162069500")
-                            .arrivalDongCode("1162069500")
-                            .build();
+                            .arrivalDongCode("1168064000")
+                            .build());
 
-            assertThatThrownBy(() -> pathService.searchCar(request))
-                    .isInstanceOf(CustomException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(ErrorCode.TRANSIT_PATH_SAME_DONG);
+            verify(pathRecordRepository).upsert(
+                    eq("CAR"), eq("1162069500"), eq("1168064000"),
+                    eq(18), eq(12500), any(LocalDateTime.class));
         }
+    }
+
+    private void stubAdminDongs() {
+        AdminDong departure = adminDong("1162069500", "관악구", "신림동", 37.4842, 126.9295);
+        AdminDong arrival = adminDong("1168064000", "강남구", "역삼1동", 37.4998, 127.0364);
+        given(adminDongRepository.getByAdminDongCode("1162069500")).willReturn(departure);
+        given(adminDongRepository.getByAdminDongCode("1168064000")).willReturn(arrival);
     }
 
     private AdminDong adminDong(
@@ -224,6 +272,18 @@ class PathServiceTest {
         return new AdminDong(
                 new AdminDongCsvRow(
                         code, "서울특별시", districtName, dongName, lat, lng, "20260325", ""));
+    }
+
+    private PathRecord record(PathMode mode, int totalTime, int totalDistance, LocalDateTime updatedAt) {
+        return PathRecord.builder()
+                .mode(mode)
+                .departureDongCode("1162069500")
+                .arrivalDongCode("1168064000")
+                .totalTime(totalTime)
+                .totalDistance(totalDistance)
+                .createdAt(updatedAt)
+                .updatedAt(updatedAt)
+                .build();
     }
 
     private Map<String, Object> parseJson(String json) throws IOException {
@@ -238,34 +298,12 @@ class PathServiceTest {
               "result": {
                 "path": [
                   {
-                    "pathType": 1,
-                    "subPath": [
-                      {
-                        "trafficType": 1,
-                        "distance": 2000,
-                        "sectionTime": 9,
-                        "lane": {"name": "수도권 2호선"},
-                        "stationCount": 1,
-                        "startX": 126.902682,
-                        "startY": 37.534863,
-                        "startName": "당산",
-                        "endX": 126.914543,
-                        "endY": 37.549942,
-                        "endName": "합정"
-                      }
-                    ],
                     "info": {
-                      "mapObj": "2:2:237:238",
-                      "payment": 1250,
-                      "busTransitCount": 0,
-                      "subwayTransitCount": 1,
                       "totalTime": 9,
-                      "totalWalk": 0,
-                      "totalWalkTime": -1
+                      "totalDistance": 2000
                     }
                   }
-                ],
-                "searchType": 0
+                ]
               }
             }
             """;

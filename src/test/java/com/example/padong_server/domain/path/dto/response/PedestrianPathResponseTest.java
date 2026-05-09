@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.path.dto.internal.PathSummary;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,47 +46,52 @@ class PedestrianPathResponseTest {
 
     @Test
     @DisplayName("SP feature에서 totalTime/totalDistance 추출 + 초→분 반올림")
-    void from_validResponse_extractsSummary() throws IOException {
+    void parseSummary_extractsAndRounds() throws IOException {
         Map<String, Object> raw = parseJson(VALID_TMAP_RESPONSE);
 
-        PedestrianPathResponse response = PedestrianPathResponse.from(DEPARTURE, ARRIVAL, raw);
+        PathSummary summary = PedestrianPathResponse.parseSummary(raw);
 
-        assertThat(response.getDepartureDong().getAdminDongCode()).isEqualTo("1162069500");
-        assertThat(response.getArrivalDong().getAdminDongCode()).isEqualTo("1168064000");
-        assertThat(response.getTotalDistance()).isEqualTo(1240);
+        assertThat(summary.totalDistance()).isEqualTo(1240);
         // 1067초 → 17.78분 → 반올림 18
-        assertThat(response.getTotalTime()).isEqualTo(18);
+        assertThat(summary.totalTime()).isEqualTo(18);
     }
 
     @Test
     @DisplayName("초 단위 반올림 경계 검증")
-    void from_secondsToMinutes_rounding() throws IOException {
-        // 30초 → 0.5분 → 1 (반올림 half-up은 0.5에서 짝수로 갈 수 있음, Math.round는 half-up)
-        Map<String, Object> raw30 = parseJson(buildResponse(30, 100));
-        assertThat(PedestrianPathResponse.from(DEPARTURE, ARRIVAL, raw30).getTotalTime()).isEqualTo(1);
+    void parseSummary_secondsToMinutes_rounding() throws IOException {
+        assertThat(roundedFrom(30)).isEqualTo(1);
+        assertThat(roundedFrom(29)).isEqualTo(0);
+        assertThat(roundedFrom(89)).isEqualTo(1);
+        assertThat(roundedFrom(90)).isEqualTo(2);
+    }
 
-        // 29초 → 0.483분 → 0
-        Map<String, Object> raw29 = parseJson(buildResponse(29, 100));
-        assertThat(PedestrianPathResponse.from(DEPARTURE, ARRIVAL, raw29).getTotalTime()).isEqualTo(0);
+    @Test
+    @DisplayName("of() 로 응답 DTO 빌드")
+    void of_buildsDto() {
+        PathSummary summary = new PathSummary(18, 1240);
 
-        // 89초 → 1.483 → 1
-        Map<String, Object> raw89 = parseJson(buildResponse(89, 100));
-        assertThat(PedestrianPathResponse.from(DEPARTURE, ARRIVAL, raw89).getTotalTime()).isEqualTo(1);
+        PedestrianPathResponse response = PedestrianPathResponse.of(DEPARTURE, ARRIVAL, summary);
 
-        // 90초 → 1.5 → 2
-        Map<String, Object> raw90 = parseJson(buildResponse(90, 100));
-        assertThat(PedestrianPathResponse.from(DEPARTURE, ARRIVAL, raw90).getTotalTime()).isEqualTo(2);
+        assertThat(response.getDepartureDong().getAdminDongCode()).isEqualTo("1162069500");
+        assertThat(response.getArrivalDong().getAdminDongCode()).isEqualTo("1168064000");
+        assertThat(response.getTotalTime()).isEqualTo(18);
+        assertThat(response.getTotalDistance()).isEqualTo(1240);
     }
 
     @Test
     @DisplayName("SP feature가 없으면 SK_PEDESTRIAN_NO_RESULT 를 던진다")
-    void from_noStartFeature_throws() throws IOException {
+    void parseSummary_noStartFeature_throws() throws IOException {
         Map<String, Object> raw = parseJson("{\"type\":\"FeatureCollection\",\"features\":[]}");
 
-        assertThatThrownBy(() -> PedestrianPathResponse.from(DEPARTURE, ARRIVAL, raw))
+        assertThatThrownBy(() -> PedestrianPathResponse.parseSummary(raw))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SK_PEDESTRIAN_NO_RESULT);
+    }
+
+    private int roundedFrom(int totalTimeSeconds) throws IOException {
+        Map<String, Object> raw = parseJson(buildResponse(totalTimeSeconds, 100));
+        return PedestrianPathResponse.parseSummary(raw).totalTime();
     }
 
     private Map<String, Object> parseJson(String json) throws IOException {
@@ -124,29 +130,7 @@ class PedestrianPathResponseTest {
                   "properties": {
                     "totalDistance": 1240,
                     "totalTime": 1067,
-                    "index": 0,
-                    "pointType": "SP",
-                    "name": "관악구 신림동"
-                  }
-                },
-                {
-                  "type": "Feature",
-                  "geometry": {"type": "LineString", "coordinates": [[126.9, 37.5],[126.91, 37.51]]},
-                  "properties": {
-                    "index": 1,
-                    "lineIndex": 0,
-                    "distance": 300,
-                    "time": 240,
-                    "roadType": 21
-                  }
-                },
-                {
-                  "type": "Feature",
-                  "geometry": {"type": "Point", "coordinates": [127.0364, 37.4998]},
-                  "properties": {
-                    "index": 5,
-                    "pointType": "EP",
-                    "name": "강남구 역삼1동"
+                    "pointType": "SP"
                   }
                 }
               ]

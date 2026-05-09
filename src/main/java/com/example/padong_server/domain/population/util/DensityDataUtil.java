@@ -1,69 +1,122 @@
 package com.example.padong_server.domain.population.util;
 
 import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongne.service.DongneService;
-import com.example.padong_server.domain.population.entity.Population;
-import com.example.padong_server.domain.population.repository.PopulationRepository;
+import com.example.padong_server.domain.population.entity.PopulationDensity;
+import com.opencsv.CSVReader;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Optional;
 
 @Slf4j
 @Component
 public class DensityDataUtil {
+
+    private static final String FILE_PATH = "data/population/seoul_admin_dong_population_density.csv";
+
     private final DongneService dongneService;
+    private final AdminDongRepository adminDongRepository;
 
-    private final PopulationRepository populationRepository;
-
-    @Autowired
-    public DensityDataUtil(DongneService dongneService, PopulationRepository populationRepository) {
+    public DensityDataUtil(DongneService dongneService, AdminDongRepository adminDongRepository) {
         this.dongneService = dongneService;
-        this.populationRepository = populationRepository;
+        this.adminDongRepository = adminDongRepository;
     }
 
-    private final String filePath = "data/면적데이터.xlsx";
+    public List<PopulationDensity> readDensityFromCsv() {
+        List<PopulationDensity> result = new ArrayList<>();
 
-    public void readDensityFromExcel() {
+        ClassPathResource resource = new ClassPathResource(FILE_PATH);
 
-        ClassPathResource resource = new ClassPathResource(filePath);
+        try (BufferedReader bufferedReader = new BufferedReader(
+                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8));
+             CSVReader reader = new CSVReader(bufferedReader)) {
 
-        try (InputStream is = resource.getInputStream()) {
-            Workbook workbook = new XSSFWorkbook(is);
-            Sheet sheet = workbook.getSheetAt(0);
+            String[] fields;
+            boolean isFirstLine = true;
 
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null) continue;
-
-                String address = String.valueOf(row.getCell(0));
-                double width = row.getCell(1).getNumericCellValue();
-
-                AdminDong dong = dongneService.findAdminDongByAddress(address);
-
-                Optional<Population> optional = populationRepository.findByAdminDong(dong);
-                if (optional.isPresent()) {
-                    Population population = optional.get();
-                    population.setDensity(population.getTotalPopulation() / width);
-                    populationRepository.save(population);
+            while ((fields = reader.readNext()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
                 }
+
+                String cityName = sanitize(fields[0]);
+                String districtName = sanitize(fields[1]);
+                String adminDongName = sanitize(fields[2]);
+                String adminDongCode = sanitize(fields[3]);
+                Optional<AdminDong> adminDong = resolveAdminDong(adminDongCode, cityName, districtName, adminDongName);
+
+                if (adminDong.isEmpty()) {
+                    log.warn(
+                            "Skip population density row because admin dong was not found. code={}, city={}, district={}, adminDong={}",
+                            adminDongCode,
+                            cityName,
+                            districtName,
+                            adminDongName
+                    );
+                    continue;
+                }
+
+                result.add(PopulationDensity.builder()
+                        .adminDong(adminDong.get())
+                        .cityName(cityName)
+                        .districtName(districtName)
+                        .adminDongName(adminDongName)
+                        .totalPopulation(parse(fields[4]))
+                        .areaSize(parse(fields[5]))
+                        .density(parse(fields[6]))
+                        .soccerFieldPopulation(parse(fields[7]))
+                        .build());
             }
         } catch (IOException e) {
-            log.error("Error reading Excel file");
-            throw new RuntimeException("Error reading Excel file", e);
+            log.error("Error reading density CSV file: {}", FILE_PATH, e);
+            throw new RuntimeException("Error reading density CSV file", e);
         } catch (Exception e) {
-            log.error("Error processing Excel file");
-            throw new RuntimeException("Error processing Excel file", e);
+            log.error("Error processing density CSV file: {}", FILE_PATH, e);
+            throw new RuntimeException("Error processing density CSV file", e);
         }
 
+        return result;
     }
 
+    private Optional<AdminDong> resolveAdminDong(
+            String adminDongCode,
+            String cityName,
+            String districtName,
+            String adminDongName
+    ) {
+        Optional<AdminDong> byCode = adminDongRepository.findByAdminDongCode(adminDongCode);
+        if (byCode.isPresent()) {
+            return byCode;
+        }
+
+        return adminDongRepository.findByCityNameAndDistrictNameAndAdminDongName(
+                cityName,
+                districtName,
+                adminDongName
+        );
+    }
+
+    private static String sanitize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\uFEFF", "").replace("\"", "").trim();
+    }
+
+    private static double parse(String value) {
+        String sanitized = sanitize(value);
+        if (sanitized.isEmpty()) {
+            return 0.0;
+        }
+        return Double.parseDouble(sanitized.replace(",", ""));
+    }
 }

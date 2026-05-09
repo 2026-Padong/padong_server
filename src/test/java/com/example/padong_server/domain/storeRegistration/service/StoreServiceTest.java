@@ -13,6 +13,7 @@ import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationC
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
+import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,7 +47,8 @@ class StoreServiceTest {
                 .name("Padong")
                 .roadAddress("Seoul")
                 .phoneNumber("02-1234-5678")
-                .operatingHours("10:00-20:00")
+                .openTime(LocalTime.of(10, 0))
+                .closeTime(LocalTime.of(20, 0))
                 .build();
         when(storeRegistrationRepository.findById(1L)).thenReturn(Optional.of(store));
         when(storeLikeService.getLikeCount(1L)).thenReturn(5L);
@@ -57,6 +59,8 @@ class StoreServiceTest {
         assertThat(response.getId()).isEqualTo(1L);
         assertThat(response.getLikeCount()).isEqualTo(5L);
         assertThat(response.isLikedByCurrentUser()).isTrue();
+        assertThat(response.getOpenTime()).isEqualTo(LocalTime.of(10, 0));
+        assertThat(response.getCloseTime()).isEqualTo(LocalTime.of(20, 0));
     }
 
     @Test
@@ -68,7 +72,8 @@ class StoreServiceTest {
                 .name("New Store")
                 .roadAddress("Gangdong-gu")
                 .phoneNumber("02-0000-0000")
-                .operatingHours("09:00-18:00")
+                .openTime(LocalTime.of(9, 0))
+                .closeTime(LocalTime.of(18, 0))
                 .owner(owner)
                 .build();
         when(storeRegistrationRepository.save(any(Store.class))).thenReturn(savedStore);
@@ -79,13 +84,18 @@ class StoreServiceTest {
                 "New Store",
                 "Gangdong-gu",
                 "02-0000-0000",
-                "09:00-18:00"
+                LocalTime.of(9, 0),
+                LocalTime.of(18, 0)
         ));
 
         assertThat(response.getId()).isEqualTo(2L);
         assertThat(response.getName()).isEqualTo("New Store");
         assertThat(response.getAddress()).isEqualTo("Gangdong-gu");
-        verify(storeRegistrationRepository).save(argThat(store -> store.getOwner() == owner));
+        verify(storeRegistrationRepository).save(argThat(store ->
+                store.getOwner() == owner
+                        && store.getOpenTime().equals(LocalTime.of(9, 0))
+                        && store.getCloseTime().equals(LocalTime.of(18, 0))
+        ));
     }
 
     @Test
@@ -96,7 +106,8 @@ class StoreServiceTest {
                 .name("Old Store")
                 .roadAddress("Old Address")
                 .phoneNumber("02-1111-1111")
-                .operatingHours("08:00-17:00")
+                .openTime(LocalTime.of(8, 0))
+                .closeTime(LocalTime.of(17, 0))
                 .build();
         when(storeRegistrationRepository.findById(3L)).thenReturn(Optional.of(store));
         when(storeLikeService.getLikeCount(3L)).thenReturn(2L);
@@ -106,14 +117,16 @@ class StoreServiceTest {
                 "Updated Store",
                 "New Address",
                 "02-2222-2222",
-                "10:00-19:00"
+                LocalTime.of(10, 0),
+                LocalTime.of(19, 0)
         ));
 
         assertThat(response.getId()).isEqualTo(3L);
         assertThat(response.getName()).isEqualTo("Updated Store");
         assertThat(response.getAddress()).isEqualTo("New Address");
         assertThat(store.getPhoneNumber()).isEqualTo("02-2222-2222");
-        assertThat(store.getOperatingHours()).isEqualTo("10:00-19:00");
+        assertThat(store.getOpenTime()).isEqualTo(LocalTime.of(10, 0));
+        assertThat(store.getCloseTime()).isEqualTo(LocalTime.of(19, 0));
     }
 
     @Test
@@ -124,7 +137,8 @@ class StoreServiceTest {
                 .name("Delete Store")
                 .roadAddress("Delete Address")
                 .phoneNumber("02-3333-3333")
-                .operatingHours("10:00-18:00")
+                .openTime(LocalTime.of(10, 0))
+                .closeTime(LocalTime.of(18, 0))
                 .build();
         when(storeRegistrationRepository.findById(4L)).thenReturn(Optional.of(store));
         doNothing().when(storeRegistrationRepository).delete(store);

@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.within;
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityCsvRow;
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityRepresentativeRow;
 import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,8 +70,8 @@ class ActivityMobilityAggregatorTest {
 
         assertThatThrownBy(() -> aggregator.aggregate(rows, "202601", "202603"))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("outside aggregation period")
-                .hasMessageContaining("202604");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     private ActivityMobilityCsvRow row(

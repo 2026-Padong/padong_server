@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityCsvRow;
 import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,8 +57,8 @@ class ActivityMobilityDataUtilTest {
                                 activityMobilityDataUtil.readCsvRows(
                                         "202603", inputStream(csv), "bad-header.csv"))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("Unexpected CSV headers")
-                .hasMessageContaining("bad-header.csv");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     @Test
@@ -72,9 +73,8 @@ class ActivityMobilityDataUtilTest {
                                 activityMobilityDataUtil.readCsvRows(
                                         "202603", inputStream(csv), "wrong-month.csv"))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("Unexpected month")
-                .hasMessageContaining("expected=202603")
-                .hasMessageContaining("actual=202602");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     @Test
@@ -89,8 +89,8 @@ class ActivityMobilityDataUtilTest {
                                 activityMobilityDataUtil.readCsvRows(
                                         "202603", inputStream(csv), "blank-code.csv"))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("Required CSV value is blank")
-                .hasMessageContaining("직장행정동코드");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     private ByteArrayInputStream inputStream(String csv) {

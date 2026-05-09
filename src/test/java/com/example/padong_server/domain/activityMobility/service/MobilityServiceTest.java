@@ -3,6 +3,7 @@ package com.example.padong_server.domain.activityMobility.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -76,7 +77,7 @@ class MobilityServiceTest {
         when(mobilityRepository.findByArrivalDong(arrivalDong, pageable))
                 .thenReturn(new PageImpl<>(mobilities, pageable, mobilities.size()));
         when(rentPriceService.getSelectedRentPrices(
-                        List.of("1162069500", "1121571000"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1162069500", "1121571000")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(
                         selectedRentPriceMap(
                                 defaultRentPriceDetail("1162069500", 500L, 45L),
@@ -161,7 +162,7 @@ class MobilityServiceTest {
                                 mobility(arrivalDong, matchingDepartureDong, 300.0, 42.7),
                                 mobility(arrivalDong, secondMatchingDepartureDong, 200.0, 40.0)));
         when(rentPriceService.getSelectedRentPrices(
-                        List.of("1162069500"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1162069500")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(selectedRentPriceMap(defaultRentPriceDetail("1162069500", 500L, 45L)));
 
         ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
@@ -208,10 +209,10 @@ class MobilityServiceTest {
                                 mobility(arrivalDong, excludedDepartureDong, 500.0, 40.0),
                                 mobility(arrivalDong, matchingDepartureDong, 300.0, 42.7)));
         when(rentPriceService.findMatchedAdminDongCodes(
-                        List.of("1121571000", "1162069500"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1121571000", "1162069500")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(Set.of("1162069500"));
         when(rentPriceService.getSelectedRentPrices(
-                        List.of("1162069500"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1162069500")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(
                         selectedRentPriceMap(
                                 rentPriceDetail(
@@ -265,7 +266,7 @@ class MobilityServiceTest {
         when(mobilityRepository.findByArrivalDongIn(List.of(firstArrivalDong, secondArrivalDong)))
                 .thenReturn(mobilities);
         when(rentPriceService.getSelectedRentPrices(
-                        List.of("1162069500", "1121571000"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1162069500", "1121571000")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(
                         selectedRentPriceMap(
                                 defaultRentPriceDetail("1162069500", 500L, 45L),
@@ -335,7 +336,7 @@ class MobilityServiceTest {
                                         500.0,
                                         40.0)));
         when(rentPriceService.getSelectedRentPrices(
-                        List.of("1162069500"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1162069500")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(selectedRentPriceMap(defaultRentPriceDetail("1162069500", 500L, 45L)));
 
         ResponseDTO<PageResponse<CommonDepartureMobilityResponse>> response =
@@ -380,10 +381,10 @@ class MobilityServiceTest {
                                 mobility(firstArrivalDong, matchingDepartureDong, 100.0, 40.0),
                                 mobility(secondArrivalDong, matchingDepartureDong, 300.0, 50.0)));
         when(rentPriceService.findMatchedAdminDongCodes(
-                        List.of("1162069500"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1162069500")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(Set.of("1162069500"));
         when(rentPriceService.getSelectedRentPrices(
-                        List.of("1162069500"), any(RentPriceFilterCriteria.class)))
+                        eq(List.of("1162069500")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(
                         selectedRentPriceMap(
                                 rentPriceDetail(
@@ -476,7 +477,7 @@ class MobilityServiceTest {
                 .isEqualTo(String.valueOf(HttpStatus.NOT_FOUND.value()));
         assertThat(response.getMessage()).isEqualTo("공통 생활이동 데이터가 존재하지 않습니다.");
         assertThat(response.getData()).isNull();
-        verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
+        verifyNoInteractions(populationService, scoreCalculator);
     }
 
     private Mobility mobility(

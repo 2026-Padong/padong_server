@@ -6,6 +6,7 @@ import com.example.padong_server.domain.dongne.service.DongneService;
 import com.example.padong_server.domain.picture.dto.AdminDongPictureResponse;
 import com.example.padong_server.domain.picture.dto.PictureImportResponse;
 import com.example.padong_server.domain.picture.dto.PictureItemResponse;
+import com.example.padong_server.domain.picture.dto.PictureMappingResponse;
 import com.example.padong_server.domain.picture.entity.TourPicture;
 import com.example.padong_server.domain.picture.repository.TourPictureRepository;
 import com.example.padong_server.global.client.sk.SkAddress;
@@ -48,18 +49,14 @@ public class PictureService {
         LocalDate today = LocalDate.now();
         int remainingTourApiCalls = tourApiQuotaService.getRemainingCalls(today);
         if (remainingTourApiCalls <= 0) {
-            return new PictureImportResponse(0, 0, 0, 0, 0, 0, tourApiQuotaService.getUsedCalls(today), 0);
+            return new PictureImportResponse(0, 0, 0, tourApiQuotaService.getUsedCalls(today), 0);
         }
 
         TourApiClient.TourContentPageResult pageResult = tourApiClient.getSeoulContents(remainingTourApiCalls);
         tourApiQuotaService.consumeCalls(today, pageResult.requestCount());
 
-        List<TourPicture> picturesToSave = new ArrayList<>();
-        Map<String, Optional<ResolvedAdminDong>> resolvedAdminDongCache = new HashMap<>();
+        int savedPictureCount = 0;
         int skippedNoImageCount = 0;
-        int skippedUnresolvedCount = 0;
-        int resolvedByParenthesisCount = 0;
-        int resolvedByAddressApiCount = 0;
 
         for (TourContent content : pageResult.contents()) {
             if (!StringUtils.hasText(content.firstImage())) {
@@ -67,45 +64,69 @@ public class PictureService {
                 continue;
             }
 
+            TourPicture picture = tourPictureRepository.findByContentId(content.contentId())
+                    .orElseGet(() -> TourPicture.builder()
+                            .contentId(content.contentId())
+                            .title(content.title())
+                            .roadAddress(content.address())
+                            .firstImageUrl(content.firstImage())
+                            .build());
+
+            picture.updateBasicInfo(content.title(), content.address(), content.firstImage());
+            picture.clearAdminDongMapping();
+            tourPictureRepository.save(picture);
+            savedPictureCount++;
+        }
+
+        int usedCalls = tourApiQuotaService.getUsedCalls(today);
+        return new PictureImportResponse(
+                pageResult.contents().size(),
+                savedPictureCount,
+                skippedNoImageCount,
+                usedCalls,
+                Math.max(0, TourApiQuotaService.DAILY_LIMIT - usedCalls)
+        );
+    }
+
+    @Transactional
+    public PictureMappingResponse mapPicturesToAdminDong() {
+        List<TourPicture> pictures = tourPictureRepository.findAll();
+        Map<String, Optional<ResolvedAdminDong>> resolvedAdminDongCache = new HashMap<>();
+        int mappedPictureCount = 0;
+        int skippedUnresolvedCount = 0;
+        int resolvedByParenthesisCount = 0;
+        int resolvedByAddressApiCount = 0;
+
+        for (TourPicture picture : pictures) {
             ResolvedAdminDong resolvedAdminDong = resolvedAdminDongCache.computeIfAbsent(
-                    content.address(),
+                    picture.getRoadAddress(),
                     address -> Optional.ofNullable(resolveAdminDong(address))
             ).orElse(null);
 
             if (resolvedAdminDong == null) {
+                picture.clearAdminDongMapping();
                 skippedUnresolvedCount++;
                 continue;
             }
+
+            picture.updateAdminDongMapping(
+                    resolvedAdminDong.adminDongName(),
+                    resolvedAdminDong.adminDongCode());
+            mappedPictureCount++;
 
             if (resolvedAdminDong.byAddressApi()) {
                 resolvedByAddressApiCount++;
             } else {
                 resolvedByParenthesisCount++;
             }
-
-            picturesToSave.add(TourPicture.builder()
-                    .contentId(content.contentId())
-                    .title(content.title())
-                    .roadAddress(content.address())
-                    .firstImageUrl(content.firstImage())
-                    .adminDongName(resolvedAdminDong.adminDongName())
-                    .adminDongCode(resolvedAdminDong.adminDongCode())
-                    .build());
         }
 
-        tourPictureRepository.deleteAllInBatch();
-        tourPictureRepository.saveAll(picturesToSave);
-
-        int usedCalls = tourApiQuotaService.getUsedCalls(today);
-        return new PictureImportResponse(
-                pageResult.contents().size(),
-                picturesToSave.size(),
-                skippedNoImageCount,
+        return new PictureMappingResponse(
+                pictures.size(),
+                mappedPictureCount,
                 skippedUnresolvedCount,
                 resolvedByParenthesisCount,
-                resolvedByAddressApiCount,
-                usedCalls,
-                Math.max(0, TourApiQuotaService.DAILY_LIMIT - usedCalls)
+                resolvedByAddressApiCount
         );
     }
 

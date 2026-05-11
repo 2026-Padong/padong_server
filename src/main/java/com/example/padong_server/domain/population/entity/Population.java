@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.population.entity;
 
-import com.example.padongbe.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
 import jakarta.persistence.*;
 import lombok.*;
 

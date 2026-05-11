@@ -31,11 +31,11 @@ public class Subway {
 
     // 출근 시간 혼잡도 합
     @Column(nullable = false)
-    private Integer morningCongestion;
+    private Double morningCongestion;
 
     // 퇴근 시간 혼잡도 합
     @Column(nullable = false)
-    private Integer eveningCongestion;
+    private Double eveningCongestion;
 
     // 위도
     @Column(nullable = false)

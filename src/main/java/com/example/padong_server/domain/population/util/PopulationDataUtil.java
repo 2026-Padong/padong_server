@@ -1,36 +1,41 @@
 package com.example.padong_server.domain.population.util;
 
-import com.example.padongbe.domain.dongne.entity.AdminDong;
-import com.example.padongbe.domain.dongne.service.DongneService;
-import com.example.padongbe.domain.population.entity.Population;
+import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
+import com.example.padong_server.domain.dongne.service.DongneService;
+import com.example.padong_server.domain.population.entity.Population;
 import com.opencsv.CSVReader;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @Component
 public class PopulationDataUtil {
 
+    private static final String FILE_PATH = "data/population/seoul_admin_dong_population_density.csv";
+
     private final DongneService dongneService;
+    private final AdminDongRepository adminDongRepository;
 
-    public PopulationDataUtil(DongneService dongneService) {
+    public PopulationDataUtil(DongneService dongneService, AdminDongRepository adminDongRepository) {
         this.dongneService = dongneService;
+        this.adminDongRepository = adminDongRepository;
     }
-
-    private final String filePath = "data/population.csv";
-    private final String dongneRegex = "^서울특별시\\s[가-힣]+구\\s[가-힣0-9\\.]+동\\(\\d{10}\\)$";
 
     public List<Population> readPopulationFromCsv() {
         List<Population> result = new ArrayList<>();
-        ClassPathResource resource = new ClassPathResource(filePath);
+        ClassPathResource resource = new ClassPathResource(FILE_PATH);
 
-        try (CSVReader reader = new CSVReader(
-                new InputStreamReader(resource.getInputStream(), "EUC-KR"))) {
+        try (BufferedReader bufferedReader = new BufferedReader(
+                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8));
+             CSVReader reader = new CSVReader(bufferedReader)) {
 
             String[] fields;
             boolean isFirstLine = true;
@@ -41,16 +46,26 @@ public class PopulationDataUtil {
                     continue;
                 }
 
-                String rawRegion = fields[0].trim();
-                if (!rawRegion.matches(dongneRegex)) continue;
+                String cityName = sanitize(fields[0]);
+                String districtName = sanitize(fields[1]);
+                String adminDongName = sanitize(fields[2]);
+                String adminDongCode = sanitize(fields[3]);
+                Optional<AdminDong> adminDong = resolveAdminDong(adminDongCode, cityName, districtName, adminDongName);
 
-                String dongneCode = rawRegion.substring(rawRegion.indexOf("(") + 1, rawRegion.indexOf(")")).trim();
-                AdminDong adminDong = dongneService.findAdminDongByCode(dongneCode);
+                if (adminDong.isEmpty()) {
+                    log.warn(
+                            "Skip population row because admin dong was not found. code={}, city={}, district={}, adminDong={}",
+                            adminDongCode,
+                            cityName,
+                            districtName,
+                            adminDongName
+                    );
+                    continue;
+                }
 
-                // 전체 (계)
                 result.add(Population.builder()
-                        .adminDong(adminDong)
-                        .totalPopulation(parse(fields[1]))
+                        .adminDong(adminDong.get())
+                        .totalPopulation(parse(fields[4]))
                         .build());
             }
 
@@ -59,13 +74,37 @@ public class PopulationDataUtil {
             throw new RuntimeException("Error reading CSV file", e);
         }
 
-        System.out.println("최종 수집된 Population 수: " + result.size());
         return result;
     }
 
+    private Optional<AdminDong> resolveAdminDong(
+            String adminDongCode,
+            String cityName,
+            String districtName,
+            String adminDongName
+    ) {
+        Optional<AdminDong> byCode = adminDongRepository.findByAdminDongCode(adminDongCode);
+        if (byCode.isPresent()) {
+            return byCode;
+        }
+        return adminDongRepository.findByCityNameAndDistrictNameAndAdminDongName(
+                cityName,
+                districtName,
+                adminDongName
+        );
+    }
+
+    private static String sanitize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\uFEFF", "").replace("\"", "").trim();
+    }
+
     private static double parse(String value) {
-        if (value == null || value.isBlank())
+        if (value == null || value.isBlank()) {
             return 0.0;
+        }
 
         return Double.parseDouble(value.replace(",", "").replace("\"", "").trim());
     }

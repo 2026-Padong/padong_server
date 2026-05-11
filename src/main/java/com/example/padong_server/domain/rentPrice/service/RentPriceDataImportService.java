@@ -1,0 +1,338 @@
+package com.example.padong_server.domain.rentPrice.service;
+
+import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.entity.DongMapping;
+import com.example.padong_server.domain.dongne.entity.LegalDong;
+import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
+import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
+import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
+import com.example.padong_server.domain.rentPrice.dto.response.RentPriceImportResponse;
+import com.example.padong_server.domain.rentPrice.entity.RentPrice;
+import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
+import com.example.padong_server.domain.rentPrice.util.RentPriceDataUtil;
+import com.example.padong_server.global.exception.ErrorCode;
+import com.example.padong_server.global.util.Preconditions;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class RentPriceDataImportService {
+
+    private static final int PER_SQUARE_METER_DIVIDE_SCALE = 6;
+    private static final String LEGAL_DONG_MAPPING_NOT_FOUND_MESSAGE_FORMAT =
+            "행정동 매핑이 없는 법정동 코드입니다: %s";
+
+    private final RentPriceDataUtil rentPriceDataUtil;
+    private final DongMappingRepository dongMappingRepository;
+    private final RentPriceRepository rentPriceRepository;
+
+    @Transactional
+    public RentPriceImportResponse importData() {
+        RentPriceRawData rawData = rentPriceDataUtil.readRows();
+        MappingIndex mappingIndex = loadMappingIndex();
+
+        Map<AdminStatKey, StatAccumulator> adminAccumulators =
+                aggregateAdmin(rawData, mappingIndex.adminDongsByLegalCode());
+        List<RentPrice> stats = toStats(adminAccumulators, mappingIndex.adminByCode());
+
+        rentPriceRepository.deleteAllInBatch();
+        rentPriceRepository.saveAll(stats);
+
+        return new RentPriceImportResponse(
+                stats.size(),
+                rawData.sourceRowCount(),
+                rawData.saleRows().size(),
+                rawData.rentRows().stream()
+                        .filter(row -> row.rentType() == RentType.JEONSE)
+                        .count(),
+                rawData.rentRows().stream()
+                        .filter(row -> row.rentType() == RentType.MONTHLY_RENT)
+                        .count(),
+                rawData.skippedRowCount());
+    }
+
+    private MappingIndex loadMappingIndex() {
+        Map<String, LinkedHashMap<String, AdminDong>> adminDongsByLegalCode = new HashMap<>();
+        Map<String, AdminDong> adminByCode = new HashMap<>();
+
+        for (DongMapping mapping : dongMappingRepository.findAllWithAdminAndLegal()) {
+            AdminDong adminDong = mapping.getAdminDong();
+            LegalDong legalDong = mapping.getLegalDong();
+
+            adminByCode.put(adminDong.getAdminDongCode(), adminDong);
+            adminDongsByLegalCode
+                    .computeIfAbsent(legalDong.getLegalDongCode(), ignored -> new LinkedHashMap<>())
+                    .put(adminDong.getAdminDongCode(), adminDong);
+        }
+
+        Map<String, List<AdminDong>> immutableMap = new HashMap<>();
+        for (Map.Entry<String, LinkedHashMap<String, AdminDong>> entry :
+                adminDongsByLegalCode.entrySet()) {
+            immutableMap.put(entry.getKey(), List.copyOf(entry.getValue().values()));
+        }
+
+        return new MappingIndex(immutableMap, adminByCode);
+    }
+
+    private Map<AdminStatKey, StatAccumulator> aggregateAdmin(
+            RentPriceRawData rawData, Map<String, List<AdminDong>> adminDongsByLegalCode) {
+        Map<AdminStatKey, StatAccumulator> accumulators = new HashMap<>();
+        for (SaleRow row : rawData.saleRows()) {
+            for (AdminDong adminDong :
+                    requireAdminDongs(adminDongsByLegalCode, row.legalDongCode())) {
+                accumulatorForAdmin(accumulators, adminDong.getAdminDongCode(), row.buildingType())
+                        .addSale(row.salePrice(), row.area());
+            }
+        }
+        for (RentRow row : rawData.rentRows()) {
+            for (AdminDong adminDong :
+                    requireAdminDongs(adminDongsByLegalCode, row.legalDongCode())) {
+                StatAccumulator accumulator =
+                        accumulatorForAdmin(
+                                accumulators, adminDong.getAdminDongCode(), row.buildingType());
+                if (row.rentType() == RentType.JEONSE) {
+                    accumulator.addJeonse(row.deposit(), row.area());
+                    continue;
+                }
+                accumulator.addMonthlyRent(row.deposit(), row.monthlyRent());
+            }
+        }
+        return accumulators;
+    }
+
+    private List<RentPrice> toStats(
+            Map<AdminStatKey, StatAccumulator> accumulators, Map<String, AdminDong> adminByCode) {
+        List<RentPrice> stats = new ArrayList<>();
+        List<AdminStatKey> keys =
+                accumulators.keySet().stream()
+                        .sorted(
+                                Comparator.comparing(AdminStatKey::adminDongCode)
+                                        .thenComparing(AdminStatKey::buildingType))
+                        .toList();
+
+        for (AdminStatKey key : keys) {
+            AdminDong adminDong = adminByCode.get(key.adminDongCode());
+            Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
+            stats.add(buildStat(key.buildingType(), adminDong, accumulators.get(key)));
+        }
+        return stats;
+    }
+
+    private RentPrice buildStat(
+            String buildingType, AdminDong adminDong, StatAccumulator accumulator) {
+        MonthlyRentPair representativeMonthlyRentPair = accumulator.representativeMonthlyRentPair();
+        return RentPrice.builder()
+                .adminDong(adminDong)
+                .buildingType(buildingType)
+                .avgSalePrice(accumulator.salePrices.average())
+                .medianSalePrice(accumulator.salePrices.median())
+                .avgSalePricePerSquareMeter(accumulator.averageSalePricePerSquareMeter())
+                .saleCount(accumulator.salePrices.count())
+                .avgJeonseDeposit(accumulator.jeonseDeposits.average())
+                .medianJeonseDeposit(accumulator.jeonseDeposits.median())
+                .avgJeonseDepositPerSquareMeter(accumulator.averageJeonseDepositPerSquareMeter())
+                .jeonseCount(accumulator.jeonseDeposits.count())
+                .avgMonthlyDeposit(accumulator.monthlyDeposits.average())
+                .medianMonthlyDeposit(depositOf(representativeMonthlyRentPair))
+                .avgMonthlyRent(accumulator.monthlyRents.average())
+                .medianMonthlyRent(monthlyRentOf(representativeMonthlyRentPair))
+                .monthlyRentCount(accumulator.monthlyRents.count())
+                .build();
+    }
+
+    private Long depositOf(MonthlyRentPair monthlyRentPair) {
+        return monthlyRentPair == null ? null : monthlyRentPair.deposit();
+    }
+
+    private Long monthlyRentOf(MonthlyRentPair monthlyRentPair) {
+        return monthlyRentPair == null ? null : monthlyRentPair.monthlyRent();
+    }
+
+    private List<AdminDong> requireAdminDongs(
+            Map<String, List<AdminDong>> adminDongsByLegalCode, String legalDongCode) {
+        List<AdminDong> adminDongs = adminDongsByLegalCode.get(legalDongCode);
+        Preconditions.validate(
+                adminDongs != null && !adminDongs.isEmpty(), ErrorCode.VALIDATION_ERROR);
+        return adminDongs;
+    }
+
+    private StatAccumulator accumulatorForAdmin(
+            Map<AdminStatKey, StatAccumulator> accumulators,
+            String adminDongCode,
+            String buildingType) {
+        return accumulators.computeIfAbsent(
+                new AdminStatKey(adminDongCode, buildingType), ignored -> new StatAccumulator());
+    }
+
+    private record AdminStatKey(String adminDongCode, String buildingType) {}
+
+    private record MappingIndex(
+            Map<String, List<AdminDong>> adminDongsByLegalCode,
+            Map<String, AdminDong> adminByCode) {}
+
+    private record MonthlyRentPair(Long deposit, Long monthlyRent) {}
+
+    private static class StatAccumulator {
+        private final LongValues salePrices = new LongValues();
+        private final LongValues jeonseDeposits = new LongValues();
+        private final LongValues monthlyDeposits = new LongValues();
+        private final LongValues monthlyRents = new LongValues();
+        private final List<MonthlyRentPair> monthlyRentPairs = new ArrayList<>();
+        private BigDecimal salePricePerSquareMeterSum = BigDecimal.ZERO;
+        private int salePricePerSquareMeterCount;
+        private BigDecimal jeonseDepositPerSquareMeterSum = BigDecimal.ZERO;
+        private int jeonseDepositPerSquareMeterCount;
+
+        private void addSale(Long salePrice, BigDecimal area) {
+            salePrices.add(salePrice);
+            addSalePerSquareMeter(salePrice, area);
+        }
+
+        private void addJeonse(Long deposit, BigDecimal area) {
+            jeonseDeposits.add(deposit);
+            addJeonsePerSquareMeter(deposit, area);
+        }
+
+        private void addMonthlyRent(Long deposit, Long monthlyRent) {
+            monthlyDeposits.add(deposit);
+            monthlyRents.add(monthlyRent);
+            monthlyRentPairs.add(new MonthlyRentPair(deposit, monthlyRent));
+        }
+
+        private void addSalePerSquareMeter(Long salePrice, BigDecimal area) {
+            if (area == null) {
+                return;
+            }
+            salePricePerSquareMeterSum =
+                    salePricePerSquareMeterSum.add(perSquareMeter(salePrice, area));
+            salePricePerSquareMeterCount++;
+        }
+
+        private void addJeonsePerSquareMeter(Long deposit, BigDecimal area) {
+            if (area == null) {
+                return;
+            }
+            jeonseDepositPerSquareMeterSum =
+                    jeonseDepositPerSquareMeterSum.add(perSquareMeter(deposit, area));
+            jeonseDepositPerSquareMeterCount++;
+        }
+
+        private BigDecimal averageSalePricePerSquareMeter() {
+            return averageDecimal(salePricePerSquareMeterSum, salePricePerSquareMeterCount);
+        }
+
+        private BigDecimal averageJeonseDepositPerSquareMeter() {
+            return averageDecimal(jeonseDepositPerSquareMeterSum, jeonseDepositPerSquareMeterCount);
+        }
+
+        private BigDecimal perSquareMeter(Long price, BigDecimal area) {
+            return BigDecimal.valueOf(price)
+                    .divide(area, PER_SQUARE_METER_DIVIDE_SCALE, RoundingMode.HALF_UP);
+        }
+
+        private BigDecimal averageDecimal(BigDecimal sum, int count) {
+            if (count == 0) {
+                return null;
+            }
+            return sum.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
+        }
+
+        private MonthlyRentPair representativeMonthlyRentPair() {
+            if (monthlyRentPairs.isEmpty()) {
+                return null;
+            }
+            Long medianDeposit = monthlyDeposits.median();
+            Long medianMonthlyRent = monthlyRents.median();
+            return monthlyRentPairs.stream()
+                    .min(
+                            Comparator.comparingDouble(
+                                            (MonthlyRentPair pair) ->
+                                                    representativeScore(
+                                                            pair, medianDeposit, medianMonthlyRent))
+                                    .thenComparingDouble(
+                                            pair ->
+                                                    normalizedDistance(
+                                                            pair.monthlyRent(), medianMonthlyRent))
+                                    .thenComparingDouble(
+                                            pair ->
+                                                    normalizedDistance(
+                                                            pair.deposit(), medianDeposit))
+                                    .thenComparing(MonthlyRentPair::monthlyRent)
+                                    .thenComparing(MonthlyRentPair::deposit))
+                    .orElse(null);
+        }
+
+        private double representativeScore(
+                MonthlyRentPair monthlyRentPair, Long medianDeposit, Long medianMonthlyRent) {
+            return normalizedDistance(monthlyRentPair.deposit(), medianDeposit)
+                    + normalizedDistance(monthlyRentPair.monthlyRent(), medianMonthlyRent);
+        }
+
+        private double normalizedDistance(Long value, Long baseline) {
+            if (value == null || baseline == null) {
+                return 0.0;
+            }
+            long distance = Math.abs(value - baseline);
+            if (baseline == 0L) {
+                return distance;
+            }
+            return (double) distance / Math.abs(baseline);
+        }
+    }
+
+    private static class LongValues {
+        private final List<Long> values = new ArrayList<>();
+
+        private void add(Long value) {
+            values.add(value);
+        }
+
+        private Integer count() {
+            return values.size();
+        }
+
+        private Long average() {
+            if (values.isEmpty()) {
+                return null;
+            }
+            long sum = 0L;
+            for (Long value : values) {
+                sum += value;
+            }
+            return BigDecimal.valueOf(sum)
+                    .divide(BigDecimal.valueOf(values.size()), 0, RoundingMode.HALF_UP)
+                    .longValue();
+        }
+
+        private Long median() {
+            if (values.isEmpty()) {
+                return null;
+            }
+            List<Long> sorted = values.stream().sorted().toList();
+            int middle = sorted.size() / 2;
+            if (sorted.size() % 2 == 1) {
+                return sorted.get(middle);
+            }
+            return BigDecimal.valueOf(sorted.get(middle - 1))
+                    .add(BigDecimal.valueOf(sorted.get(middle)))
+                    .divide(BigDecimal.valueOf(2), 0, RoundingMode.HALF_UP)
+                    .longValue();
+        }
+    }
+}

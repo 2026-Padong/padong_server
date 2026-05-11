@@ -60,6 +60,9 @@ public enum ErrorCode {
     // Picture
     PICTURE_NOT_FOUND(HttpStatus.NOT_FOUND, "PICTURE_NOT_FOUND", "해당 행정동에 이용 가능한 사진이 없습니다."),
 
+    // S3
+    S3_CSV_NOT_FOUND(HttpStatus.NOT_FOUND, "S3_CSV_NOT_FOUND", "S3 CSV 파일을 찾을 수 없습니다."),
+
     // Population
     POPULATION_NOT_FOUND(HttpStatus.NOT_FOUND, "POPULATION_NOT_FOUND", "해당 행정동의 인구 정보가 없습니다."),
 

@@ -11,3 +11,10 @@ ai:
     password: ${AI_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+cloud:
+  aws:
+    region: ${AWS_REGION:ap-northeast-2}
+
+s3:
+  bucket: ${S3_BUCKET:padong}
+  prefix: ${S3_PREFIX:padongBE}

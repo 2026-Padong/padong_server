@@ -42,3 +42,11 @@ portone:
 seoul-open-api:
   base-url: ""
   api-key: ""
+
+cloud:
+  aws:
+    region: ap-northeast-2
+
+s3:
+  bucket: padong
+  prefix: padongBE

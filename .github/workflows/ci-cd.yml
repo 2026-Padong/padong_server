@@ -21,6 +21,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Make application-prod.yml
+        run: |
+          mkdir -p ./src/main/resources
+          printf '%s' "${{ secrets.APPLICATION_PROD_YML }}" > ./src/main/resources/application-prod.yml
+        shell: bash
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -34,6 +40,14 @@ jobs:
       - name: Build application
         run: ./gradlew clean build -x test
 
+      - name: Prepare app jar
+        run: |
+          mkdir -p artifact
+          JAR_FILE="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*plain*.jar' | head -n 1)"
+          test -n "$JAR_FILE"
+          cp "$JAR_FILE" artifact/app.jar
+          ls -al artifact
+
       - name: Build Docker image
         run: |
           docker build \
@@ -43,7 +57,6 @@ jobs:
 
       - name: Save Docker image
         run: |
-          mkdir -p artifact
           docker save -o artifact/padong-server-image.tar \
             padong-server:${{ github.sha }} \
             padong-server:latest
@@ -64,7 +77,6 @@ jobs:
       EC2_APP_DIR: /home/ubuntu/padong_server
       EC2_CONTAINER_NAME: padong-server
       EC2_PORT_MAPPING: 8080:8080
-      EC2_ENV_FILE: /home/ubuntu/padong_server/.env
       DOCKER_NETWORK: padong-net
       REDIS_CONTAINER_NAME: redis
 
@@ -93,111 +105,42 @@ jobs:
 
       - name: Deploy on EC2
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}"@"${{ secrets.EC2_HOST }}" << 'EOF'
+          ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}"@"${{ secrets.EC2_HOST }}" << EOF
             set -e
 
-            EC2_APP_DIR="/home/ubuntu/padong_server"
-            EC2_CONTAINER_NAME="padong-server"
-            EC2_PORT_MAPPING="8080:8080"
-            EC2_ENV_FILE="/home/ubuntu/padong_server/.env"
-            DOCKER_NETWORK="padong-net"
-            REDIS_CONTAINER_NAME="redis"
+            echo "1. Load Docker image"
+            sudo docker load -i "${EC2_APP_DIR}/padong-server-image.tar"
 
-            echo "1. Create app directory"
-            mkdir -p "$EC2_APP_DIR"
+            echo "2. Create Docker network"
+            sudo docker network create "${DOCKER_NETWORK}" || true
 
-            echo "2. Create .env from GitHub Secrets"
-            cat > "$EC2_ENV_FILE" << ENVEOF
+            echo "3. Start Redis container"
+            if ! sudo docker ps -a --format '{{.Names}}' | grep -q "^${REDIS_CONTAINER_NAME}$"; then
+              sudo docker run -d \
+                --name "${REDIS_CONTAINER_NAME}" \
+                --network "${DOCKER_NETWORK}" \
+                --restart unless-stopped \
+                redis:7
+            else
+              sudo docker start "${REDIS_CONTAINER_NAME}" || true
+              sudo docker network connect "${DOCKER_NETWORK}" "${REDIS_CONTAINER_NAME}" || true
+            fi
 
-          SPRING_PROFILES_ACTIVE=prod
-  
-          RDS_URL=${{ secrets.RDS_URL }}
-          RDS_USERNAME=${{ secrets.RDS_USERNAME }}
-          RDS_PASSWORD=${{ secrets.RDS_PASSWORD }}
-          
-          REDIS_HOST=${{ secrets.REDIS_HOST }}
-          REDIS_PORT=${{ secrets.REDIS_PORT }}
-          
-          KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
-          KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
-          
-          AI_SERVER_URL=${{ secrets.AI_SERVER_URL }}
-          
-          AI_DB_JDBC_URL=${{ secrets.AI_DB_JDBC_URL }}
-          AI_DB_USERNAME=${{ secrets.AI_DB_USERNAME }}
-          AI_DB_PASSWORD=${{ secrets.AI_DB_PASSWORD }}
-          
-          OPEN_SEARCH_URL=${{ secrets.OPEN_SEARCH_URL }}
-          OPEN_SEARCH_USERNAME=${{ secrets.OPEN_SEARCH_USERNAME }}
-          OPEN_SEARCH_PASSWORD=${{ secrets.OPEN_SEARCH_PASSWORD }}
-          
-          SEOUL_OPEN_API_BASE_URL=${{ secrets.SEOUL_OPEN_API_BASE_URL }}
-          SEOUL_OPEN_API_KEY=${{ secrets.SEOUL_OPEN_API_KEY }}
-          
-          BOUNDARY_API_BASE_URL=http://api.vworld.kr
-          BOUNDARY_API_SERVICE_KEY=${{ secrets.BOUNDARY_API_SERVICE_KEY }}
-          BOUNDARY_API_DOMAIN=www.padong.site
-          
-          TOUR_API_BASE_URL=https://apis.data.go.kr
-          TOUR_API_SERVICE_KEY=${{ secrets.TOUR_API_SERVICE_KEY }}
-          
-          NAVER_NEWS_CLIENT_ID=${{ secrets.NAVER_NEWS_CLIENT_ID }}
-          NAVER_NEWS_CLIENT_SECRET=${{ secrets.NAVER_NEWS_CLIENT_SECRET }}
-          
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          
-          PORTONE_BASE_URL=https://api.portone.io
-          PORTONE_API_SECRET=${{ secrets.PORTONE_API_SECRET }}
-          
-          SK_ADDRESS_API_BASE_URL=https://apis.openapi.sk.com
-          SK_OPEN_API_KEY=${{ secrets.SK_OPEN_API_KEY }}
-          
-          ODSAY_API_BASE_URL=https://api.odsay.com
-          ODSAY_API_KEY=${{ secrets.ODSAY_API_KEY }}
-          
-          GOOGLE_ROUTES_API_BASE_URL=https://routes.googleapis.com
-          GOOGLE_ROUTES_API_KEY=${{ secrets.GOOGLE_ROUTES_API_KEY }}
-          
-          S3_BUCKET=${{ secrets.S3_BUCKET }}
-          S3_PREFIX=${{ secrets.S3_PREFIX }}
-          AWS_REGION=${{ secrets.AWS_REGION }}
-          ENVEOF
-          
-          chmod 600 "$EC2_ENV_FILE"
-          
-          echo "3. Load Docker image"
-          sudo docker load -i "$EC2_APP_DIR/padong-server-image.tar"
-          
-          echo "4. Create Docker network"
-          sudo docker network create "$DOCKER_NETWORK" || true
-          
-          echo "5. Start Redis container"
-          if ! sudo docker ps -a --format '{{.Names}}' | grep -q "^${REDIS_CONTAINER_NAME}$"; then
-          sudo docker run -d \
-          --name "$REDIS_CONTAINER_NAME" \
-          --network "$DOCKER_NETWORK" \
-          --restart unless-stopped \
-          redis:7
-          else
-          sudo docker start "$REDIS_CONTAINER_NAME" || true
-          sudo docker network connect "$DOCKER_NETWORK" "$REDIS_CONTAINER_NAME" || true
-          fi
-          
-          echo "6. Stop old Spring Boot container"
-          sudo docker rm -f "$EC2_CONTAINER_NAME" || true
-          
-          echo "7. Run new Spring Boot container"
-          sudo docker run -d \
-          --name "$EC2_CONTAINER_NAME" \
-          --network "$DOCKER_NETWORK" \
-          --restart unless-stopped \
-          -p "$EC2_PORT_MAPPING" \
-          --env-file "$EC2_ENV_FILE" \
-          padong-server:${{ github.sha }}
-          
-          echo "8. Show running containers"
-          sudo docker ps
-          
-          echo "9. Show Spring Boot logs"
-          sudo docker logs --tail=100 "$EC2_CONTAINER_NAME"
+            echo "4. Stop old Spring Boot container"
+            sudo docker rm -f "${EC2_CONTAINER_NAME}" || true
+
+            echo "5. Run new Spring Boot container"
+            sudo docker run -d \
+              --name "${EC2_CONTAINER_NAME}" \
+              --network "${DOCKER_NETWORK}" \
+              --restart unless-stopped \
+              -p "${EC2_PORT_MAPPING}" \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              padong-server:${{ github.sha }}
+
+            echo "6. Show running containers"
+            sudo docker ps
+
+            echo "7. Show Spring Boot logs"
+            sudo docker logs --tail=100 "${EC2_CONTAINER_NAME}"
           EOF

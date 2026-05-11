@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.dongne.controller;
 
 import com.example.padong_server.domain.dongne.dto.DongneDetailResponse;
+import com.example.padong_server.domain.dongne.dto.response.DistrictWithDongs;
 import com.example.padong_server.domain.dongne.service.DongneDetailService;
 import com.example.padong_server.domain.dongne.service.DongneService;
 import com.example.padong_server.domain.dongneLike.dto.DongneLikeToggleResponse;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -76,6 +78,47 @@ public class DongneController {
     public ResponseEntity<String> addDongneData() {
         dongneService.addDongneDate();
         return ResponseEntity.ok("동네 데이터 추가 완료");
+    }
+
+    @GetMapping("/admin-dongs")
+    @Operation(
+            summary = "자치구 + 행정동 트리 조회",
+            description = "회원가입 cascading dropdown 용. 자치구·행정동 모두 가나다순. 인증 불필요.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "행정동 트리 조회 성공",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseDTO.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "statusCode": "200",
+                                      "message": "행정동 트리 조회 성공",
+                                      "data": [
+                                        {
+                                          "guName": "강남구",
+                                          "dongs": [
+                                            { "id": 12, "name": "역삼1동", "adminDongCode": "1168064000" },
+                                            { "id": 13, "name": "역삼2동", "adminDongCode": "1168065000" }
+                                          ]
+                                        },
+                                        {
+                                          "guName": "관악구",
+                                          "dongs": [
+                                            { "id": 80, "name": "신림동",   "adminDongCode": "1162069500" }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                    """)
+                    )
+            )
+    })
+    public ResponseEntity<ResponseDTO<List<DistrictWithDongs>>> getAdminDongTree() {
+        return ResponseEntity.ok(
+                ResponseDTO.res(
+                        HttpStatus.OK, "행정동 트리 조회 성공", dongneService.getAdminDongTree()));
     }
 
     @GetMapping("/detail")

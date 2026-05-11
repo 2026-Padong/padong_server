@@ -1,4 +1,4 @@
-spring:
+gspring:
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
@@ -42,3 +42,9 @@ portone:
 seoul-open-api:
   base-url: ""
   api-key: ""
+
+app:
+  oauth2:
+    front-redirect: "http://localhost:5173/auth/kakao/callback"
+  cors:
+    allowed-origins: "http://localhost:5173"

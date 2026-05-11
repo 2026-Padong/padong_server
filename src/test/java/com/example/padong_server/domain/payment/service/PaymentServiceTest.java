@@ -35,6 +35,7 @@ import com.example.padong_server.domain.payment.repository.PaymentRepository;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -231,7 +232,8 @@ class PaymentServiceTest {
                 .name("테스트 가게")
                 .roadAddress("서울시 송파구 테스트로 1")
                 .phoneNumber("010-0000-0000")
-                .operatingHours("09:00-18:00")
+                .openTime(LocalTime.of(9, 0))
+                .closeTime(LocalTime.of(18, 0))
                 .build();
     }
 

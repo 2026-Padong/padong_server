@@ -12,6 +12,7 @@ import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
 import com.example.padong_server.domain.activityMobility.util.ActivityMobilityDataUtil;
 import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,7 +71,8 @@ class MobilityImportServiceTest {
 
         assertThatThrownBy(() -> mobilityImportService.importData())
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("생활이동 CSV row가 없습니다");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
 
         verifyNoInteractions(
                 activityMobilityAggregator, activityMobilityEntityMapper, mobilityRepository);

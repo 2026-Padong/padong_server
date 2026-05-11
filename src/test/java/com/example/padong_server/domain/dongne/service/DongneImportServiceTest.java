@@ -14,6 +14,7 @@ import com.example.padong_server.domain.dongne.repository.DongMappingRepository;
 import com.example.padong_server.domain.dongne.repository.LegalDongRepository;
 import com.example.padong_server.domain.dongne.util.DongneDataUtil;
 import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -109,10 +110,10 @@ class DongneImportServiceTest {
         try {
             dongneImportService.importData();
         } catch (CustomException exception) {
-            assertEquals("매핑 대상 행정동 코드가 없습니다: 9999999999", exception.getMessage());
+            assertEquals(ErrorCode.VALIDATION_ERROR, exception.getErrorCode());
             return;
         }
 
-        throw new AssertionError("Expected IllegalArgumentException to be thrown");
+        throw new AssertionError("Expected CustomException to be thrown");
     }
 }

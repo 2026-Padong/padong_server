@@ -1,5 +1,6 @@
 package com.example.padong_server.domain.storeRegistration.dto;
 
+import java.time.LocalTime;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,7 +12,8 @@ public class StoreRegistrationResponse {
     private String name;
     private String address;
     private String phoneNumber;
-    private String operatingHours;
+    private LocalTime openTime;
+    private LocalTime closeTime;
     private long likeCount;
     private boolean likedByCurrentUser;
 }

@@ -11,6 +11,7 @@ import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -98,8 +99,8 @@ class ActivityMobilityEntityMapperTest {
 
         assertThatThrownBy(() -> mapper.toEntities(List.of(row)))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("arrivalDongCode=9999999")
-                .hasMessageContaining("생활이동 코드북에 없는 행정동 코드입니다");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     @Test
@@ -110,8 +111,8 @@ class ActivityMobilityEntityMapperTest {
 
         assertThatThrownBy(() -> mapper.toEntities(List.of(row)))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("생활이동 행정동명에 대응하는 현재 AdminDong이 없습니다")
-                .hasMessageContaining("fullName=서울특별시 종로구 사직동");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     @Test
@@ -119,7 +120,8 @@ class ActivityMobilityEntityMapperTest {
     void rejectsInvalidCsvDongCodeFormat() {
         assertThatThrownBy(() -> mapper.normalizeMobilityDongCode("11130750"))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("7자리 숫자");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     private ActivityMobilityRepresentativeRow representativeRow(

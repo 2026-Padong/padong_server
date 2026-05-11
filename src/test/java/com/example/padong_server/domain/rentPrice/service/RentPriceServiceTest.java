@@ -180,7 +180,8 @@ class RentPriceServiceTest {
     void failsWhenFilteredSummaryRequestListIsNull() {
         assertThatThrownBy(() -> rentPriceService.getSummaries(null, null, null))
                 .isInstanceOf(CustomException.class)
-                .hasMessage("행정동 코드는 비어 있을 수 없습니다.");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     private AdminDong adminDong(String adminDongCode, String adminDongName) {

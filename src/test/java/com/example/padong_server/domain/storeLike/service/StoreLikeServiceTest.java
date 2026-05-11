@@ -14,6 +14,7 @@ import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
+import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -99,7 +100,8 @@ class StoreLikeServiceTest {
                 .name("테스트 가게")
                 .roadAddress("서울시 강남구")
                 .phoneNumber("010-0000-0000")
-                .operatingHours("09:00-18:00")
+                .openTime(LocalTime.of(9, 0))
+                .closeTime(LocalTime.of(18, 0))
                 .build();
     }
 }

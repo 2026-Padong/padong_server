@@ -10,8 +10,8 @@ public class PopulationDataDto {
     private double density;
 
     public PopulationDataDto(Population population) {
-        this.dongneCode= population.getAdminDong().getAdminDongCode();
-        this.density= population.getDensity();
+        this.dongneCode = population.getAdminDong().getAdminDongCode();
+        this.density = population.getDensity();
     }
 
 }

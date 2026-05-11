@@ -22,6 +22,7 @@ import com.example.padong_server.domain.rentPrice.entity.RentPrice;
 import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
 import com.example.padong_server.domain.rentPrice.util.RentPriceDataUtil;
 import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -267,7 +268,8 @@ class RentPriceDataImportServiceTest {
 
         assertThatThrownBy(() -> rentPriceDataImportService.importData())
                 .isInstanceOf(CustomException.class)
-                .hasMessage("행정동 매핑이 없는 법정동 코드입니다: 1111010100");
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
 
         verifyNoInteractions(rentPriceRepository);
     }

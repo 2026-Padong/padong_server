@@ -1,7 +1,7 @@
 package com.example.padong_server.domain.storeRegistration.service;
 
-import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.oauth.entity.User;
+import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationCreateRequest;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationResponse;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
@@ -9,6 +9,7 @@ import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
+import java.time.LocalTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +30,8 @@ public class StoreRegistrationService {
                 .name(request.name().trim())
                 .roadAddress(request.address().trim())
                 .phoneNumber(request.phoneNumber().trim())
-                .operatingHours(request.operatingHours().trim())
+                .openTime(request.openTime())
+                .closeTime(request.closeTime())
                 .owner(owner)
                 .build();
 
@@ -50,7 +52,8 @@ public class StoreRegistrationService {
                 request.name().trim(),
                 request.address().trim(),
                 request.phoneNumber().trim(),
-                request.operatingHours().trim()
+                request.openTime(),
+                request.closeTime()
         );
 
         return toResponse(store, null);
@@ -68,47 +71,37 @@ public class StoreRegistrationService {
     }
 
     private void validate(StoreRegistrationCreateRequest request) {
-        validateCreateCommon(
+        validateCommon(
                 request.name(),
                 request.address(),
                 request.phoneNumber(),
-                request.operatingHours()
+                request.openTime(),
+                request.closeTime()
         );
     }
 
     private void validate(StoreRegistrationUpdateRequest request) {
-        validateBasicInfo(
+        validateCommon(
                 request.name(),
                 request.address(),
                 request.phoneNumber(),
-                request.operatingHours()
+                request.openTime(),
+                request.closeTime()
         );
     }
 
-    private void validateCreateCommon(
+    private void validateCommon(
             String name,
             String address,
             String phoneNumber,
-            String operatingHours
+            LocalTime openTime,
+            LocalTime closeTime
     ) {
         if (!StringUtils.hasText(name)
                 || !StringUtils.hasText(address)
                 || !StringUtils.hasText(phoneNumber)
-                || !StringUtils.hasText(operatingHours)) {
-            throw new CustomException(ErrorCode.INVALID_STORE_REQUEST);
-        }
-    }
-
-    private void validateBasicInfo(
-            String name,
-            String address,
-            String phoneNumber,
-            String operatingHours
-    ) {
-        if (!StringUtils.hasText(name)
-                || !StringUtils.hasText(address)
-                || !StringUtils.hasText(phoneNumber)
-                || !StringUtils.hasText(operatingHours)) {
+                || openTime == null
+                || closeTime == null) {
             throw new CustomException(ErrorCode.INVALID_STORE_REQUEST);
         }
     }
@@ -119,7 +112,8 @@ public class StoreRegistrationService {
                 .name(store.getName())
                 .address(store.getRoadAddress())
                 .phoneNumber(store.getPhoneNumber())
-                .operatingHours(store.getOperatingHours())
+                .openTime(store.getOpenTime())
+                .closeTime(store.getCloseTime())
                 .likeCount(storeLikeService.getLikeCount(store.getId()))
                 .likedByCurrentUser(storeLikeService.isLikedByUser(store.getId(), userId))
                 .build();

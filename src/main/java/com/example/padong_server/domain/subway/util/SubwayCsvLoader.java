@@ -56,10 +56,10 @@ public class SubwayCsvLoader {
                         .line(tokens[1])
                         .stationCode(tokens[2])
                         .stationName(tokens[3])
-                        .morningCongestion(Integer.parseInt(tokens[4]))
-                        .eveningCongestion(Integer.parseInt(tokens[5]))
-                        .latitude(Double.parseDouble(tokens[6]))
-                        .longitude(Double.parseDouble(tokens[7]))
+                        .latitude(Double.parseDouble(tokens[4]))
+                        .longitude(Double.parseDouble(tokens[5]))
+                        .morningCongestion(Double.parseDouble(tokens[6]))
+                        .eveningCongestion(Double.parseDouble(tokens[7]))
                         .build();
 
                 subways.add(subway);

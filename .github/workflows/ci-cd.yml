@@ -108,6 +108,87 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
+      - name: Create runtime env file
+        env:
+          RDS_URL: ${{ secrets.RDS_URL }}
+          RDS_USERNAME: ${{ secrets.RDS_USERNAME }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          AI_DB_JDBC_URL: ${{ secrets.AI_DB_JDBC_URL }}
+          AI_DB_USERNAME: ${{ secrets.AI_DB_USERNAME }}
+          AI_DB_PASSWORD: ${{ secrets.AI_DB_PASSWORD }}
+          SEOUL_OPEN_API_BASE_URL: ${{ secrets.SEOUL_OPEN_API_BASE_URL }}
+          SEOUL_OPEN_API_KEY: ${{ secrets.SEOUL_OPEN_API_KEY }}
+          TOUR_API_SERVICE_KEY: ${{ secrets.TOUR_API_SERVICE_KEY }}
+          NAVER_NEWS_CLIENT_ID: ${{ secrets.NAVER_NEWS_CLIENT_ID }}
+          NAVER_NEWS_CLIENT_SECRET: ${{ secrets.NAVER_NEWS_CLIENT_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORTONE_API_SECRET: ${{ secrets.PORTONE_API_SECRET }}
+          SK_OPEN_API_KEY: ${{ secrets.SK_OPEN_API_KEY }}
+          ODSAY_API_KEY: ${{ secrets.ODSAY_API_KEY }}
+          GOOGLE_ROUTES_API_KEY: ${{ secrets.GOOGLE_ROUTES_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          required_vars=(
+            RDS_URL
+            RDS_USERNAME
+            RDS_PASSWORD
+            KAKAO_CLIENT_ID
+            KAKAO_CLIENT_SECRET
+            AI_DB_JDBC_URL
+            AI_DB_USERNAME
+            AI_DB_PASSWORD
+            SEOUL_OPEN_API_BASE_URL
+            SEOUL_OPEN_API_KEY
+            TOUR_API_SERVICE_KEY
+            NAVER_NEWS_CLIENT_ID
+            NAVER_NEWS_CLIENT_SECRET
+            JWT_SECRET
+            PORTONE_API_SECRET
+            SK_OPEN_API_KEY
+            ODSAY_API_KEY
+          )
+
+          missing_vars=()
+          for var_name in "${required_vars[@]}"; do
+            if [ -z "${!var_name:-}" ]; then
+              missing_vars+=("$var_name")
+            fi
+          done
+
+          if [ "${#missing_vars[@]}" -gt 0 ]; then
+            printf 'Missing required GitHub secrets: %s\n' "${missing_vars[*]}"
+            exit 1
+          fi
+
+          {
+            printf 'SPRING_PROFILES_ACTIVE=prod\n'
+            printf 'RDS_URL=%s\n' "$RDS_URL"
+            printf 'RDS_USERNAME=%s\n' "$RDS_USERNAME"
+            printf 'RDS_PASSWORD=%s\n' "$RDS_PASSWORD"
+            printf 'REDIS_HOST=%s\n' "$REDIS_CONTAINER_NAME"
+            printf 'REDIS_PORT=6379\n'
+            printf 'KAKAO_CLIENT_ID=%s\n' "$KAKAO_CLIENT_ID"
+            printf 'KAKAO_CLIENT_SECRET=%s\n' "$KAKAO_CLIENT_SECRET"
+            printf 'AI_DB_JDBC_URL=%s\n' "$AI_DB_JDBC_URL"
+            printf 'AI_DB_USERNAME=%s\n' "$AI_DB_USERNAME"
+            printf 'AI_DB_PASSWORD=%s\n' "$AI_DB_PASSWORD"
+            printf 'SEOUL_OPEN_API_BASE_URL=%s\n' "$SEOUL_OPEN_API_BASE_URL"
+            printf 'SEOUL_OPEN_API_KEY=%s\n' "$SEOUL_OPEN_API_KEY"
+            printf 'TOUR_API_SERVICE_KEY=%s\n' "$TOUR_API_SERVICE_KEY"
+            printf 'NAVER_NEWS_CLIENT_ID=%s\n' "$NAVER_NEWS_CLIENT_ID"
+            printf 'NAVER_NEWS_CLIENT_SECRET=%s\n' "$NAVER_NEWS_CLIENT_SECRET"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            printf 'PORTONE_API_SECRET=%s\n' "$PORTONE_API_SECRET"
+            printf 'SK_OPEN_API_KEY=%s\n' "$SK_OPEN_API_KEY"
+            printf 'ODSAY_API_KEY=%s\n' "$ODSAY_API_KEY"
+            printf 'GOOGLE_ROUTES_API_KEY=%s\n' "$GOOGLE_ROUTES_API_KEY"
+          } > artifact/padong-server.env
+
+          chmod 600 artifact/padong-server.env
+
       - name: Upload Docker image to EC2
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}"@"${{ secrets.EC2_HOST }}" \
@@ -116,6 +197,10 @@ jobs:
           scp -i ~/.ssh/deploy_key \
             artifact/padong-server-image.tar \
             "${{ secrets.EC2_USER }}"@"${{ secrets.EC2_HOST }}":"${EC2_APP_DIR}/padong-server-image.tar"
+
+          scp -i ~/.ssh/deploy_key \
+            artifact/padong-server.env \
+            "${{ secrets.EC2_USER }}"@"${{ secrets.EC2_HOST }}":"${EC2_APP_DIR}/padong-server.env"
 
       - name: Deploy on EC2
         run: |
@@ -149,7 +234,7 @@ jobs:
               --network "${DOCKER_NETWORK}" \
               --restart unless-stopped \
               -p "${EC2_PORT_MAPPING}" \
-              -e SPRING_PROFILES_ACTIVE=prod \
+              --env-file "${EC2_APP_DIR}/padong-server.env" \
               padong-server:${{ github.sha }}
 
             echo "6. Show running containers"

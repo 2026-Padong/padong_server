@@ -30,6 +30,11 @@ public enum ErrorCode {
             HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "요청 값이 올바르지 않습니다."),
 
+    // AI Recommendation Log
+    AI_LOG_DB_ERROR(HttpStatus.BAD_GATEWAY, "AI_LOG_DB_ERROR", "AI 로그 DB 처리 중 오류가 발생했습니다."),
+    RECOMMENDATION_LOG_NOT_FOUND(
+            HttpStatus.NOT_FOUND, "RECOMMENDATION_LOG_NOT_FOUND", "수정할 추천 로그를 찾을 수 없습니다."),
+
     // Dongne
     INVALID_GU_NAME(HttpStatus.BAD_REQUEST, "INVALID_GU_NAME", "존재하지 않는 자치구 이름입니다."),
     ADMIN_DONG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_DONG_NOT_FOUND", "해당 행정동 정보를 찾을 수 없습니다."),
@@ -150,6 +155,10 @@ public enum ErrorCode {
             HttpStatus.NOT_FOUND,
             "GOOGLE_ROUTES_NO_RESULT",
             "Google Routes 결과가 없습니다."),
+    AI_RECOMMENDATION_API_CALL_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "AI_RECOMMENDATION_API_CALL_FAILED",
+            "AI 추천 API 호출에 실패했습니다."),
 
     // RentPrice
     RENT_PRICE_TRADE_TYPE_REQUIRED(

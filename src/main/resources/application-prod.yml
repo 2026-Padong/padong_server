@@ -43,6 +43,15 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
+ai:
+  server:
+    url: ${AI_SERVER_URL:http://172.31.23.237:8000}
+  datasource:
+    jdbc-url: ${AI_DB_JDBC_URL}
+    username: ${AI_DB_USERNAME}
+    password: ${AI_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
 swagger-config:
   server-url-https: "https://padong.site"
   server-url-http: "http://padong.site"

@@ -2,3 +2,12 @@ spring:
   profiles:
     active: dev
 
+ai:
+  server:
+    url: ${AI_SERVER_URL:}
+  datasource:
+    jdbc-url: ${AI_DB_JDBC_URL:}
+    username: ${AI_DB_USERNAME:}
+    password: ${AI_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+

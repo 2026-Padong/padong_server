@@ -57,6 +57,7 @@ public class MobilityService {
     private final DongneService dongneService;
     private final PopulationService populationService;
     private final RentPriceService rentPriceService;
+    private final SafetyIndexService safetyIndexService;
     private final ScoreCalculator scoreCalculator;
 
     public ResponseDTO<PageResponse<MobilitySimpleResponse>> searchByArrivalDongCode(
@@ -324,11 +325,13 @@ public class MobilityService {
             Map<String, SelectedRentPriceResponse> rentPriceByAdminDongCode) {
         return mobilities.stream()
                 .map(
-                        mobility ->
-                                MobilitySimpleResponse.from(
-                                        mobility,
-                                        rentPriceByAdminDongCode.get(
-                                                mobility.getDepartureDong().getAdminDongCode())))
+                        mobility -> MobilitySimpleResponse.from(
+                                mobility,
+                                safetyIndexService.getOverallGrade(
+                                        mobility.getDepartureDong().getCityName(),
+                                        mobility.getDepartureDong().getDistrictName()),
+                                rentPriceByAdminDongCode.get(
+                                        mobility.getDepartureDong().getAdminDongCode())))
                 .toList();
     }
 
@@ -366,9 +369,8 @@ public class MobilityService {
         List<MobilityResponse> responses = new ArrayList<>();
         for (Mobility mobility : mobilities) {
             AdminDong departureDong = mobility.getDepartureDong();
-            // legacy
-            // double safety = departureDong.getSafetyGrade().getAvgGrade();
-            double safety = 0.0;
+            double safety = safetyIndexService.getAverageScore(
+                    departureDong.getCityName(), departureDong.getDistrictName());
             double density = populationService.getPopulationByAdmin(departureDong).getDensity();
             double avgTime = mobility.getAvgTime();
             double totalMobility = mobility.getTotalMobility();

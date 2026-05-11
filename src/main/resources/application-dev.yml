@@ -93,5 +93,3 @@ ai:
     username: ${AI_DB_USERNAME:}
     password: ${AI_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  server:
-    url: http://172.31.23.237:8000

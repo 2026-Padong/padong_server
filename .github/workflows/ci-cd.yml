@@ -21,10 +21,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Make application-prod.yml
+      - name: Make application-prod.yml from secret
+        env:
+          APPLICATION_PROD_YML: ${{ secrets.APPLICATION_PROD_YML }}
         run: |
-          mkdir -p ./src/main/resources
-          printf '%s' "${{ secrets.APPLICATION_PROD_YML }}" > ./src/main/resources/application-prod.yml
+          PROD_YML_PATH="./src/main/resources/application-prod.yml"
+
+          if [ -n "$APPLICATION_PROD_YML" ]; then
+            mkdir -p "$(dirname "$PROD_YML_PATH")"
+            printf '%s\n' "$APPLICATION_PROD_YML" > "$PROD_YML_PATH"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "APPLICATION_PROD_YML secret is empty or unavailable."
+            exit 1
+          else
+            echo "APPLICATION_PROD_YML secret is unavailable for this event. Keeping repository application-prod.yml."
+          fi
+
+          test -s "$PROD_YML_PATH"
+          echo "application-prod.yml size: $(wc -c < "$PROD_YML_PATH") bytes"
         shell: bash
 
       - name: Set up JDK 17

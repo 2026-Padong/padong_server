@@ -37,6 +37,14 @@ jobs:
             echo "APPLICATION_PROD_YML secret is unavailable for this event. Keeping repository application-prod.yml."
           fi
 
+          if ! grep -q '^cloud:' "$PROD_YML_PATH"; then
+            printf '\ncloud:\n  aws:\n    region: ${AWS_REGION:ap-northeast-2}\n' >> "$PROD_YML_PATH"
+          fi
+
+          if ! grep -q '^s3:' "$PROD_YML_PATH"; then
+            printf '\ns3:\n  bucket: ${S3_BUCKET:padong}\n  prefix: ${S3_PREFIX:padongBE}\n' >> "$PROD_YML_PATH"
+          fi
+
           test -s "$PROD_YML_PATH"
           echo "application-prod.yml size: $(wc -c < "$PROD_YML_PATH") bytes"
         shell: bash

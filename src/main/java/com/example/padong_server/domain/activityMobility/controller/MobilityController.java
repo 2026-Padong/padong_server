@@ -8,6 +8,7 @@ import com.example.padong_server.domain.activityMobility.dto.MultiMobilityRespon
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
+import com.example.padong_server.domain.activityMobility.service.SafetyIndexService;
 import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 
@@ -43,6 +44,7 @@ import java.util.List;
 public class MobilityController {
     private final MobilityService mobilityService;
     private final MobilityImportService mobilityImportService;
+    private final SafetyIndexService safetyIndexService;
 
     @GetMapping("/arrival/multi")
     @Operation(
@@ -241,6 +243,13 @@ public class MobilityController {
     @Operation(summary = "서울시 생활이동 데이터 저장")
     public ResponseEntity<ResponseDTO<Void>> fetchData() {
         String message = mobilityImportService.importData();
+        return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, message));
+    }
+
+    @PostMapping("/safety/data")
+    @Operation(summary = "서울시 안전지수 데이터 적재")
+    public ResponseEntity<ResponseDTO<Void>> fetchSafetyData() {
+        String message = safetyIndexService.importData();
         return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, message));
     }
 

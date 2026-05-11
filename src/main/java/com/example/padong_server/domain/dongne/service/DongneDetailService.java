@@ -1,7 +1,9 @@
 package com.example.padong_server.domain.dongne.service;
 
+import com.example.padong_server.domain.activityMobility.dto.SafetyIndexResponse;
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
+import com.example.padong_server.domain.activityMobility.service.SafetyIndexService;
 import com.example.padong_server.domain.dongne.dto.DongneDetailResponse;
 import com.example.padong_server.domain.dongne.dto.DongneMobilityResponse;
 import com.example.padong_server.domain.dongne.dto.DongneSummaryResponse;
@@ -33,6 +35,7 @@ public class DongneDetailService {
     private final RentPriceService rentPriceService;
     private final DongneLikeService dongneLikeService;
     private final PathService pathService;
+    private final SafetyIndexService safetyIndexService;
 
     @Transactional(readOnly = true)
     public ResponseDTO<DongneDetailResponse> getDetail(
@@ -49,6 +52,9 @@ public class DongneDetailService {
                 ? Optional.empty()
                 : mobilityRepository.findByArrivalDongAndDepartureDong(workDong, selectedDong);
         Optional<Population> population = populationService.findPopulationByAdmin(selectedDong);
+        SafetyIndexResponse safety = safetyIndexService
+                .findResponse(selectedDong.getCityName(), selectedDong.getDistrictName())
+                .orElse(null);
         AdminDongRentPriceDetailResponse rentPrice =
                 rentPriceService.getDetail(selectedDong.getAdminDongCode());
         PathAllResponse.Paths paths = resolvePaths(selectedDong, workDong);
@@ -60,6 +66,7 @@ public class DongneDetailService {
                 .totalPopulation(
                         population.map(Population::getTotalPopulation).map(this::round).orElse(null))
                 .density(population.map(Population::getDensity).map(this::round).orElse(null))
+                .safety(safety)
                 .rentPrice(rentPrice)
                 .paths(paths)
                 .likeCount(dongneLikeService.getLikeCount(selectedDong.getId()))

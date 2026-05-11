@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/dongne")
-@Tag(name = "Dongne", description = "서울시 행정동/법정동 기준 데이터 관리 API")
+@Tag(name = "Dongne", description = "서울시 행정동/법정동 기반 데이터 관리 API")
 public class DongneController {
 
     private final DongneService dongneService;
@@ -37,18 +37,16 @@ public class DongneController {
     private final DongneLikeService dongneLikeService;
 
     @Operation(
-            summary = "동네 기준 데이터 적재",
+            summary = "동네 기초 데이터 적재",
             description = """
-                    최신 dongne 적재 API입니다.
                     classpath의 서울시 행정동, 법정동, 행정동-법정동 매핑 CSV를 읽어
                     admin_dong, legal_dong, dong_mapping 데이터를 적재합니다.
-                    생활이동, 주거 실거래가, 인구, 경계 조회에서 사용하는 기준 데이터입니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "동네 기준 데이터 적재 성공",
+                    description = "동네 기초 데이터 적재 성공",
                     content = @Content(
                             mediaType = MediaType.TEXT_PLAIN_VALUE,
                             schema = @Schema(implementation = String.class),
@@ -57,7 +55,7 @@ public class DongneController {
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "CSV 파싱 실패, 중복 코드, 매핑 대상 코드 누락 등 적재 실패",
+                    description = "CSV 파싱 실패 또는 데이터 적재 실패",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -82,9 +80,10 @@ public class DongneController {
     @Operation(
             summary = "동네 상세 조회",
             description = """
-                    선택된 거주지 후보(adminDongCode)와 직장(arrivalAdminDongCode)을 기반으로
-                    동네 요약 / 인구 / 임대료 / 생활이동 / 통합 길찾기(대중교통·보행자·자동차)를 반환한다.
-                    arrivalAdminDongCode 미입력 또는 출발=도착인 경우 paths 와 mobility 는 null/empty.
+                    선택한 거주지 후보(adminDongCode)와 직장 위치(arrivalAdminDongCode)를 기준으로
+                    동네 요약, 인구, 전월세, 생활이동, 안전지수, 통합 길찾기 정보를 반환합니다.
+                    arrivalAdminDongCode가 없거나 출발과 도착이 같으면 paths와 mobility는 null/empty입니다.
+                    안전지수는 선택한 동이 속한 구(districtName) 기준으로 조회합니다.
                     """
     )
     @ApiResponses({
@@ -118,13 +117,20 @@ public class DongneController {
                                           "longitude": 127.0364
                                         },
                                         "mobility": {
-                                          "totalMobility": 1240.50,
-                                          "avgTime": 47.80,
+                                          "totalMobility": 1240.5,
+                                          "avgTime": 47.8,
                                           "startMonth": "202601",
                                           "endMonth": "202603"
                                         },
-                                        "totalPopulation": 41250.0,
+                                        "totalPopulation": 41250,
                                         "density": 23150.4,
+                                        "safety": {
+                                          "overallScore": "C",
+                                          "lifeSafetyGrade": "C",
+                                          "trafficAccidentGrade": "B",
+                                          "fireGrade": "C",
+                                          "crimeGrade": "D"
+                                        },
                                         "rentPrice": {
                                           "adminDongCode": "1162069500",
                                           "periodLabel": "최근 2년 기준",
@@ -133,9 +139,21 @@ public class DongneController {
                                           "excludedCancelledSales": true
                                         },
                                         "paths": {
-                                          "transit":    { "totalTime": 42,  "totalDistance": 10800, "source": "ODSAY" },
-                                          "pedestrian": { "totalTime": 132, "totalDistance": 10400, "source": "TMAP" },
-                                          "car":        { "totalTime": 28,  "totalDistance": 11500, "source": "TMAP" }
+                                          "transit": {
+                                            "totalTime": 42,
+                                            "totalDistance": 10800,
+                                            "source": "ODSAY"
+                                          },
+                                          "pedestrian": {
+                                            "totalTime": 132,
+                                            "totalDistance": 10400,
+                                            "source": "TMAP"
+                                          },
+                                          "car": {
+                                            "totalTime": 28,
+                                            "totalDistance": 11500,
+                                            "source": "TMAP"
+                                          }
                                         },
                                         "likeCount": 23,
                                         "likedByCurrentUser": true

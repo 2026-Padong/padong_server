@@ -72,7 +72,7 @@ class PaymentControllerTest {
         );
         given(paymentService.prepare(same(user), any())).willReturn(response);
 
-        mockMvc.perform(post("/api/payments/prepare")
+        mockMvc.perform(post("/payments/prepare")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -109,7 +109,7 @@ class PaymentControllerTest {
         );
         given(paymentService.confirm(same(user), any())).willReturn(response);
 
-        mockMvc.perform(post("/api/payments/confirm")
+        mockMvc.perform(post("/payments/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -142,7 +142,7 @@ class PaymentControllerTest {
         );
         given(paymentService.getPayment(same(user), eq("payment-123"))).willReturn(response);
 
-        mockMvc.perform(get("/api/payments/payment-123")
+        mockMvc.perform(get("/payments/payment-123")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.paymentId").value("payment-123"))

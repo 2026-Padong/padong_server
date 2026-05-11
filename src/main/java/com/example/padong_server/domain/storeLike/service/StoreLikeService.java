@@ -1,13 +1,18 @@
 package com.example.padong_server.domain.storeLike.service;
 
+import com.example.padong_server.domain.storeLike.dto.LikedStoreResponse;
 import com.example.padong_server.domain.storeLike.dto.StoreLikeToggleResponse;
 import com.example.padong_server.domain.storeLike.entity.StoreLike;
 import com.example.padong_server.domain.storeLike.repository.StoreLikeRepository;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +59,14 @@ public class StoreLikeService {
 
         validateStoreId(storeId);
         return storeLikeRepository.existsByStoreIdAndUserId(storeId, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<LikedStoreResponse> getMyLikes(Long userId, Pageable pageable) {
+        Page<StoreLike> page = storeLikeRepository.findByUserIdOrderByIdDesc(userId, pageable);
+        List<LikedStoreResponse> content =
+                page.getContent().stream().map(LikedStoreResponse::from).toList();
+        return PageResponse.from(page, content);
     }
 
     @Transactional(readOnly = true)

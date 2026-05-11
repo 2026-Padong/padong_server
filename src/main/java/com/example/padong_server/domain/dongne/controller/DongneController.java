@@ -5,8 +5,10 @@ import com.example.padong_server.domain.dongne.dto.response.DistrictWithDongs;
 import com.example.padong_server.domain.dongne.service.DongneDetailService;
 import com.example.padong_server.domain.dongne.service.DongneService;
 import com.example.padong_server.domain.dongneLike.dto.DongneLikeToggleResponse;
+import com.example.padong_server.domain.dongneLike.dto.LikedDongneResponse;
 import com.example.padong_server.domain.dongneLike.service.DongneLikeService;
 import com.example.padong_server.domain.oauth.entity.CustomUserDetails;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import com.example.padong_server.global.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,8 +18,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -211,5 +216,21 @@ public class DongneController {
                 dongneLikeService.toggleLike(adminDongCode, resolvedUserId);
         return ResponseEntity.ok(
                 ResponseDTO.res(HttpStatus.OK, "동네 좋아요 상태가 변경되었습니다.", response));
+    }
+
+    @GetMapping("/likes/me")
+    @Operation(
+            summary = "내가 좋아요한 동네 목록",
+            description = "마이페이지 '좋아요한 동네' 용. 최신 좋아요부터(Like PK DESC) 페이징.")
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ResponseDTO<PageResponse<LikedDongneResponse>>> getMyDongneLikes(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @ParameterObject Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                ResponseDTO.res(
+                        HttpStatus.OK,
+                        "좋아요한 동네 조회 성공",
+                        dongneLikeService.getMyLikes(userDetails.getUserId(), pageable)));
     }
 }

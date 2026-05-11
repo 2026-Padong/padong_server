@@ -13,6 +13,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDateTime;
+import org.hibernate.annotations.ColumnDefault;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -61,6 +63,13 @@ public class User {
 
     @Column(nullable = false)
     private boolean approved;
+
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private boolean deleted;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Builder
     private User(
@@ -111,5 +120,24 @@ public class User {
         this.businessLicenseImageUrl = businessLicenseImageUrl;
         this.registered = true;
         this.approved = role == Role.USER;
+    }
+
+    public void upgradeToAdmin(String businessLicenseImageUrl, AdminDong adminDong) {
+        this.role = Role.ADMIN;
+        this.businessLicenseImageUrl = businessLicenseImageUrl;
+        if (adminDong != null) {
+            this.adminDong = adminDong;
+        }
+        this.approved = false;
+    }
+
+    public void softDelete() {
+        this.deleted = true;
+        this.deletedAt = LocalDateTime.now();
+        this.nickname = "탈퇴한 사용자";
+        this.picture = null;
+        this.email = "deleted-" + this.id + "@padong.local";
+        this.registered = false;
+        this.approved = false;
     }
 }

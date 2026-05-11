@@ -1,12 +1,14 @@
 package com.example.padong_server.domain.storeRegistration.controller;
 
 import com.example.padong_server.domain.oauth.entity.CustomUserDetails;
+import com.example.padong_server.domain.storeLike.dto.LikedStoreResponse;
 import com.example.padong_server.domain.storeLike.dto.StoreLikeToggleResponse;
 import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationCreateRequest;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationResponse;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
 import com.example.padong_server.domain.storeRegistration.service.StoreRegistrationService;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,9 +17,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalTime;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -191,5 +196,37 @@ public class StoreRegistrationController {
     ) {
         storeRegistrationService.deleteStore(storeId);
         return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, "가게 삭제가 완료되었습니다."));
+    }
+
+    @Operation(
+            summary = "내가 등록한 가게 목록 (ADMIN 전용)",
+            description = "마이페이지 '내 가게 관리' 용. 최신 등록순(PK DESC) 페이징.")
+    @SecurityRequirement(name = "bearer-jwt")
+    @GetMapping("/mine")
+    public ResponseEntity<ResponseDTO<PageResponse<StoreRegistrationResponse>>> getMyStores(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @ParameterObject Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                ResponseDTO.res(
+                        HttpStatus.OK,
+                        "내 가게 목록 조회 성공",
+                        storeRegistrationService.getMyStores(userDetails.getUserId(), pageable)));
+    }
+
+    @Operation(
+            summary = "내가 좋아요한 가게 목록",
+            description = "마이페이지 '좋아요한 가게' 용. 최신 좋아요순(Like PK DESC) 페이징.")
+    @SecurityRequirement(name = "bearer-jwt")
+    @GetMapping("/likes/me")
+    public ResponseEntity<ResponseDTO<PageResponse<LikedStoreResponse>>> getMyStoreLikes(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @ParameterObject Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                ResponseDTO.res(
+                        HttpStatus.OK,
+                        "좋아요한 가게 조회 성공",
+                        storeLikeService.getMyLikes(userDetails.getUserId(), pageable)));
     }
 }

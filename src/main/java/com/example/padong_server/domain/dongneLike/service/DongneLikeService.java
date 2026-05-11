@@ -3,11 +3,16 @@ package com.example.padong_server.domain.dongneLike.service;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongneLike.dto.DongneLikeToggleResponse;
+import com.example.padong_server.domain.dongneLike.dto.LikedDongneResponse;
 import com.example.padong_server.domain.dongneLike.entity.DongneLike;
 import com.example.padong_server.domain.dongneLike.repository.DongneLikeRepository;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +59,15 @@ public class DongneLikeService {
         }
         validateAdminDongId(adminDongId);
         return dongneLikeRepository.existsByAdminDongIdAndUserId(adminDongId, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<LikedDongneResponse> getMyLikes(Long userId, Pageable pageable) {
+        Page<DongneLike> page =
+                dongneLikeRepository.findByUserIdOrderByIdDesc(userId, pageable);
+        List<LikedDongneResponse> content =
+                page.getContent().stream().map(LikedDongneResponse::from).toList();
+        return PageResponse.from(page, content);
     }
 
     @Transactional(readOnly = true)

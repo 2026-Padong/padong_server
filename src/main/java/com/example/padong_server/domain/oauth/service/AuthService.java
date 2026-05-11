@@ -2,8 +2,13 @@ package com.example.padong_server.domain.oauth.service;
 
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
+import com.example.padong_server.domain.dongneLike.repository.DongneLikeRepository;
+import com.example.padong_server.domain.storeLike.repository.StoreLikeRepository;
+import com.example.padong_server.domain.oauth.dto.request.AdminUpgradeRequest;
 import com.example.padong_server.domain.oauth.dto.request.UserSignUpRequest;
+import com.example.padong_server.domain.oauth.dto.response.AdminUpgradeResponse;
 import com.example.padong_server.domain.oauth.dto.response.SignUpResponse;
+import com.example.padong_server.domain.oauth.dto.response.UserDetailResponse;
 import com.example.padong_server.domain.oauth.entity.Role;
 import com.example.padong_server.domain.oauth.entity.User;
 import com.example.padong_server.domain.oauth.jwt.JwtProvider;
@@ -23,6 +28,8 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
     private final AdminDongRepository adminDongRepository;
+    private final DongneLikeRepository dongneLikeRepository;
+    private final StoreLikeRepository storeLikeRepository;
 
     public JwtToken reissue(String refreshToken) {
 
@@ -38,6 +45,10 @@ public class AuthService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_USER);
+        }
 
         if (!user.isRegistered() || (user.getRole() == Role.ADMIN && !user.isApproved())) {
             throw new CustomException(ErrorCode.UNAUTHORIZED_USER);
@@ -59,6 +70,67 @@ public class AuthService {
     }
 
     @Transactional
+    public void withdraw(Long userId) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        if (user.isDeleted()) {
+            return;
+        }
+        dongneLikeRepository.deleteByUserId(userId);
+        storeLikeRepository.deleteByUserId(userId);
+        refreshTokenService.delete(userId);
+        user.softDelete();
+        // TODO: 본인이 등록한 가게(Store) 처리는 운영 정책 결정 후 추가 (현재는 그대로 둠)
+    }
+
+    @Transactional(readOnly = true)
+    public UserDetailResponse getMeDetail(Long userId) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return UserDetailResponse.from(user);
+    }
+
+    @Transactional
+    public AdminUpgradeResponse upgradeAdmin(Long userId, AdminUpgradeRequest request) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        if (user.getRole() == Role.ADMIN) {
+            throw new CustomException(ErrorCode.INVALID_SIGNUP_REQUEST, "이미 ADMIN 사용자입니다.");
+        }
+        AdminDong adminDong = null;
+        if (request.adminDongId() != null) {
+            adminDong =
+                    adminDongRepository
+                            .findById(request.adminDongId())
+                            .orElseThrow(
+                                    () -> new CustomException(ErrorCode.ADMIN_DONG_NOT_FOUND));
+        }
+        user.upgradeToAdmin(request.businessLicenseImageUrl(), adminDong);
+        refreshTokenService.delete(userId);
+        return AdminUpgradeResponse.from(user);
+    }
+
+    @Transactional
+    public UserDetailResponse updateMyAdminDong(Long userId, Long adminDongId) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        AdminDong adminDong =
+                adminDongRepository
+                        .findById(adminDongId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.ADMIN_DONG_NOT_FOUND));
+        user.updateAdminDong(adminDong);
+        return UserDetailResponse.from(user);
+    }
+
+    @Transactional
     public SignUpResponse signUp(UserSignUpRequest request) {
         validateSignUpRequest(request);
 
@@ -68,7 +140,7 @@ public class AuthService {
                     .orElseThrow(() -> new CustomException(ErrorCode.ADMIN_DONG_NOT_FOUND));
         }
 
-        User user = userRepository.findByKakaoId(request.kakaoId())
+        User user = userRepository.findByKakaoIdAndDeletedFalse(request.kakaoId())
                 .orElseGet(() -> userRepository.save(
                         User.builder()
                                 .kakaoId(request.kakaoId())

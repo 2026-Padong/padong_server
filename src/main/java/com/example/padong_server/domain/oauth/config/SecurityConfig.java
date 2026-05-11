@@ -54,6 +54,7 @@ public class SecurityConfig {
                                 "/path/**"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/stores/mine").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
 

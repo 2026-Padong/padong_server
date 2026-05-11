@@ -56,7 +56,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         Role requestedRole = consumeRequestedRole(request);
 
-        User user = userRepository.findByKakaoId(kakaoId).orElse(null);
+        User user = userRepository.findByKakaoIdAndDeletedFalse(kakaoId).orElse(null);
 
         if (user == null || !user.isRegistered()) {
             String redirectUrl = frontRedirect

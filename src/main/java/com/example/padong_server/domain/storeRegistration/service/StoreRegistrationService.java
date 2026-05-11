@@ -7,10 +7,14 @@ import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationR
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import java.time.LocalTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -63,6 +67,15 @@ public class StoreRegistrationService {
     public void deleteStore(Long storeId) {
         Store store = findStore(storeId);
         storeRegistrationRepository.delete(store);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<StoreRegistrationResponse> getMyStores(Long ownerId, Pageable pageable) {
+        Page<Store> page =
+                storeRegistrationRepository.findByOwnerIdOrderByIdDesc(ownerId, pageable);
+        List<StoreRegistrationResponse> content =
+                page.getContent().stream().map(s -> toResponse(s, ownerId)).toList();
+        return PageResponse.from(page, content);
     }
 
     private Store findStore(Long storeId) {

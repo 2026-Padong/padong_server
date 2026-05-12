@@ -32,33 +32,61 @@ public class MobilityImportService {
     @Transactional
     public String importData() {
         long start = System.currentTimeMillis();
-        List<ActivityMobilityCsvRow> csvRows = activityMobilityDataUtil.readMonthlyCsvRows();
-        ImportPeriod period = resolveImportPeriod(csvRows);
-        List<ActivityMobilityRepresentativeRow> representativeRows =
-                activityMobilityAggregator.aggregate(
-                        csvRows, period.startMonth(), period.endMonth());
-        List<Mobility> mobilities = activityMobilityEntityMapper.toEntities(representativeRows);
+        log.info("ActivityMobility import started");
+        try {
+            List<ActivityMobilityCsvRow> csvRows = activityMobilityDataUtil.readMonthlyCsvRows();
+            log.info("ActivityMobility import step completed: step=readCsvRows, sourceRows={}", csvRows.size());
 
-        mobilityRepository.deleteAllInBatch();
-        List<Mobility> savedMobilities = mobilityRepository.saveAll(mobilities);
+            ImportPeriod period = resolveImportPeriod(csvRows);
+            log.info(
+                    "ActivityMobility import period resolved: startMonth={}, endMonth={}",
+                    period.startMonth(),
+                    period.endMonth());
 
-        long end = System.currentTimeMillis();
-        log.info(
-                "ActivityMobility import completed: period={}~{}, sourceRows={},"
-                        + " representativeRows={}, savedRows={}, elapsedMs={}",
-                period.startMonth(),
-                period.endMonth(),
-                csvRows.size(),
-                representativeRows.size(),
-                savedMobilities.size(),
-                end - start);
-        return "생활이동 데이터 적재 완료: "
-                + period.startMonth()
-                + "~"
-                + period.endMonth()
-                + " 기준, "
-                + savedMobilities.size()
-                + "건 저장";
+            List<ActivityMobilityRepresentativeRow> representativeRows =
+                    activityMobilityAggregator.aggregate(
+                            csvRows, period.startMonth(), period.endMonth());
+            log.info(
+                    "ActivityMobility import step completed: step=aggregate, representativeRows={}",
+                    representativeRows.size());
+
+            List<Mobility> mobilities = activityMobilityEntityMapper.toEntities(representativeRows);
+            log.info(
+                    "ActivityMobility import step completed: step=mapToEntities, entityRows={}",
+                    mobilities.size());
+
+            log.info("ActivityMobility import DB refresh started: deleteAllInBatch");
+            mobilityRepository.deleteAllInBatch();
+            log.info("ActivityMobility import DB refresh completed: deleteAllInBatch");
+
+            List<Mobility> savedMobilities = mobilityRepository.saveAll(mobilities);
+
+            long end = System.currentTimeMillis();
+            log.info(
+                    "ActivityMobility import completed: period={}~{}, sourceRows={},"
+                            + " representativeRows={}, savedRows={}, elapsedMs={}",
+                    period.startMonth(),
+                    period.endMonth(),
+                    csvRows.size(),
+                    representativeRows.size(),
+                    savedMobilities.size(),
+                    end - start);
+            return "생활이동 데이터 적재 완료: "
+                    + period.startMonth()
+                    + "~"
+                    + period.endMonth()
+                    + " 기준, "
+                    + savedMobilities.size()
+                    + "건 저장";
+        } catch (RuntimeException exception) {
+            log.error(
+                    "ActivityMobility import failed: elapsedMs={}, errorType={}, message={}",
+                    System.currentTimeMillis() - start,
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception);
+            throw exception;
+        }
     }
 
     private ImportPeriod resolveImportPeriod(List<ActivityMobilityCsvRow> rows) {

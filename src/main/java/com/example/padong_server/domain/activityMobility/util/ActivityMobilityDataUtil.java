@@ -43,16 +43,34 @@ public class ActivityMobilityDataUtil {
         List<ActivityMobilityCsvRow> rows = new ArrayList<>();
 
         for (ActivityMobilityCsvFile csvFile : CSV_FILES) {
+            long fileStart = System.currentTimeMillis();
+            String sourceName = S3_DOMAIN + "/" + csvFile.filename();
+            log.info("ActivityMobility CSV read started: source={}, month={}", sourceName, csvFile.month());
             try (InputStream inputStream = s3CsvReaderService.readFile(S3_DOMAIN, csvFile.filename())) {
-                rows.addAll(
-                        readCsvRows(
-                                csvFile.month(),
-                                inputStream,
-                                S3_DOMAIN + "/" + csvFile.filename()));
+                List<ActivityMobilityCsvRow> fileRows =
+                        readCsvRows(csvFile.month(), inputStream, sourceName);
+                rows.addAll(fileRows);
+                log.info(
+                        "ActivityMobility CSV read completed: source={}, month={}, rows={}, elapsedMs={}",
+                        sourceName,
+                        csvFile.month(),
+                        fileRows.size(),
+                        System.currentTimeMillis() - fileStart);
             } catch (IOException exception) {
                 throw new IllegalStateException(
-                        CSV_READ_FAILURE_MESSAGE + ": " + S3_DOMAIN + "/" + csvFile.filename(),
+                        CSV_READ_FAILURE_MESSAGE + ": " + sourceName,
                         exception);
+            } catch (RuntimeException exception) {
+                log.error(
+                        "ActivityMobility CSV read failed: source={}, month={}, elapsedMs={}, errorType={},"
+                                + " message={}",
+                        sourceName,
+                        csvFile.month(),
+                        System.currentTimeMillis() - fileStart,
+                        exception.getClass().getName(),
+                        exception.getMessage(),
+                        exception);
+                throw exception;
             }
         }
 
@@ -72,6 +90,7 @@ public class ActivityMobilityDataUtil {
 
             List<String> headers =
                     parseCsvLine(headerLine).stream().map(ActivityMobilityDataUtil::normalize).toList();
+            log.info("ActivityMobility CSV headers parsed: source={}, headers={}", sourceName, headers);
             validateHeaders(headers);
 
             String line;

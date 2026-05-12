@@ -453,10 +453,10 @@ public class ActivityMobilityEntityMapper {
     private static String normalizeDongName(String value) {
         return normalize(value)
                 .replace("동", "")
+                .replace("제", "")
                 .replace(".", "")
                 .replace("·", "")
-                .replace(" ", "")
-                .replaceAll("제(?=\\d)", "");
+                .replace(" ", "");
     }
 
     private record ActivityMobilityCodebookRow(

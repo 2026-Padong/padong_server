@@ -86,7 +86,10 @@ public class ActivityMobilityDataUtil {
         try (BufferedReader reader =
                 new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
-            Preconditions.validate(headerLine != null, ErrorCode.VALIDATION_ERROR);
+            Preconditions.validate(
+                    headerLine != null,
+                    ErrorCode.VALIDATION_ERROR,
+                    "생활이동 CSV 헤더가 없습니다: source=" + sourceName);
 
             List<String> headers =
                     parseCsvLine(headerLine).stream().map(ActivityMobilityDataUtil::normalize).toList();
@@ -115,7 +118,17 @@ public class ActivityMobilityDataUtil {
     private ActivityMobilityCsvRow toCsvRow(
             String expectedMonth, String sourceName, int lineNumber, Map<String, String> row) {
         String month = requireNonBlank(row, "기준년월");
-        Preconditions.validate(month.equals(expectedMonth), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                month.equals(expectedMonth),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 CSV 기준년월이 파일 월과 다릅니다: source="
+                        + sourceName
+                        + ", line="
+                        + lineNumber
+                        + ", expectedMonth="
+                        + expectedMonth
+                        + ", actualMonth="
+                        + month);
 
         return new ActivityMobilityCsvRow(
                 month,
@@ -128,11 +141,23 @@ public class ActivityMobilityDataUtil {
     }
 
     private void validateHeaders(List<String> actualHeaders) {
-        Preconditions.validate(actualHeaders.equals(EXPECTED_CSV_HEADERS), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                actualHeaders.equals(EXPECTED_CSV_HEADERS),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 CSV 헤더가 예상과 다릅니다: expected="
+                        + EXPECTED_CSV_HEADERS
+                        + ", actual="
+                        + actualHeaders);
     }
 
     private Map<String, String> toRowMap(List<String> headers, List<String> values) {
-        Preconditions.validate(values.size() == headers.size(), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                values.size() == headers.size(),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 CSV 컬럼 수가 헤더 수와 다릅니다: headers="
+                        + headers.size()
+                        + ", values="
+                        + values.size());
 
         Map<String, String> row = new LinkedHashMap<>();
         for (int i = 0; i < headers.size(); i++) {
@@ -178,13 +203,24 @@ public class ActivityMobilityDataUtil {
 
     private String requireNonBlank(Map<String, String> row, String column) {
         String value = normalize(row.get(column));
-        Preconditions.validate(!value.isBlank(), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                !value.isBlank(),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 CSV 필수 컬럼 값이 비어 있습니다: column=" + column);
         return value;
     }
 
     private double parseDouble(String value, String column, String sourceName, int lineNumber) {
         String normalized = normalize(value).replace(",", "");
-        Preconditions.validate(!normalized.isBlank(), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                !normalized.isBlank(),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 CSV 숫자 컬럼 값이 비어 있습니다: source="
+                        + sourceName
+                        + ", line="
+                        + lineNumber
+                        + ", column="
+                        + column);
         try {
             return Double.parseDouble(normalized);
         } catch (NumberFormatException exception) {

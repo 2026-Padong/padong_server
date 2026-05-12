@@ -90,7 +90,10 @@ public class MobilityImportService {
     }
 
     private ImportPeriod resolveImportPeriod(List<ActivityMobilityCsvRow> rows) {
-        Preconditions.validate(!rows.isEmpty(), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                !rows.isEmpty(),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 CSV row가 없습니다. S3 activity-mobility CSV 파일을 확인하세요.");
         String startMonth =
                 rows.stream()
                         .map(ActivityMobilityCsvRow::month)

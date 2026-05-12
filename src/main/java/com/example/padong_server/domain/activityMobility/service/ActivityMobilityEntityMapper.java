@@ -4,18 +4,9 @@ import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityRep
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
+import com.example.padong_server.global.client.s3.S3CsvReaderService;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
-
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Component;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,47 +18,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 @Component
 @RequiredArgsConstructor
 public class ActivityMobilityEntityMapper {
 
     private static final int CSV_DONG_CODE_LENGTH = 7;
+    private static final String S3_DOMAIN = "activity-mobility";
+    private static final String CODEBOOK_FILENAME = "서울생활이동데이터_행정동코드_20210907.xlsx";
     private static final String SPREADSHEET_NS =
             "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
-    private static final String CODEBOOK_PATH =
-            "data/activity-mobility/서울생활이동데이터_행정동코드_20210907.xlsx";
     private static final String SHARED_STRINGS_ENTRY = "xl/sharedStrings.xml";
     private static final String SHEET_ENTRY = "xl/worksheets/sheet1.xml";
-    private static final String INVALID_ADMIN_DONG_CODE_MESSAGE_FORMAT =
-            "Invalid AdminDong code: %s";
-    private static final String MISSING_CODEBOOK_ADMIN_DONG_CODE_MESSAGE_FORMAT =
-            "생활이동 코드북에 없는 행정동 코드입니다: %s=%s";
-    private static final String MISSING_CURRENT_ADMIN_DONG_BY_NAME_MESSAGE_FORMAT =
-            "생활이동 행정동명에 대응하는 현재 AdminDong이 없습니다: %s=%s, fullName=%s";
-    private static final String MISSING_OVERRIDE_ADMIN_DONG_MESSAGE_FORMAT =
-            "생활이동 행정동 보정 대상 AdminDong이 없습니다: %s=%s, adminDongCode=%s";
-    private static final String CODEBOOK_READ_FAILURE_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북을 읽을 수 없습니다: %s";
-    private static final String INVALID_CODEBOOK_XLSX_STRUCTURE_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북 xlsx 구조가 예상과 다릅니다: %s";
-    private static final String INVALID_SHARED_STRING_INDEX_MESSAGE_FORMAT =
-            "생활이동 코드북 shared string index가 잘못되었습니다: %s";
-    private static final String CODEBOOK_XML_PARSE_FAILURE_MESSAGE =
-            "생활이동 행정동 코드북 XML을 파싱할 수 없습니다.";
-    private static final String EMPTY_CODEBOOK_MESSAGE_FORMAT = "생활이동 행정동 코드북이 비어 있습니다: %s";
-    private static final String INVALID_CODEBOOK_HEADERS_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북 헤더가 다릅니다. expected=%s, actual=%s";
-    private static final String DUPLICATE_CODEBOOK_CODE_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북 코드가 중복됩니다: %s";
-    private static final String CSV_ADMIN_DONG_CODE_REQUIRED_MESSAGE = "CSV 행정동 코드가 비어 있습니다.";
-    private static final String INVALID_CSV_ADMIN_DONG_CODE_MESSAGE_FORMAT =
-            "CSV 행정동 코드는 7자리 숫자여야 합니다: %s";
-    private static final String INVALID_CODEBOOK_ADDRESS_MESSAGE_FORMAT =
-            "생활이동 코드북 주소 형식이 잘못되었습니다: %s=%s, fullName=%s";
+    private static final String SEOUL_CITY_NAME = "서울특별시";
     private static final List<String> EXPECTED_CODEBOOK_HEADERS =
             List.of("시도", "시군구", "읍면동", "name", "full_name");
     private static final Map<String, String> CURRENT_ADMIN_DONG_CODE_OVERRIDES =
@@ -81,6 +52,7 @@ public class ActivityMobilityEntityMapper {
                     "11060810", "1123053300");
 
     private final AdminDongRepository adminDongRepository;
+    private final S3CsvReaderService s3CsvReaderService;
 
     public List<Mobility> toEntities(List<ActivityMobilityRepresentativeRow> rows) {
         Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode =
@@ -172,15 +144,18 @@ public class ActivityMobilityEntityMapper {
     }
 
     private Map<String, ActivityMobilityCodebookRow> loadCodebookByMobilityCode() {
-        ClassPathResource resource = new ClassPathResource(CODEBOOK_PATH);
-        try (InputStream inputStream = resource.getInputStream()) {
+        try (InputStream inputStream = s3CsvReaderService.readFile(S3_DOMAIN, CODEBOOK_FILENAME)) {
             Map<String, byte[]> entries = readXlsxEntries(inputStream);
             List<String> sharedStrings = readSharedStrings(entries);
             List<List<String>> sheetRows = readSheetRows(entries, sharedStrings);
             return toCodebookByMobilityCode(sheetRows);
         } catch (IOException exception) {
             throw new IllegalStateException(
-                    CODEBOOK_READ_FAILURE_MESSAGE_FORMAT.formatted(CODEBOOK_PATH), exception);
+                    "Failed to read activity mobility codebook: "
+                            + S3_DOMAIN
+                            + "/"
+                            + CODEBOOK_FILENAME,
+                    exception);
         }
     }
 
@@ -291,7 +266,7 @@ public class ActivityMobilityEntityMapper {
             factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
             return factory.newDocumentBuilder().parse(new ByteArrayInputStream(xmlBytes));
         } catch (IOException | ParserConfigurationException | SAXException exception) {
-            throw new IllegalStateException(CODEBOOK_XML_PARSE_FAILURE_MESSAGE, exception);
+            throw new IllegalStateException("Failed to parse activity mobility codebook XML.", exception);
         }
     }
 
@@ -301,8 +276,7 @@ public class ActivityMobilityEntityMapper {
 
         List<String> headers =
                 sheetRows.get(0).stream().map(ActivityMobilityEntityMapper::normalize).toList();
-        Preconditions.validate(
-                headers.equals(EXPECTED_CODEBOOK_HEADERS), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(headers.equals(EXPECTED_CODEBOOK_HEADERS), ErrorCode.VALIDATION_ERROR);
 
         Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode = new LinkedHashMap<>();
         for (int i = 1; i < sheetRows.size(); i++) {
@@ -320,9 +294,7 @@ public class ActivityMobilityEntityMapper {
                     codebookByMobilityCode.putIfAbsent(
                             normalizeMobilityDongCode(mobilityDongCode),
                             new ActivityMobilityCodebookRow(
-                                    mobilityDongCode,
-                                    normalize(row.get(3)),
-                                    normalize(row.get(4))));
+                                    mobilityDongCode, normalize(row.get(3)), normalize(row.get(4))));
             Preconditions.validate(previous == null, ErrorCode.VALIDATION_ERROR);
         }
         return codebookByMobilityCode;
@@ -341,7 +313,7 @@ public class ActivityMobilityEntityMapper {
     private String extractDistrictName(String fullName, String mobilityDongCode, String fieldName) {
         String[] parts = normalize(fullName).split(" ");
         Preconditions.validate(
-                parts.length >= 3 && "서울특별시".equals(parts[0]), ErrorCode.VALIDATION_ERROR);
+                parts.length >= 3 && SEOUL_CITY_NAME.equals(parts[0]), ErrorCode.VALIDATION_ERROR);
         return parts[1];
     }
 
@@ -350,7 +322,7 @@ public class ActivityMobilityEntityMapper {
     }
 
     private static String normalizeDongName(String value) {
-        return normalize(value).replace("제", "").replace(".", "").replace("·", "").replace(" ", "");
+        return normalize(value).replace("동", "").replace(".", "").replace("·", "").replace(" ", "");
     }
 
     private record ActivityMobilityCodebookRow(

@@ -3,6 +3,7 @@ package com.example.padong_server.domain.oauth.config;
 import com.example.padong_server.domain.oauth.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -47,6 +48,24 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/path/**"
+                        ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/dongne/data",
+                                "/population/data",
+                                "/population/density/data",
+                                "/mobility/data",
+                                "/mobility/safety/data",
+                                "/rent-price/data",
+                                "/pictures/data",
+                                "/pictures/mappings/admin-dong",
+                                "/hot-places/data",
+                                "/store-statistics/data"
+                        ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/subway/load",
+                                "/subway/transfers/load"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

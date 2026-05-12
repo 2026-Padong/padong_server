@@ -101,6 +101,23 @@ class ActivityMobilityEntityMapperTest {
     }
 
     @Test
+    @DisplayName("Maps codebook dong names without 제 to current AdminDong names with 제")
+    void mapsNumberedDongNamesWithJePrefix() {
+        AdminDong arrivalDong = adminDong("1111053000", "종로구", "사직동");
+        AdminDong departureDong = adminDong("1111067000", "종로구", "창신제1동");
+        when(adminDongRepository.findAll()).thenReturn(List.of(arrivalDong, departureDong));
+        ActivityMobilityRepresentativeRow row =
+                representativeRow("1101053", "1101067", 12.3, 45.6);
+
+        List<Mobility> result = mapper.toEntities(List.of(row));
+
+        assertThat(result)
+                .singleElement()
+                .extracting(Mobility::getArrivalDong, Mobility::getDepartureDong)
+                .containsExactly(arrivalDong, departureDong);
+    }
+
+    @Test
     @DisplayName("Rejects unknown mobility admin-dong codes")
     void rejectsUnknownAdminDongCode() {
         when(adminDongRepository.findAll())
@@ -138,7 +155,7 @@ class ActivityMobilityEntityMapperTest {
         String sharedStringsXml =
                 """
                 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-                <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="15" uniqueCount="15">
+                <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="17" uniqueCount="17">
                   <si><t>시도</t></si>
                   <si><t>시군구</t></si>
                   <si><t>읍면동</t></si>
@@ -154,6 +171,8 @@ class ActivityMobilityEntityMapperTest {
                   <si><t>알수없음</t></si>
                   <si><t>1116064</t></si>
                   <si><t>1123074</t></si>
+                  <si><t>1101067</t></si>
+                  <si><t>창신1동</t></si>
                 </sst>
                 """;
         String sheetXml =
@@ -172,6 +191,9 @@ class ActivityMobilityEntityMapperTest {
                     </row>
                     <row r="4">
                       <c r="A4" t="inlineStr"><is><t>서울특별시</t></is></c><c r="B4" t="inlineStr"><is><t>미상구</t></is></c><c r="C4" t="s"><v>11</v></c><c r="D4" t="s"><v>12</v></c><c r="E4" t="inlineStr"><is><t>서울특별시 미상구 알수없음</t></is></c>
+                    </row>
+                    <row r="5">
+                      <c r="A5" t="inlineStr"><is><t>서울특별시</t></is></c><c r="B5" t="inlineStr"><is><t>종로구</t></is></c><c r="C5" t="s"><v>15</v></c><c r="D5" t="s"><v>16</v></c><c r="E5" t="inlineStr"><is><t>서울특별시 종로구 창신1동</t></is></c>
                     </row>
                   </sheetData>
                 </worksheet>

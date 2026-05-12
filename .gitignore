@@ -39,4 +39,5 @@ out/
 ### Local Workspace ###
 .omx/
 .codex/
+artifact/
 src/main/resources/data/

@@ -73,7 +73,10 @@ public class ActivityMobilityAggregator {
     int countWeekdays(String startMonth, String endMonth) {
         YearMonth start = parseMonth(startMonth, "startMonth");
         YearMonth end = parseMonth(endMonth, "endMonth");
-        Preconditions.validate(!start.isAfter(end), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                !start.isAfter(end),
+                ErrorCode.VALIDATION_ERROR,
+                INVALID_PERIOD_MESSAGE_FORMAT.formatted(startMonth, endMonth));
 
         int count = 0;
         LocalDate date = start.atDay(1);
@@ -98,7 +101,10 @@ public class ActivityMobilityAggregator {
         YearMonth start = parseMonth(startMonth, "startMonth");
         YearMonth end = parseMonth(endMonth, "endMonth");
         Preconditions.validate(
-                !rowMonth.isBefore(start) && !rowMonth.isAfter(end), ErrorCode.VALIDATION_ERROR);
+                !rowMonth.isBefore(start) && !rowMonth.isAfter(end),
+                ErrorCode.VALIDATION_ERROR,
+                ROW_MONTH_OUTSIDE_PERIOD_MESSAGE_FORMAT.formatted(
+                        row.month(), startMonth, endMonth));
     }
 
     private YearMonth parseMonth(String month, String label) {

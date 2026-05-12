@@ -80,7 +80,9 @@ public class ActivityMobilityEntityMapper {
         for (AdminDong adminDong : adminDongRepository.findAll()) {
             String adminDongCode = adminDong.getAdminDongCode();
             Preconditions.validate(
-                    adminDongCode != null && !adminDongCode.isBlank(), ErrorCode.VALIDATION_ERROR);
+                    adminDongCode != null && !adminDongCode.isBlank(),
+                    ErrorCode.VALIDATION_ERROR,
+                    "행정동 데이터의 adminDongCode가 비어 있습니다. /dongne/data 적재 데이터를 확인하세요.");
             adminDongByCode.put(adminDongCode, adminDong);
             adminDongByDistrictAndName.put(
                     new AdminDongNameKey(
@@ -90,8 +92,12 @@ public class ActivityMobilityEntityMapper {
         }
         log.info(
                 "ActivityMobility admin dong index loaded: byCode={}, byDistrictAndName={}",
-                adminDongByCode.size(),
-                adminDongByDistrictAndName.size());
+                    adminDongByCode.size(),
+                    adminDongByDistrictAndName.size());
+        Preconditions.validate(
+                !adminDongByCode.isEmpty(),
+                ErrorCode.VALIDATION_ERROR,
+                "행정동 기준 데이터가 비어 있습니다. /dongne/data를 먼저 호출한 뒤 /mobility/data를 호출하세요.");
         return new AdminDongIndex(adminDongByCode, adminDongByDistrictAndName);
     }
 
@@ -145,7 +151,15 @@ public class ActivityMobilityEntityMapper {
                     mobilityDongCode,
                     normalizedMobilityDongCode);
         }
-        Preconditions.validate(codebookRow != null, ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                codebookRow != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북에 행정동 코드가 없습니다: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", normalizedMobilityDongCode="
+                        + normalizedMobilityDongCode);
 
         String districtName =
                 extractDistrictName(codebookRow.fullName(), normalizedMobilityDongCode, fieldName);
@@ -162,7 +176,18 @@ public class ActivityMobilityEntityMapper {
                     codebookRow.name(),
                     key.normalizedAdminDongName());
         }
-        Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                adminDong != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 매핑 실패: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", districtName="
+                        + districtName
+                        + ", dongName="
+                        + codebookRow.name()
+                        + ". /dongne/data 적재 데이터와 생활이동 코드북을 확인하세요.");
         return adminDong;
     }
 
@@ -180,7 +205,16 @@ public class ActivityMobilityEntityMapper {
                     mobilityDongCode,
                     adminDongCode);
         }
-        Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                adminDong != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 override 매핑 실패: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", overrideAdminDongCode="
+                        + adminDongCode
+                        + ". /dongne/data 적재 데이터에 해당 행정동 코드가 있는지 확인하세요.");
         return adminDong;
     }
 
@@ -237,7 +271,11 @@ public class ActivityMobilityEntityMapper {
         }
         Preconditions.validate(
                 entries.containsKey(SHARED_STRINGS_ENTRY) && entries.containsKey(SHEET_ENTRY),
-                ErrorCode.VALIDATION_ERROR);
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 xlsx에 필요한 entry가 없습니다: required="
+                        + List.of(SHARED_STRINGS_ENTRY, SHEET_ENTRY)
+                        + ", actual="
+                        + entries.keySet());
         return entries;
     }
 
@@ -313,7 +351,11 @@ public class ActivityMobilityEntityMapper {
             int sharedStringIndex = Integer.parseInt(rawValue);
             Preconditions.validate(
                     sharedStringIndex >= 0 && sharedStringIndex < sharedStrings.size(),
-                    ErrorCode.VALIDATION_ERROR);
+                    ErrorCode.VALIDATION_ERROR,
+                    "생활이동 코드북 shared string index가 범위를 벗어났습니다: index="
+                            + sharedStringIndex
+                            + ", size="
+                            + sharedStrings.size());
             return sharedStrings.get(sharedStringIndex);
         }
         return rawValue;
@@ -336,11 +378,20 @@ public class ActivityMobilityEntityMapper {
 
     private Map<String, ActivityMobilityCodebookRow> toCodebookByMobilityCode(
             List<List<String>> sheetRows) {
-        Preconditions.validate(!sheetRows.isEmpty(), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                !sheetRows.isEmpty(),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 sheet row가 비어 있습니다.");
 
         List<String> headers =
                 sheetRows.get(0).stream().map(ActivityMobilityEntityMapper::normalize).toList();
-        Preconditions.validate(headers.equals(EXPECTED_CODEBOOK_HEADERS), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                headers.equals(EXPECTED_CODEBOOK_HEADERS),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 헤더가 예상과 다릅니다: expected="
+                        + EXPECTED_CODEBOOK_HEADERS
+                        + ", actual="
+                        + headers);
 
         Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode = new LinkedHashMap<>();
         for (int i = 1; i < sheetRows.size(); i++) {
@@ -359,25 +410,39 @@ public class ActivityMobilityEntityMapper {
                             normalizeMobilityDongCode(mobilityDongCode),
                             new ActivityMobilityCodebookRow(
                                     mobilityDongCode, normalize(row.get(3)), normalize(row.get(4))));
-            Preconditions.validate(previous == null, ErrorCode.VALIDATION_ERROR);
+            Preconditions.validate(
+                    previous == null,
+                    ErrorCode.VALIDATION_ERROR,
+                    "생활이동 코드북에 중복 행정동 코드가 있습니다: mobilityDongCode=" + mobilityDongCode);
         }
         return codebookByMobilityCode;
     }
 
     String normalizeMobilityDongCode(String mobilityDongCode) {
-        Preconditions.validate(mobilityDongCode != null, ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                mobilityDongCode != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 코드가 null입니다.");
         String normalized = normalize(mobilityDongCode);
         Preconditions.validate(
                 normalized.length() == CSV_DONG_CODE_LENGTH
                         && normalized.chars().allMatch(Character::isDigit),
-                ErrorCode.VALIDATION_ERROR);
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 코드는 7자리 숫자여야 합니다: mobilityDongCode=" + mobilityDongCode);
         return normalized;
     }
 
     private String extractDistrictName(String fullName, String mobilityDongCode, String fieldName) {
         String[] parts = normalize(fullName).split(" ");
         Preconditions.validate(
-                parts.length >= 3 && SEOUL_CITY_NAME.equals(parts[0]), ErrorCode.VALIDATION_ERROR);
+                parts.length >= 3 && SEOUL_CITY_NAME.equals(parts[0]),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 fullName 형식이 올바르지 않습니다: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", fullName="
+                        + fullName);
         return parts[1];
     }
 

@@ -24,6 +24,10 @@ public class S3CsvReaderService {
     private final S3Properties s3Properties;
 
     public InputStream readCsv(String domain, String filename) {
+        return readFile(domain, filename);
+    }
+
+    public InputStream readFile(String domain, String filename) {
         String bucket = s3Properties.bucket();
         String key = buildKey(domain, filename);
         GetObjectRequest request = GetObjectRequest.builder()

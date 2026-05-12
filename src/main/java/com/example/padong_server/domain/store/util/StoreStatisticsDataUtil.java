@@ -1,12 +1,13 @@
 package com.example.padong_server.domain.store.util;
 
 import com.example.padong_server.domain.store.entity.StoreStatistics;
+import com.example.padong_server.global.client.s3.S3CsvReaderService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
@@ -18,7 +19,14 @@ import java.util.List;
 @Component
 public class StoreStatisticsDataUtil {
 
-    private final String filePath = "data/storeData.csv";
+    private static final String S3_DOMAIN = "store";
+    private static final String FILE_NAME = "storeData.csv";
+
+    private final S3CsvReaderService s3CsvReaderService;
+
+    public StoreStatisticsDataUtil(S3CsvReaderService s3CsvReaderService) {
+        this.s3CsvReaderService = s3CsvReaderService;
+    }
 
     public List<StoreStatistics> readStoreStatisticsFromCsv() {
         long start = System.currentTimeMillis();
@@ -76,8 +84,8 @@ public class StoreStatisticsDataUtil {
     }
 
     private BufferedReader openReader(Charset charset) throws IOException {
-        ClassPathResource resource = new ClassPathResource(filePath);
-        return new BufferedReader(new InputStreamReader(resource.getInputStream(), charset));
+        InputStream inputStream = s3CsvReaderService.readFile(S3_DOMAIN, FILE_NAME);
+        return new BufferedReader(new InputStreamReader(inputStream, charset));
     }
 
     private List<String> parseCsvLine(String line) {

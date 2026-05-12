@@ -40,7 +40,3 @@ out/
 .omx/
 .codex/
 src/main/resources/data/
-!src/main/resources/data/
-src/main/resources/data/*
-!src/main/resources/data/subway/
-!src/main/resources/data/subway/subway_transfer_info.csv

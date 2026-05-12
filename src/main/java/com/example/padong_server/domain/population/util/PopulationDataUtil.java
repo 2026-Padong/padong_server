@@ -4,37 +4,44 @@ import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongne.service.DongneService;
 import com.example.padong_server.domain.population.entity.Population;
+import com.example.padong_server.global.client.s3.S3CsvReaderService;
 import com.opencsv.CSVReader;
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 public class PopulationDataUtil {
 
-    private static final String FILE_PATH = "data/population/seoul_admin_dong_population_density.csv";
+    private static final String S3_DOMAIN = "population";
+    private static final String FILE_NAME = "seoul_admin_dong_population_density.csv";
 
     private final DongneService dongneService;
     private final AdminDongRepository adminDongRepository;
+    private final S3CsvReaderService s3CsvReaderService;
 
-    public PopulationDataUtil(DongneService dongneService, AdminDongRepository adminDongRepository) {
+    public PopulationDataUtil(
+            DongneService dongneService,
+            AdminDongRepository adminDongRepository,
+            S3CsvReaderService s3CsvReaderService) {
         this.dongneService = dongneService;
         this.adminDongRepository = adminDongRepository;
+        this.s3CsvReaderService = s3CsvReaderService;
     }
 
     public List<Population> readPopulationFromCsv() {
         List<Population> result = new ArrayList<>();
-        ClassPathResource resource = new ClassPathResource(FILE_PATH);
 
-        try (BufferedReader bufferedReader = new BufferedReader(
-                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8));
+        try (InputStream inputStream = s3CsvReaderService.readFile(S3_DOMAIN, FILE_NAME);
+             BufferedReader bufferedReader = new BufferedReader(
+                new InputStreamReader(inputStream, StandardCharsets.UTF_8));
              CSVReader reader = new CSVReader(bufferedReader)) {
 
             String[] fields;

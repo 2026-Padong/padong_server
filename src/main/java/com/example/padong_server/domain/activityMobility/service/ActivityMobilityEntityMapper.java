@@ -11,6 +11,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -447,7 +448,10 @@ public class ActivityMobilityEntityMapper {
     }
 
     private static String normalize(String value) {
-        return value == null ? "" : value.replace("\uFEFF", "").trim();
+        if (value == null) {
+            return "";
+        }
+        return Normalizer.normalize(value.replace("\uFEFF", "").trim(), Normalizer.Form.NFC);
     }
 
     private static String normalizeDongName(String value) {

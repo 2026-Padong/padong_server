@@ -20,6 +20,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
@@ -29,6 +30,7 @@ import org.xml.sax.SAXException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ActivityMobilityEntityMapper {
 
     private static final int CSV_DONG_CODE_LENGTH = 7;
@@ -55,12 +57,21 @@ public class ActivityMobilityEntityMapper {
     private final S3CsvReaderService s3CsvReaderService;
 
     public List<Mobility> toEntities(List<ActivityMobilityRepresentativeRow> rows) {
+        long start = System.currentTimeMillis();
+        log.info("ActivityMobility entity mapping started: representativeRows={}", rows.size());
         Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode =
                 loadCodebookByMobilityCode();
         AdminDongIndex adminDongIndex = loadAdminDongIndex();
-        return rows.stream()
+        List<Mobility> mobilities = rows.stream()
                 .map(row -> toEntity(row, codebookByMobilityCode, adminDongIndex))
                 .toList();
+        log.info(
+                "ActivityMobility entity mapping completed: representativeRows={}, entityRows={},"
+                        + " elapsedMs={}",
+                rows.size(),
+                mobilities.size(),
+                System.currentTimeMillis() - start);
+        return mobilities;
     }
 
     private AdminDongIndex loadAdminDongIndex() {
@@ -77,6 +88,10 @@ public class ActivityMobilityEntityMapper {
                             normalizeDongName(adminDong.getAdminDongName())),
                     adminDong);
         }
+        log.info(
+                "ActivityMobility admin dong index loaded: byCode={}, byDistrictAndName={}",
+                adminDongByCode.size(),
+                adminDongByDistrictAndName.size());
         return new AdminDongIndex(adminDongByCode, adminDongByDistrictAndName);
     }
 
@@ -122,6 +137,14 @@ public class ActivityMobilityEntityMapper {
 
         ActivityMobilityCodebookRow codebookRow =
                 codebookByMobilityCode.get(normalizedMobilityDongCode);
+        if (codebookRow == null) {
+            log.warn(
+                    "ActivityMobility codebook mapping missing: fieldName={}, mobilityDongCode={},"
+                            + " normalizedMobilityDongCode={}",
+                    fieldName,
+                    mobilityDongCode,
+                    normalizedMobilityDongCode);
+        }
         Preconditions.validate(codebookRow != null, ErrorCode.VALIDATION_ERROR);
 
         String districtName =
@@ -129,6 +152,16 @@ public class ActivityMobilityEntityMapper {
         AdminDongNameKey key =
                 new AdminDongNameKey(districtName, normalizeDongName(codebookRow.name()));
         AdminDong adminDong = adminDongIndex.byDistrictAndName().get(key);
+        if (adminDong == null) {
+            log.warn(
+                    "ActivityMobility admin dong mapping missing: fieldName={}, mobilityDongCode={},"
+                            + " districtName={}, dongName={}, normalizedDongName={}",
+                    fieldName,
+                    mobilityDongCode,
+                    districtName,
+                    codebookRow.name(),
+                    key.normalizedAdminDongName());
+        }
         Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
         return adminDong;
     }
@@ -139,16 +172,36 @@ public class ActivityMobilityEntityMapper {
             String mobilityDongCode,
             String fieldName) {
         AdminDong adminDong = adminDongIndex.byCode().get(adminDongCode);
+        if (adminDong == null) {
+            log.warn(
+                    "ActivityMobility admin dong override missing: fieldName={}, mobilityDongCode={},"
+                            + " overrideAdminDongCode={}",
+                    fieldName,
+                    mobilityDongCode,
+                    adminDongCode);
+        }
         Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
         return adminDong;
     }
 
     private Map<String, ActivityMobilityCodebookRow> loadCodebookByMobilityCode() {
+        long start = System.currentTimeMillis();
+        log.info(
+                "ActivityMobility codebook read started: source={}/{}",
+                S3_DOMAIN,
+                CODEBOOK_FILENAME);
         try (InputStream inputStream = s3CsvReaderService.readFile(S3_DOMAIN, CODEBOOK_FILENAME)) {
             Map<String, byte[]> entries = readXlsxEntries(inputStream);
             List<String> sharedStrings = readSharedStrings(entries);
             List<List<String>> sheetRows = readSheetRows(entries, sharedStrings);
-            return toCodebookByMobilityCode(sheetRows);
+            Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode =
+                    toCodebookByMobilityCode(sheetRows);
+            log.info(
+                    "ActivityMobility codebook read completed: sheetRows={}, codebookRows={}, elapsedMs={}",
+                    sheetRows.size(),
+                    codebookByMobilityCode.size(),
+                    System.currentTimeMillis() - start);
+            return codebookByMobilityCode;
         } catch (IOException exception) {
             throw new IllegalStateException(
                     "Failed to read activity mobility codebook: "
@@ -156,6 +209,17 @@ public class ActivityMobilityEntityMapper {
                             + "/"
                             + CODEBOOK_FILENAME,
                     exception);
+        } catch (RuntimeException exception) {
+            log.error(
+                    "ActivityMobility codebook read failed: source={}/{}, elapsedMs={}, errorType={},"
+                            + " message={}",
+                    S3_DOMAIN,
+                    CODEBOOK_FILENAME,
+                    System.currentTimeMillis() - start,
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception);
+            throw exception;
         }
     }
 

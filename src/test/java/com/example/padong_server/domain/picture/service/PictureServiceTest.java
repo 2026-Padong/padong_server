@@ -207,7 +207,10 @@ class PictureServiceTest {
         AdminDong sejongDong = adminDong("1111051500", "청운효자동");
         AdminDong sajikDong = adminDong("1111053000", "사직동");
 
-        given(tourPictureRepository.findAll()).willReturn(List.of(parenthesizedPicture, apiResolvedPicture, unresolvedPicture));
+        given(tourPictureRepository.count()).willReturn(3L);
+        given(tourPictureRepository.findAll(org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class)))
+                .willReturn(new org.springframework.data.domain.PageImpl<>(
+                        List.of(parenthesizedPicture, apiResolvedPicture, unresolvedPicture)));
         given(adminDongRepository.findFirstByAdminDongNameContainingOrderByIdAsc("세종로"))
                 .willReturn(Optional.of(sejongDong));
         given(skAddressClient.resolveRoadAddress("서울시 종로구 자하문로15길 18"))
@@ -221,13 +224,15 @@ class PictureServiceTest {
         given(skAddressClient.resolveRoadAddress("서울시 어딘가 알수없음 1"))
                 .willThrow(new CustomException(ErrorCode.ADDRESS_API_CALL_FAILED));
 
-        PictureMappingResponse response = pictureService.mapPicturesToAdminDong();
+        PictureMappingResponse response = pictureService.mapPicturesToAdminDong(500, 0);
 
-        assertThat(response.totalPictureCount()).isEqualTo(3);
+        assertThat(response.totalPictureCount()).isEqualTo(3L);
+        assertThat(response.processedCount()).isEqualTo(3);
         assertThat(response.mappedPictureCount()).isEqualTo(2);
         assertThat(response.skippedUnresolvedCount()).isEqualTo(1);
         assertThat(response.resolvedByParenthesisCount()).isEqualTo(1);
         assertThat(response.resolvedByAddressApiCount()).isEqualTo(1);
+        assertThat(response.hasNext()).isFalse();
 
         assertThat(parenthesizedPicture.getAdminDongCode()).isEqualTo("1111051500");
         assertThat(parenthesizedPicture.getAdminDongName()).isEqualTo("청운효자동");

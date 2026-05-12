@@ -53,8 +53,13 @@ public class PictureController {
             @ApiResponse(responseCode = "502", description = "주소 API 호출 실패")
     })
     @PostMapping("/mappings/admin-dong")
-    public ResponseEntity<PictureMappingResponse> mapPicturesToAdminDong() {
-        return ResponseEntity.ok(pictureService.mapPicturesToAdminDong());
+    public ResponseEntity<PictureMappingResponse> mapPicturesToAdminDong(
+            @Parameter(description = "한 배치에서 처리할 사진 수", example = "500")
+            @RequestParam(defaultValue = "500") int limit,
+            @Parameter(description = "offset (limit 의 배수)", example = "0")
+            @RequestParam(defaultValue = "0") int offset
+    ) {
+        return ResponseEntity.ok(pictureService.mapPicturesToAdminDong(limit, offset));
     }
 
     @Operation(

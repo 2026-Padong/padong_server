@@ -1,10 +1,14 @@
 package com.example.padong_server.domain.picture.dto;
 
 public record PictureMappingResponse(
-        int totalPictureCount,
+        long totalPictureCount,
+        int processedCount,
         int mappedPictureCount,
         int skippedUnresolvedCount,
         int resolvedByParenthesisCount,
-        int resolvedByAddressApiCount
+        int resolvedByAddressApiCount,
+        int offset,
+        int limit,
+        boolean hasNext
 ) {
 }

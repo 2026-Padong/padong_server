@@ -106,16 +106,20 @@ class PictureControllerTest {
     @Test
     @DisplayName("행정동 매핑 응답을 반환한다")
     void mapPicturesToAdminDong_returnsResponse() throws Exception {
-        PictureMappingResponse response = new PictureMappingResponse(90, 80, 10, 50, 30);
-        given(pictureService.mapPicturesToAdminDong()).willReturn(response);
+        PictureMappingResponse response = new PictureMappingResponse(90L, 90, 80, 10, 50, 30, 0, 500, false);
+        given(pictureService.mapPicturesToAdminDong(500, 0)).willReturn(response);
 
         mockMvc.perform(post("/pictures/mappings/admin-dong")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalPictureCount").value(90))
+                .andExpect(jsonPath("$.processedCount").value(90))
                 .andExpect(jsonPath("$.mappedPictureCount").value(80))
                 .andExpect(jsonPath("$.skippedUnresolvedCount").value(10))
                 .andExpect(jsonPath("$.resolvedByParenthesisCount").value(50))
-                .andExpect(jsonPath("$.resolvedByAddressApiCount").value(30));
+                .andExpect(jsonPath("$.resolvedByAddressApiCount").value(30))
+                .andExpect(jsonPath("$.offset").value(0))
+                .andExpect(jsonPath("$.limit").value(500))
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 }

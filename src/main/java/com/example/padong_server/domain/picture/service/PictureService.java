@@ -17,6 +17,9 @@ import com.example.padong_server.global.client.tour.TourContent;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -89,8 +92,19 @@ public class PictureService {
     }
 
     @Transactional
-    public PictureMappingResponse mapPicturesToAdminDong() {
-        List<TourPicture> pictures = tourPictureRepository.findAll();
+    public PictureMappingResponse mapPicturesToAdminDong(int limit, int offset) {
+        if (limit <= 0) {
+            throw new CustomException(ErrorCode.VALIDATION_ERROR, "limit must be > 0");
+        }
+        if (offset < 0 || offset % limit != 0) {
+            throw new CustomException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "offset must be >= 0 and a multiple of limit");
+        }
+
+        long totalPictureCount = tourPictureRepository.count();
+        Pageable pageable = PageRequest.of(offset / limit, limit, Sort.by("id"));
+        List<TourPicture> pictures = tourPictureRepository.findAll(pageable).getContent();
         Map<String, Optional<ResolvedAdminDong>> resolvedAdminDongCache = new HashMap<>();
         int mappedPictureCount = 0;
         int skippedUnresolvedCount = 0;
@@ -121,12 +135,18 @@ public class PictureService {
             }
         }
 
+        boolean hasNext = (long) offset + pictures.size() < totalPictureCount;
+
         return new PictureMappingResponse(
+                totalPictureCount,
                 pictures.size(),
                 mappedPictureCount,
                 skippedUnresolvedCount,
                 resolvedByParenthesisCount,
-                resolvedByAddressApiCount
+                resolvedByAddressApiCount,
+                offset,
+                limit,
+                hasNext
         );
     }
 

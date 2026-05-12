@@ -4,6 +4,7 @@ import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.entity.AdminDongBoundary;
 import com.example.padong_server.domain.dongne.repository.AdminDongBoundaryRepository;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
+import com.example.padong_server.global.client.s3.S3CsvReaderService;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
@@ -40,12 +40,14 @@ import tools.jackson.databind.node.ObjectNode;
 @RequiredArgsConstructor
 public class AdminDongBoundaryLoader {
 
-    private static final String GEOJSON_PATH = "data/dongne/admin_dong_boundary_seoul.geojson";
-    private static final String STAT_CSV_PATH = "data/dongne/stat_region_code_202506.csv";
+    private static final String S3_DOMAIN = "dongne";
+    private static final String GEOJSON_FILENAME = "admin_dong_boundary_seoul.geojson";
+    private static final String STAT_CSV_FILENAME = "stat_region_code_202506.csv";
 
     private final ObjectMapper objectMapper;
     private final AdminDongRepository adminDongRepository;
     private final AdminDongBoundaryRepository boundaryRepository;
+    private final S3CsvReaderService s3CsvReaderService;
 
     /**
      * 행정동 경계 일괄 import. 이미 데이터 있으면 0 반환 (idempotent).
@@ -78,7 +80,7 @@ public class AdminDongBoundaryLoader {
 
     private Map<String, StatEntry> loadStatCodes() throws IOException {
         Map<String, StatEntry> byAdmCd = new HashMap<>();
-        try (InputStream in = new ClassPathResource(STAT_CSV_PATH).getInputStream();
+        try (InputStream in = s3CsvReaderService.readFile(S3_DOMAIN, STAT_CSV_FILENAME);
                 BufferedReader br =
                         new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             br.readLine(); // header
@@ -102,7 +104,7 @@ public class AdminDongBoundaryLoader {
         }
 
         List<AdminDongBoundary> rows = new ArrayList<>();
-        try (InputStream in = new ClassPathResource(GEOJSON_PATH).getInputStream()) {
+        try (InputStream in = s3CsvReaderService.readFile(S3_DOMAIN, GEOJSON_FILENAME)) {
             JsonNode root = objectMapper.readTree(in);
             JsonNode features = root.get("features");
             if (features == null || !features.isArray()) {

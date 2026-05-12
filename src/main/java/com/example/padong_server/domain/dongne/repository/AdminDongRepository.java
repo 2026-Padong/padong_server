@@ -5,13 +5,35 @@ import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface AdminDongRepository extends JpaRepository<AdminDong, Long> {
+
+    @Query(
+            """
+            SELECT a FROM AdminDong a
+            WHERE LOWER(a.adminDongName) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(a.districtName)  LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(CONCAT(a.cityName, ' ', a.districtName, ' ', a.adminDongName))
+                  LIKE LOWER(CONCAT('%', :q, '%'))
+            ORDER BY
+              CASE
+                WHEN LOWER(a.adminDongName) LIKE LOWER(CONCAT(:q, '%')) THEN 0
+                WHEN LOWER(a.districtName)  LIKE LOWER(CONCAT(:q, '%')) THEN 1
+                ELSE 2
+              END,
+              a.districtName ASC,
+              a.adminDongName ASC,
+              a.id ASC
+            """)
+    List<AdminDong> searchByName(@Param("q") String q, Pageable pageable);
 
     String ADMIN_DONG_CODE_REQUIRED_MESSAGE = "행정동 코드는 비어 있을 수 없습니다.";
     String ADMIN_DONG_NOT_FOUND_MESSAGE_FORMAT = "존재하지 않는 행정동 코드입니다: %s";

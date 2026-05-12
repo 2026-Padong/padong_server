@@ -58,10 +58,15 @@ public class Payment {
 
     private String failureReason;
 
-    public void markPaid(String pgTxId, LocalDateTime paidAt) {
+    /** PG 응답의 결제수단 (card / transfer / virtualAccount 등). 결제 완료 시 stamp. */
+    @Column(name = "payment_method", length = 50)
+    private String paymentMethod;
+
+    public void markPaid(String pgTxId, LocalDateTime paidAt, String paymentMethod) {
         this.status = PaymentStatus.PAID;
         this.pgTxId = pgTxId;
         this.paidAt = paidAt;
+        this.paymentMethod = paymentMethod;
     }
 
     public void updateConfirmRequest(String txId) {

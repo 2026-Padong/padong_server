@@ -32,11 +32,29 @@ class StoreLikeServiceTest {
     @Mock
     private StoreRegistrationRepository storeRegistrationRepository;
 
+    @Mock
+    private com.example.padong_server.domain.payment.repository.GroupOrderRepository
+            groupOrderRepository;
+
+    @Mock
+    private com.example.padong_server.domain.orderFlow.repository.OrderFlowRepository
+            orderFlowRepository;
+
+    @Mock
+    private com.example.padong_server.domain.storeRegistration.service.RecruitmentStatusCalculator
+            recruitmentStatusCalculator;
+
     private StoreLikeService storeLikeService;
 
     @BeforeEach
     void setUp() {
-        storeLikeService = new StoreLikeService(storeLikeRepository, storeRegistrationRepository);
+        storeLikeService =
+                new StoreLikeService(
+                        storeLikeRepository,
+                        storeRegistrationRepository,
+                        groupOrderRepository,
+                        orderFlowRepository,
+                        recruitmentStatusCalculator);
     }
 
     @Test
@@ -98,7 +116,7 @@ class StoreLikeServiceTest {
         return Store.builder()
                 .id(id)
                 .name("테스트 가게")
-                .roadAddress("서울시 강남구")
+                .address("서울시 강남구")
                 .phoneNumber("010-0000-0000")
                 .openTime(LocalTime.of(9, 0))
                 .closeTime(LocalTime.of(18, 0))

@@ -64,6 +64,12 @@ class MobilityServiceTest {
 
     @Mock private ScoreCalculator scoreCalculator;
 
+    @Mock
+    private com.example.padong_server.domain.dongne.boundary.AdminDongBoundaryService boundaryService;
+
+    @Mock
+    private com.example.padong_server.domain.dongneLike.service.DongneLikeService dongneLikeService;
+
     @InjectMocks private MobilityService mobilityService;
 
     @Test

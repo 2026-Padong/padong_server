@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.menu.entity;
 
 import com.example.padong_server.domain.storeRegistration.entity.Store;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -26,43 +27,37 @@ public class Menu {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Schema(description = "메뉴 PK", example = "7")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_registration_id", nullable = false)
     private Store store;
 
-    @Column(nullable = false, length = 255)
-    private String menuInfo;
+    @Schema(description = "메뉴 이름", example = "통밀 식빵")
+    @Column(name = "menu_info", nullable = false, length = 255)
+    private String name;
 
+    @Schema(description = "판매 가격 (원)", example = "5500")
     @Column(nullable = false)
-    private Integer originalPrice;
+    private Integer price;
 
-    @Column(nullable = false)
-    private Integer discountPrice;
+    @Schema(description = "품절 여부", example = "false")
+    @Column(name = "sold_out", nullable = false)
+    @Builder.Default
+    private boolean soldOut = false;
 
-    @Column(nullable = false, length = 100)
-    private String pickupAvailableTime;
+    public void update(String name, Integer price) {
+        this.name = name;
+        this.price = price;
+    }
 
-    @Column(nullable = false, length = 100)
-    private String recruitmentDeadline;
+    public void changeSoldOut(boolean soldOut) {
+        this.soldOut = soldOut;
+    }
 
-    @Column(nullable = false, length = 100)
-    private String paymentMethod;
-
-    public void update(
-            String menuInfo,
-            Integer originalPrice,
-            Integer discountPrice,
-            String pickupAvailableTime,
-            String recruitmentDeadline,
-            String paymentMethod
-    ) {
-        this.menuInfo = menuInfo;
-        this.originalPrice = originalPrice;
-        this.discountPrice = discountPrice;
-        this.pickupAvailableTime = pickupAvailableTime;
-        this.recruitmentDeadline = recruitmentDeadline;
-        this.paymentMethod = paymentMethod;
+    /** 옛 호출처 호환 — `getMenuInfo()` 가 `getName()` 과 동일. */
+    public String getMenuInfo() {
+        return name;
     }
 }

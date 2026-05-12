@@ -1,5 +1,6 @@
 package com.example.padong_server.global.client.s3;
 
+import com.example.padong_server.global.config.AwsProperties;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import java.io.InputStream;
@@ -21,14 +22,14 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 public class S3CsvReaderService {
 
     private final S3Client s3Client;
-    private final S3Properties s3Properties;
+    private final AwsProperties awsProperties;
 
     public InputStream readCsv(String domain, String filename) {
         return readFile(domain, filename);
     }
 
     public InputStream readFile(String domain, String filename) {
-        String bucket = s3Properties.bucket();
+        String bucket = awsProperties.s3().bucket();
         String key = buildKey(domain, filename);
         GetObjectRequest request = GetObjectRequest.builder()
                 .bucket(bucket)
@@ -50,7 +51,7 @@ public class S3CsvReaderService {
     String buildKey(String domain, String filename) {
         String normalizedDomain = normalizePathPart(domain, "domain");
         String normalizedFilename = normalizePathPart(filename, "filename");
-        String prefix = stripSlashes(s3Properties.prefix());
+        String prefix = stripSlashes(awsProperties.s3().prefix());
 
         if (!StringUtils.hasText(prefix)) {
             return normalizedDomain + "/" + normalizedFilename;

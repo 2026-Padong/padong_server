@@ -97,10 +97,13 @@ ai:
     password: ${AI_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-cloud:
-  aws:
-    region: ${AWS_REGION:ap-northeast-2}
-
-s3:
-  bucket: ${S3_BUCKET:padong}
-  prefix: ${S3_PREFIX:padongBE}
+aws:
+  region: ${AWS_REGION:ap-northeast-2}
+  access-key: ${AWS_ACCESS_KEY_ID:}
+  secret-key: ${AWS_SECRET_ACCESS_KEY:}
+  s3:
+    bucket: ${S3_BUCKET:padong}
+    prefix: ${S3_PREFIX:padongBE}
+    upload:
+      max-size-mb: 10
+      allowed-content-types: image/jpeg,image/png,image/webp,application/pdf

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import lombok.Builder;
 import lombok.Getter;
+import tools.jackson.databind.JsonNode;
 
 @Getter
 @Builder
@@ -25,12 +26,29 @@ public class CommonDepartureMobilityResponse {
     @Schema(description = "선택 주거/가격 정보")
     private SelectedRentPriceResponse rentPrice;
 
+    @Schema(description = "공통 출발 후보 행정동 polygon 경계 (GeoJSON Feature). 매핑 없으면 null")
+    private JsonNode boundary;
+
+    @Schema(description = "좋아요 수", example = "12")
+    private long likeCount;
+
+    @Schema(description = "현재 사용자의 좋아요 여부 (비로그인은 false)", example = "true")
+    private boolean likedByCurrentUser;
+
     public static CommonDepartureMobilityResponse from(
-            AdminDong departureDong, double totalMobility, SelectedRentPriceResponse rentPrice) {
+            AdminDong departureDong,
+            double totalMobility,
+            SelectedRentPriceResponse rentPrice,
+            JsonNode boundary,
+            long likeCount,
+            boolean likedByCurrentUser) {
         return CommonDepartureMobilityResponse.builder()
                 .departureDong(AdminDongDto.from(departureDong))
                 .totalMobility(roundToSecondDecimal(totalMobility))
                 .rentPrice(rentPrice)
+                .boundary(boundary)
+                .likeCount(likeCount)
+                .likedByCurrentUser(likedByCurrentUser)
                 .build();
     }
 

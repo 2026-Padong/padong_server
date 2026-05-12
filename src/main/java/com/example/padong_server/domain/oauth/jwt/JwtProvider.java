@@ -6,7 +6,6 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -23,8 +22,8 @@ public class JwtProvider {
     @Getter
     private final long refreshTokenExpireTime = 1000L * 60 * 60 * 24 * 14; // 14일
 
-    public JwtProvider(@Value("${jwt.secret}") String secretKey) {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+    public JwtProvider(JwtProperties props) {
+        byte[] keyBytes = Decoders.BASE64.decode(props.secret());
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 

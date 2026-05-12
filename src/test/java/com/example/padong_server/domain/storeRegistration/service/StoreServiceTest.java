@@ -1,18 +1,24 @@
 package com.example.padong_server.domain.storeRegistration.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import com.example.padong_server.domain.dongne.entity.AdminDong;
+import com.example.padong_server.domain.dongne.service.DongneService;
 import com.example.padong_server.domain.oauth.entity.User;
+import com.example.padong_server.domain.payment.entity.GroupOrderStatus;
 import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationCreateRequest;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationUpdateRequest;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
+import com.example.padong_server.domain.storeRegistration.entity.StoreCategory;
+import com.example.padong_server.domain.storeRegistration.repository.StoreImageRepository;
 import com.example.padong_server.domain.storeRegistration.repository.StoreRegistrationRepository;
+import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,125 +32,153 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class StoreServiceTest {
 
+    @Mock private StoreRegistrationRepository storeRegistrationRepository;
+    @Mock private StoreLikeService storeLikeService;
     @Mock
-    private StoreRegistrationRepository storeRegistrationRepository;
-
-    @Mock
-    private StoreLikeService storeLikeService;
+    private com.example.padong_server.domain.payment.repository.GroupOrderRepository groupOrderRepository;
+    @Mock private com.example.padong_server.domain.menu.repository.MenuRepository menuRepository;
+    @Mock private StoreImageRepository storeImageRepository;
+    @Mock private DongneService dongneService;
+    @Mock private com.example.padong_server.domain.dongne.repository.AdminDongRepository adminDongRepository;
+    @Mock private com.example.padong_server.global.client.sk.SkAddressClient skAddressClient;
+    @Mock private com.example.padong_server.domain.orderFlow.repository.OrderFlowRepository orderFlowRepository;
+    @Mock private com.example.padong_server.domain.storeRegistration.service.RecruitmentStatusCalculator recruitmentStatusCalculator;
 
     private StoreRegistrationService storeRegistrationService;
 
     @BeforeEach
     void setUp() {
-        storeRegistrationService = new StoreRegistrationService(storeRegistrationRepository, storeLikeService);
+        storeRegistrationService =
+                new StoreRegistrationService(
+                        storeRegistrationRepository,
+                        storeLikeService,
+                        groupOrderRepository,
+                        menuRepository,
+                        storeImageRepository,
+                        dongneService,
+                        adminDongRepository,
+                        skAddressClient,
+                        orderFlowRepository,
+                        recruitmentStatusCalculator);
     }
 
     @Test
-    @DisplayName("getStore returns like metadata")
-    void getStore_returnsLikeMetadata() {
-        Store store = Store.builder()
-                .id(1L)
-                .name("Padong")
-                .roadAddress("Seoul")
-                .phoneNumber("02-1234-5678")
-                .openTime(LocalTime.of(10, 0))
-                .closeTime(LocalTime.of(20, 0))
-                .build();
-        when(storeRegistrationRepository.findById(1L)).thenReturn(Optional.of(store));
-        when(storeLikeService.getLikeCount(1L)).thenReturn(5L);
-        when(storeLikeService.isLikedByUser(1L, 99L)).thenReturn(true);
-
-        var response = storeRegistrationService.getStore(1L, 99L);
-
-        assertThat(response.getId()).isEqualTo(1L);
-        assertThat(response.getLikeCount()).isEqualTo(5L);
-        assertThat(response.isLikedByCurrentUser()).isTrue();
-        assertThat(response.getOpenTime()).isEqualTo(LocalTime.of(10, 0));
-        assertThat(response.getCloseTime()).isEqualTo(LocalTime.of(20, 0));
-    }
-
-    @Test
-    @DisplayName("createStore saves owner with request")
+    @DisplayName("createStore: adminDong 매핑 + 풀 필드 빌더 호출")
     void createStore_savesStoreFromRequest() {
         User owner = Mockito.mock(User.class);
-        Store savedStore = Store.builder()
+        when(owner.getId()).thenReturn(7L);
+        AdminDong dong = Mockito.mock(AdminDong.class);
+        when(dongneService.findAdminDongByCode("1162069500")).thenReturn(dong);
+
+        Store saved = Store.builder()
                 .id(2L)
+                .adminDong(dong)
                 .name("New Store")
-                .roadAddress("Gangdong-gu")
+                .category(StoreCategory.BAKERY)
+                .address("Gangdong-gu")
                 .phoneNumber("02-0000-0000")
                 .openTime(LocalTime.of(9, 0))
                 .closeTime(LocalTime.of(18, 0))
+                .weekdayMask(62)
                 .owner(owner)
                 .build();
-        when(storeRegistrationRepository.save(any(Store.class))).thenReturn(savedStore);
+        when(storeRegistrationRepository.save(any(Store.class))).thenReturn(saved);
         when(storeLikeService.getLikeCount(2L)).thenReturn(0L);
-        when(storeLikeService.isLikedByUser(2L, null)).thenReturn(false);
+        when(storeLikeService.isLikedByUser(2L, 7L)).thenReturn(false);
 
-        var response = storeRegistrationService.createStore(owner, new StoreRegistrationCreateRequest(
-                "New Store",
-                "Gangdong-gu",
-                "02-0000-0000",
-                LocalTime.of(9, 0),
-                LocalTime.of(18, 0)
-        ));
+        var response =
+                storeRegistrationService.createStore(
+                        owner,
+                        new StoreRegistrationCreateRequest(
+                                "1162069500",
+                                "New Store",
+                                StoreCategory.BAKERY,
+                                "Gangdong-gu",
+                                "02-0000-0000",
+                                "한 줄 소개",
+                                LocalTime.of(9, 0),
+                                LocalTime.of(18, 0),
+                                62,
+                                null,
+                                null));
 
         assertThat(response.getId()).isEqualTo(2L);
-        assertThat(response.getName()).isEqualTo("New Store");
-        assertThat(response.getAddress()).isEqualTo("Gangdong-gu");
-        verify(storeRegistrationRepository).save(argThat(store ->
-                store.getOwner() == owner
-                        && store.getOpenTime().equals(LocalTime.of(9, 0))
-                        && store.getCloseTime().equals(LocalTime.of(18, 0))
-        ));
+        assertThat(response.getCategory()).isEqualTo(StoreCategory.BAKERY);
+        assertThat(response.getWeekdayMask()).isEqualTo(62);
     }
 
     @Test
-    @DisplayName("updateStore updates basic fields")
-    void updateStore_updatesBasicFields() {
+    @DisplayName("patchStore: 본인 가게가 아니면 STORE_FORBIDDEN")
+    void patchStore_rejectsNonOwner() {
+        User owner = Mockito.mock(User.class);
+        when(owner.getId()).thenReturn(7L);
         Store store = Store.builder()
                 .id(3L)
-                .name("Old Store")
-                .roadAddress("Old Address")
+                .name("Old")
+                .address("Old Address")
                 .phoneNumber("02-1111-1111")
                 .openTime(LocalTime.of(8, 0))
                 .closeTime(LocalTime.of(17, 0))
+                .owner(owner)
                 .build();
         when(storeRegistrationRepository.findById(3L)).thenReturn(Optional.of(store));
-        when(storeLikeService.getLikeCount(3L)).thenReturn(2L);
-        when(storeLikeService.isLikedByUser(3L, null)).thenReturn(false);
 
-        var response = storeRegistrationService.updateStore(3L, new StoreRegistrationUpdateRequest(
-                "Updated Store",
-                "New Address",
-                "02-2222-2222",
-                LocalTime.of(10, 0),
-                LocalTime.of(19, 0)
-        ));
+        StoreRegistrationUpdateRequest request =
+                new StoreRegistrationUpdateRequest(
+                        null, "New Name", null, null, null, null, null, null, null, null, null);
 
-        assertThat(response.getId()).isEqualTo(3L);
-        assertThat(response.getName()).isEqualTo("Updated Store");
-        assertThat(response.getAddress()).isEqualTo("New Address");
-        assertThat(store.getPhoneNumber()).isEqualTo("02-2222-2222");
-        assertThat(store.getOpenTime()).isEqualTo(LocalTime.of(10, 0));
-        assertThat(store.getCloseTime()).isEqualTo(LocalTime.of(19, 0));
+        assertThatThrownBy(() -> storeRegistrationService.patchStore(3L, 99L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.STORE_FORBIDDEN);
     }
 
     @Test
-    @DisplayName("deleteStore removes the store")
-    void deleteStore_deletesFoundStore() {
+    @DisplayName("deleteStore: active GroupOrder 있으면 409")
+    void deleteStore_blocksWhenActiveGroupOrder() {
+        User owner = Mockito.mock(User.class);
+        when(owner.getId()).thenReturn(7L);
         Store store = Store.builder()
                 .id(4L)
-                .name("Delete Store")
-                .roadAddress("Delete Address")
+                .name("Delete")
+                .address("Addr")
                 .phoneNumber("02-3333-3333")
                 .openTime(LocalTime.of(10, 0))
                 .closeTime(LocalTime.of(18, 0))
+                .owner(owner)
                 .build();
         when(storeRegistrationRepository.findById(4L)).thenReturn(Optional.of(store));
-        doNothing().when(storeRegistrationRepository).delete(store);
+        when(groupOrderRepository.findTopByStoreIdAndStatusOrderByIdDesc(
+                        eq(4L), eq(GroupOrderStatus.OPEN)))
+                .thenReturn(Optional.of(Mockito.mock(com.example.padong_server.domain.payment.entity.GroupOrder.class)));
 
-        storeRegistrationService.deleteStore(4L);
+        assertThatThrownBy(() -> storeRegistrationService.deleteStore(4L, 7L))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.STORE_HAS_ACTIVE_GROUP_ORDER);
+    }
 
-        verify(storeRegistrationRepository).delete(store);
+    @Test
+    @DisplayName("deleteStore: 본인 가게이고 active 공구 없으면 softDelete")
+    void deleteStore_softDeletesWhenNoActive() {
+        User owner = Mockito.mock(User.class);
+        when(owner.getId()).thenReturn(7L);
+        Store store = Store.builder()
+                .id(5L)
+                .name("X")
+                .address("X")
+                .phoneNumber("02")
+                .openTime(LocalTime.of(10, 0))
+                .closeTime(LocalTime.of(18, 0))
+                .owner(owner)
+                .build();
+        when(storeRegistrationRepository.findById(5L)).thenReturn(Optional.of(store));
+        when(groupOrderRepository.findTopByStoreIdAndStatusOrderByIdDesc(
+                        eq(5L), eq(GroupOrderStatus.OPEN)))
+                .thenReturn(Optional.empty());
+
+        storeRegistrationService.deleteStore(5L, 7L);
+
+        assertThat(store.isDeleted()).isTrue();
     }
 }

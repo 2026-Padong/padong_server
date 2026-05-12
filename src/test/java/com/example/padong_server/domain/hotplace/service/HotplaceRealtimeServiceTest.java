@@ -5,7 +5,6 @@ import com.example.padong_server.domain.hotplace.entity.Category;
 import com.example.padong_server.domain.hotplace.entity.HotPlace;
 import com.example.padong_server.domain.hotplace.repository.HotPlaceRepository;
 import com.example.padong_server.domain.subway.service.SubwayTransferInfoService;
-import com.example.padong_server.global.client.seoul.SeoulRealtimeClient;
 import com.example.padong_server.global.client.seoul.SeoulRealtimeData;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
@@ -31,7 +30,7 @@ class HotplaceRealtimeServiceTest {
     private HotPlaceRepository hotPlaceRepository;
 
     @Mock
-    private SeoulRealtimeClient seoulRealtimeClient;
+    private RealtimeDataCache realtimeDataCache;
 
     @Mock
     private SubwayTransferInfoService subwayTransferInfoService;
@@ -46,7 +45,7 @@ class HotplaceRealtimeServiceTest {
         HotPlace market = hotPlace("종로구", "북촌한옥마을", Category.HANOK_VILLAGE);
 
         given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(palace, market));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
+        given(realtimeDataCache.getOrFetch("광화문·덕수궁"))
                 .willReturn(realtimeData(
                         "광화문·덕수궁",
                         "https://example.com/palace.jpg",
@@ -81,7 +80,7 @@ class HotplaceRealtimeServiceTest {
                         List.of("5호선"),
                         List.of("세종문화회관", "광화문", "KT광화문지사"),
                         List.of("광화문역 2번 출구", "세종문화회관", "종로구청 앞", "정부서울청사", "덕수궁 대한문", "서울시청 서소문청사")));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("북촌한옥마을"))
+        given(realtimeDataCache.getOrFetch("북촌한옥마을"))
                 .willReturn(realtimeData(
                         "북촌한옥마을",
                         "https://example.com/village.jpg",
@@ -160,7 +159,7 @@ class HotplaceRealtimeServiceTest {
         HotPlace second = hotPlace("종로구", "광화문·덕수궁", Category.CULTURAL_HERITAGE_COMPLEX);
 
         given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(first, second));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
+        given(realtimeDataCache.getOrFetch("광화문·덕수궁"))
                 .willReturn(realtimeData(
                         "광화문·덕수궁",
                         null,
@@ -199,7 +198,7 @@ class HotplaceRealtimeServiceTest {
 
         hotplaceRealtimeService.getDistrictRealtime("종로구");
 
-        verify(seoulRealtimeClient, times(1)).getRealtimeDataByAreaNm("광화문·덕수궁");
+        verify(realtimeDataCache, times(1)).getOrFetch("광화문·덕수궁");
     }
 
     @Test
@@ -218,7 +217,7 @@ class HotplaceRealtimeServiceTest {
     void getDistrictRealtime_throwsWhenRealtimeApiFails() {
         HotPlace palace = hotPlace("종로구", "광화문·덕수궁", Category.CULTURAL_HERITAGE_COMPLEX);
         given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(palace));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
+        given(realtimeDataCache.getOrFetch("광화문·덕수궁"))
                 .willThrow(new CustomException(ErrorCode.SEOUL_REALTIME_API_CALL_FAILED));
 
         assertThatThrownBy(() -> hotplaceRealtimeService.getDistrictRealtime("종로구"))
@@ -233,14 +232,13 @@ class HotplaceRealtimeServiceTest {
         HotPlace palace = hotPlace("종로구", "광화문·덕수궁", null);
 
         given(hotPlaceRepository.findByGuName("종로구")).willReturn(List.of(palace));
-        given(seoulRealtimeClient.getRealtimeDataByAreaNm("광화문·덕수궁"))
-                .willReturn(SeoulRealtimeData.builder()
-                        .areaNm("광화문·덕수궁")
-                        .subwayStationNames(List.of())
-                        .subwayLines(List.of())
-                        .busStopNames(List.of())
-                        .bikeStationNames(List.of())
-                        .build());
+        given(realtimeDataCache.getOrFetch("광화문·덕수궁"))
+                .willReturn(new SeoulRealtimeData(
+                        null, "광화문·덕수궁", null, null,
+                        null, null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, null, null, null, null,
+                        List.of(), List.of(), List.of(), List.of()));
         given(subwayTransferInfoService.findLinesByStationName("정보 없음")).willReturn(List.of());
 
         DistrictRealtimeResponse response = hotplaceRealtimeService.getDistrictRealtime("종로구");
@@ -307,40 +305,41 @@ class HotplaceRealtimeServiceTest {
                                            List<String> subwayLines,
                                            List<String> busStopNames,
                                            List<String> bikeStationNames) {
-        return SeoulRealtimeData.builder()
-                .areaNm(areaNm)
-                .thumbnail(thumbnail)
-                .roadAddr(roadAddr)
-                .areaPpltnMin(areaPpltnMin)
-                .areaPpltnMax(areaPpltnMax)
-                .areaCongestLvl(congestionLevel)
-                .areaCongestMsg(congestionMessage)
-                .fcstYn(fcstYn)
-                .fcstPpltnMin(fcstPpltnMin)
-                .fcstPpltnMax(fcstPpltnMax)
-                .fcstTime(fcstTime)
-                .malePpltnRate(maleRate)
-                .femalePpltnRate(femaleRate)
-                .weatherStatus(weatherStatus)
-                .temperature(temperature)
-                .sensibleTemperature(sensibleTemperature)
-                .humidity(humidity)
-                .pm10Status(pm10Status)
-                .pm10(pm10)
-                .rainChance(rainChance)
-                .ppltnRate10(ppltnRate10)
-                .ppltnRate20(ppltnRate20)
-                .ppltnRate30(ppltnRate30)
-                .ppltnRate40(ppltnRate40)
-                .ppltnRate50(ppltnRate50)
-                .ppltnRate60(ppltnRate60)
-                .ppltnRate70(ppltnRate70)
-                .roadTrafficIdx(roadTrafficIdx)
-                .roadTrafficSpd(roadTrafficSpd)
-                .subwayStationNames(subwayStationNames)
-                .subwayLines(subwayLines)
-                .busStopNames(busStopNames)
-                .bikeStationNames(bikeStationNames)
-                .build();
+        return new SeoulRealtimeData(
+                null,
+                areaNm,
+                thumbnail,
+                roadAddr,
+                areaPpltnMin,
+                areaPpltnMax,
+                congestionLevel,
+                congestionMessage,
+                fcstYn,
+                fcstPpltnMin,
+                fcstPpltnMax,
+                fcstTime,
+                maleRate,
+                femaleRate,
+                ppltnRate10,
+                ppltnRate20,
+                ppltnRate30,
+                ppltnRate40,
+                ppltnRate50,
+                ppltnRate60,
+                ppltnRate70,
+                roadTrafficIdx,
+                roadTrafficSpd,
+                weatherStatus,
+                temperature,
+                sensibleTemperature,
+                humidity,
+                pm10,
+                pm10Status,
+                rainChance,
+                null,
+                subwayStationNames,
+                subwayLines,
+                busStopNames,
+                bikeStationNames);
     }
 }

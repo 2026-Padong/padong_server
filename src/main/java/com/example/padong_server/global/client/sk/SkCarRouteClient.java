@@ -3,7 +3,7 @@ package com.example.padong_server.global.client.sk;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import tools.jackson.core.JacksonException;
 
 @Component
 @RequiredArgsConstructor
@@ -65,7 +66,7 @@ public class SkCarRouteClient {
         payload.put("resCoordType", COORD_TYPE);
         try {
             return OBJECT_MAPPER.writeValueAsString(payload);
-        } catch (IOException exception) {
+        } catch (JacksonException exception) {
             throw new CustomException(ErrorCode.SK_CAR_API_CALL_FAILED, exception);
         }
     }
@@ -97,7 +98,7 @@ public class SkCarRouteClient {
     private Map<String, Object> parseJson(String body) {
         try {
             return OBJECT_MAPPER.readValue(body, Map.class);
-        } catch (IOException exception) {
+        } catch (JacksonException exception) {
             throw new CustomException(ErrorCode.SK_CAR_API_CALL_FAILED, exception);
         }
     }

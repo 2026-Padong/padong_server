@@ -1,19 +1,10 @@
 package com.example.padong_server.domain.menu.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public record MenuUpdateRequest(
-        @Schema(description = "메뉴 설명", example = "모둠빵 세트")
-        String menuInfo,
-        @Schema(description = "정가", example = "4500")
-        Integer originalPrice,
-        @Schema(description = "할인가", example = "2500")
-        Integer discountPrice,
-        @Schema(description = "픽업 가능 시간", example = "11:00 ~ 16:00")
-        String pickupAvailableTime,
-        @Schema(description = "모집 마감 시간", example = "픽업 1시간 전")
-        String recruitmentDeadline,
-        @Schema(description = "결제 수단", example = "카드")
-        String paymentMethod
-) {
-}
+        @Schema(description = "메뉴 이름", example = "모둠빵 세트") @NotBlank String name,
+        @Schema(description = "판매 가격 (원)", example = "4500") @NotNull @Min(0) Integer price) {}

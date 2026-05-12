@@ -9,7 +9,9 @@ public record PortOnePaymentResponse(
         String transactionId,
         Amount amount,
         String pgTxId,
-        OffsetDateTime paidAt
+        OffsetDateTime paidAt,
+        /** PortOne 결제 수단 객체 (e.g. {"type":"PaymentMethodCard", "card": {...}}). */
+        java.util.Map<String, Object> method
 ) {
 
     public boolean isPaid() {
@@ -26,6 +28,19 @@ public record PortOnePaymentResponse(
 
     public LocalDateTime paidAtLocalDateTime() {
         return paidAt == null ? null : paidAt.toLocalDateTime();
+    }
+
+    /** PortOne method.type ("PaymentMethodCard"→"card", "PaymentMethodTransfer"→"transfer" 등). */
+    public String resolvedMethod() {
+        if (method == null) return null;
+        Object type = method.get("type");
+        if (!(type instanceof String s)) return null;
+        // "PaymentMethodCard" → "card"
+        if (s.startsWith("PaymentMethod") && s.length() > "PaymentMethod".length()) {
+            String tail = s.substring("PaymentMethod".length());
+            return Character.toLowerCase(tail.charAt(0)) + tail.substring(1);
+        }
+        return s;
     }
 
     public record Amount(

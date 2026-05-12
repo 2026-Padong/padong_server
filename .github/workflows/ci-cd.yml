@@ -156,7 +156,7 @@ jobs:
           fi
 
           {
-            printf 'SPRING_PROFILES_ACTIVE=dev\n'
+            printf 'SPRING_PROFILES_ACTIVE=prod\n'
             printf 'DB_URL=%s\n' "$DB_URL"
             printf 'DB_USERNAME=%s\n' "$DB_USERNAME"
             printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"

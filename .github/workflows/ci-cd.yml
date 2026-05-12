@@ -99,6 +99,7 @@ jobs:
           SWAGGER_SERVER_URL_HTTP: ${{ secrets.SWAGGER_SERVER_URL_HTTP }}
           SWAGGER_SERVER_URL_HTTPS: ${{ secrets.SWAGGER_SERVER_URL_HTTPS }}
           CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
+          FRONT_OAUTH_REDIRECT: ${{ secrets.FRONT_OAUTH_REDIRECT }}
           OPEN_SEARCH_URL: ${{ secrets.OPEN_SEARCH_URL }}
           OPEN_SEARCH_USERNAME: ${{ secrets.OPEN_SEARCH_USERNAME }}
           OPEN_SEARCH_PASSWORD: ${{ secrets.OPEN_SEARCH_PASSWORD }}
@@ -122,6 +123,8 @@ jobs:
           AI_DB_USERNAME: ${{ secrets.AI_DB_USERNAME }}
           AI_DB_PASSWORD: ${{ secrets.AI_DB_PASSWORD }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_PREFIX: ${{ secrets.S3_PREFIX }}
         run: |
@@ -167,6 +170,7 @@ jobs:
             printf 'SWAGGER_SERVER_URL_HTTP=%s\n' "${SWAGGER_SERVER_URL_HTTP:-http://localhost:8080}"
             printf 'SWAGGER_SERVER_URL_HTTPS=%s\n' "${SWAGGER_SERVER_URL_HTTPS:-http://localhost:8080}"
             printf 'CORS_ALLOWED_ORIGINS=%s\n' "${CORS_ALLOWED_ORIGINS:-http://localhost:8080,http://localhost:3000}"
+            printf 'FRONT_OAUTH_REDIRECT=%s\n' "${FRONT_OAUTH_REDIRECT:-http://localhost:3000}"
             printf 'OPEN_SEARCH_URL=%s\n' "${OPEN_SEARCH_URL:-}"
             printf 'OPEN_SEARCH_USERNAME=%s\n' "${OPEN_SEARCH_USERNAME:-}"
             printf 'OPEN_SEARCH_PASSWORD=%s\n' "${OPEN_SEARCH_PASSWORD:-}"
@@ -190,6 +194,8 @@ jobs:
             printf 'AI_DB_USERNAME=%s\n' "${AI_DB_USERNAME:-}"
             printf 'AI_DB_PASSWORD=%s\n' "${AI_DB_PASSWORD:-}"
             printf 'AWS_REGION=%s\n' "${AWS_REGION:-ap-northeast-2}"
+            printf 'AWS_ACCESS_KEY_ID=%s\n' "${AWS_ACCESS_KEY_ID:-}"
+            printf 'AWS_SECRET_ACCESS_KEY=%s\n' "${AWS_SECRET_ACCESS_KEY:-}"
             printf 'S3_BUCKET=%s\n' "${S3_BUCKET:-padong}"
             printf 'S3_PREFIX=%s\n' "${S3_PREFIX:-padongBE}"
           } > artifact/padong-server.env

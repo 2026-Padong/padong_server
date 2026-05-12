@@ -1,8 +1,8 @@
 package com.example.padong_server.domain.activityMobility.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,10 +15,10 @@ import com.example.padong_server.domain.activityMobility.dto.MobilityFilterReque
 import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
+import com.example.padong_server.domain.activityMobility.service.SafetyIndexService;
 import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +34,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class MobilityControllerTest {
 
@@ -42,6 +44,9 @@ class MobilityControllerTest {
 
     @Mock
     private MobilityImportService mobilityImportService;
+
+    @Mock
+    private SafetyIndexService safetyIndexService;
 
     @InjectMocks
     private MobilityController mobilityController;
@@ -54,7 +59,7 @@ class MobilityControllerTest {
     }
 
     @Test
-    @DisplayName("생활이동 데이터 적재 endpoint는 완료 안내 문구를 공통 응답으로 반환한다")
+    @DisplayName("생활이동 데이터 적재 endpoint가 완료 안내 문구를 공통 응답으로 반환한다")
     void fetchDataReturnsImportMessage() throws Exception {
         String message = "생활이동 데이터 적재 완료: 202601~202603 기준, 142939건 저장";
         given(mobilityImportService.importData()).willReturn(message);
@@ -69,26 +74,39 @@ class MobilityControllerTest {
     }
 
     @Test
-    @DisplayName("행정동 코드 단일 조회 endpoint는 생활이동 많은 순 단순 응답을 반환한다")
+    @DisplayName("안전지수 데이터 적재 endpoint가 완료 문구를 공통 응답으로 반환한다")
+    void fetchSafetyDataReturnsImportMessage() throws Exception {
+        given(safetyIndexService.importData()).willReturn("안전지수 데이터 적재 완료: 25건");
+
+        mockMvc.perform(post("/mobility/safety/data")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCode").value("200"))
+                .andExpect(jsonPath("$.message").value("안전지수 데이터 적재 완료: 25건"));
+
+        verify(safetyIndexService).importData();
+    }
+
+    @Test
+    @DisplayName("행정동 단일 조회 endpoint가 안전등급을 포함한 응답을 반환한다")
     void searchByArrivalDongCodeReturnsSimpleResponses() throws Exception {
         MobilitySimpleResponse responseItem = MobilitySimpleResponse.builder()
                 .departureDong(AdminDongDto.builder()
                         .adminDongCode("1162069500")
-                        .address("서울특별시 관악구 신림동")
+                        .address("서울 관악구 신림동")
                         .build())
                 .totalMobility(18432.27)
                 .avgTime(42.7)
+                .safetyGrade("B")
                 .build();
         given(mobilityService.searchByArrivalDongCode(
-                        eq("1168064000"),
-                        any(Pageable.class),
-                        any(MobilityFilterRequest.class)
-                ))
+                eq("1168064000"),
+                any(Pageable.class),
+                any(MobilityFilterRequest.class)))
                 .willReturn(ResponseDTO.res(
                         HttpStatus.OK,
-                        "생활이동 많은 순 조회 성공",
-                        PageResponse.of(List.of(responseItem), 1, 5, 11)
-                ));
+                        "생활이동 많은 곳 조회 성공",
+                        PageResponse.of(List.of(responseItem), 1, 5, 11)));
 
         mockMvc.perform(get("/mobility/arrival/{adminDongCode}", "1168064000")
                         .param("page", "1")
@@ -105,11 +123,12 @@ class MobilityControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value("200"))
-                .andExpect(jsonPath("$.message").value("생활이동 많은 순 조회 성공"))
+                .andExpect(jsonPath("$.message").value("생활이동 많은 곳 조회 성공"))
                 .andExpect(jsonPath("$.data.content[0].departureDong.adminDongCode").value("1162069500"))
-                .andExpect(jsonPath("$.data.content[0].departureDong.address").value("서울특별시 관악구 신림동"))
+                .andExpect(jsonPath("$.data.content[0].departureDong.address").value("서울 관악구 신림동"))
                 .andExpect(jsonPath("$.data.content[0].totalMobility").value(18432.27))
                 .andExpect(jsonPath("$.data.content[0].avgTime").value(42.7))
+                .andExpect(jsonPath("$.data.content[0].safetyGrade").value("B"))
                 .andExpect(jsonPath("$.data.page").value(1))
                 .andExpect(jsonPath("$.data.size").value(5))
                 .andExpect(jsonPath("$.data.totalElements").value(11))
@@ -123,8 +142,7 @@ class MobilityControllerTest {
         verify(mobilityService).searchByArrivalDongCode(
                 eq("1168064000"),
                 pageableCaptor.capture(),
-                filterCaptor.capture()
-        );
+                filterCaptor.capture());
         Pageable pageable = pageableCaptor.getValue();
         assertThat(pageable.getPageNumber()).isEqualTo(1);
         assertThat(pageable.getPageSize()).isEqualTo(5);
@@ -144,25 +162,23 @@ class MobilityControllerTest {
     }
 
     @Test
-    @DisplayName("여러 행정동 코드 조회 endpoint는 반복 쿼리 파라미터를 리스트로 받아 공통 결과를 반환한다")
+    @DisplayName("여러 행정동 조회 endpoint가 공통 결과를 반환한다")
     void searchByArrivalDongCodesReturnsCommonSimpleResponses() throws Exception {
         CommonDepartureMobilityResponse responseItem = CommonDepartureMobilityResponse.builder()
                 .departureDong(AdminDongDto.builder()
                         .adminDongCode("1162069500")
-                        .address("서울특별시 관악구 신림동")
+                        .address("서울 관악구 신림동")
                         .build())
                 .totalMobility(400.0)
                 .build();
         given(mobilityService.searchByArrivalDongCodes(
-                        eq(List.of("1168064000", "1156054000")),
-                        any(Pageable.class),
-                        any(MobilityFilterRequest.class)
-                ))
+                eq(List.of("1168064000", "1156054000")),
+                any(Pageable.class),
+                any(MobilityFilterRequest.class)))
                 .willReturn(ResponseDTO.res(
                         HttpStatus.OK,
-                        "다중 행정동 생활이동 많은 순 조회 성공",
-                        PageResponse.of(List.of(responseItem), 1, 5, 11)
-                ));
+                        "다중 행정동 생활이동 많은 곳 조회 성공",
+                        PageResponse.of(List.of(responseItem), 1, 5, 11)));
 
         mockMvc.perform(get("/mobility/arrival/multi")
                         .param("arrivalDongCodes", "1168064000")
@@ -179,9 +195,9 @@ class MobilityControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value("200"))
-                .andExpect(jsonPath("$.message").value("다중 행정동 생활이동 많은 순 조회 성공"))
+                .andExpect(jsonPath("$.message").value("다중 행정동 생활이동 많은 곳 조회 성공"))
                 .andExpect(jsonPath("$.data.content[0].departureDong.adminDongCode").value("1162069500"))
-                .andExpect(jsonPath("$.data.content[0].departureDong.address").value("서울특별시 관악구 신림동"))
+                .andExpect(jsonPath("$.data.content[0].departureDong.address").value("서울 관악구 신림동"))
                 .andExpect(jsonPath("$.data.content[0].totalMobility").value(400.0))
                 .andExpect(jsonPath("$.data.content[0].avgTime").doesNotExist())
                 .andExpect(jsonPath("$.data.page").value(1))
@@ -197,8 +213,7 @@ class MobilityControllerTest {
         verify(mobilityService).searchByArrivalDongCodes(
                 eq(List.of("1168064000", "1156054000")),
                 pageableCaptor.capture(),
-                filterCaptor.capture()
-        );
+                filterCaptor.capture());
         Pageable pageable = pageableCaptor.getValue();
         assertThat(pageable.getPageNumber()).isEqualTo(1);
         assertThat(pageable.getPageSize()).isEqualTo(5);

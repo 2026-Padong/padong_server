@@ -4,18 +4,9 @@ import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityRep
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
+import com.example.padong_server.global.client.s3.S3CsvReaderService;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
-
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Component;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,47 +18,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ActivityMobilityEntityMapper {
 
     private static final int CSV_DONG_CODE_LENGTH = 7;
+    private static final String S3_DOMAIN = "activity-mobility";
+    private static final String CODEBOOK_FILENAME = "서울생활이동데이터_행정동코드_20210907.xlsx";
     private static final String SPREADSHEET_NS =
             "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
-    private static final String CODEBOOK_PATH =
-            "data/activity-mobility/서울생활이동데이터_행정동코드_20210907.xlsx";
     private static final String SHARED_STRINGS_ENTRY = "xl/sharedStrings.xml";
     private static final String SHEET_ENTRY = "xl/worksheets/sheet1.xml";
-    private static final String INVALID_ADMIN_DONG_CODE_MESSAGE_FORMAT =
-            "Invalid AdminDong code: %s";
-    private static final String MISSING_CODEBOOK_ADMIN_DONG_CODE_MESSAGE_FORMAT =
-            "생활이동 코드북에 없는 행정동 코드입니다: %s=%s";
-    private static final String MISSING_CURRENT_ADMIN_DONG_BY_NAME_MESSAGE_FORMAT =
-            "생활이동 행정동명에 대응하는 현재 AdminDong이 없습니다: %s=%s, fullName=%s";
-    private static final String MISSING_OVERRIDE_ADMIN_DONG_MESSAGE_FORMAT =
-            "생활이동 행정동 보정 대상 AdminDong이 없습니다: %s=%s, adminDongCode=%s";
-    private static final String CODEBOOK_READ_FAILURE_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북을 읽을 수 없습니다: %s";
-    private static final String INVALID_CODEBOOK_XLSX_STRUCTURE_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북 xlsx 구조가 예상과 다릅니다: %s";
-    private static final String INVALID_SHARED_STRING_INDEX_MESSAGE_FORMAT =
-            "생활이동 코드북 shared string index가 잘못되었습니다: %s";
-    private static final String CODEBOOK_XML_PARSE_FAILURE_MESSAGE =
-            "생활이동 행정동 코드북 XML을 파싱할 수 없습니다.";
-    private static final String EMPTY_CODEBOOK_MESSAGE_FORMAT = "생활이동 행정동 코드북이 비어 있습니다: %s";
-    private static final String INVALID_CODEBOOK_HEADERS_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북 헤더가 다릅니다. expected=%s, actual=%s";
-    private static final String DUPLICATE_CODEBOOK_CODE_MESSAGE_FORMAT =
-            "생활이동 행정동 코드북 코드가 중복됩니다: %s";
-    private static final String CSV_ADMIN_DONG_CODE_REQUIRED_MESSAGE = "CSV 행정동 코드가 비어 있습니다.";
-    private static final String INVALID_CSV_ADMIN_DONG_CODE_MESSAGE_FORMAT =
-            "CSV 행정동 코드는 7자리 숫자여야 합니다: %s";
-    private static final String INVALID_CODEBOOK_ADDRESS_MESSAGE_FORMAT =
-            "생활이동 코드북 주소 형식이 잘못되었습니다: %s=%s, fullName=%s";
+    private static final String SEOUL_CITY_NAME = "서울특별시";
     private static final List<String> EXPECTED_CODEBOOK_HEADERS =
             List.of("시도", "시군구", "읍면동", "name", "full_name");
     private static final Map<String, String> CURRENT_ADMIN_DONG_CODE_OVERRIDES =
@@ -81,14 +54,24 @@ public class ActivityMobilityEntityMapper {
                     "11060810", "1123053300");
 
     private final AdminDongRepository adminDongRepository;
+    private final S3CsvReaderService s3CsvReaderService;
 
     public List<Mobility> toEntities(List<ActivityMobilityRepresentativeRow> rows) {
+        long start = System.currentTimeMillis();
+        log.info("ActivityMobility entity mapping started: representativeRows={}", rows.size());
         Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode =
                 loadCodebookByMobilityCode();
         AdminDongIndex adminDongIndex = loadAdminDongIndex();
-        return rows.stream()
+        List<Mobility> mobilities = rows.stream()
                 .map(row -> toEntity(row, codebookByMobilityCode, adminDongIndex))
                 .toList();
+        log.info(
+                "ActivityMobility entity mapping completed: representativeRows={}, entityRows={},"
+                        + " elapsedMs={}",
+                rows.size(),
+                mobilities.size(),
+                System.currentTimeMillis() - start);
+        return mobilities;
     }
 
     private AdminDongIndex loadAdminDongIndex() {
@@ -97,7 +80,9 @@ public class ActivityMobilityEntityMapper {
         for (AdminDong adminDong : adminDongRepository.findAll()) {
             String adminDongCode = adminDong.getAdminDongCode();
             Preconditions.validate(
-                    adminDongCode != null && !adminDongCode.isBlank(), ErrorCode.VALIDATION_ERROR);
+                    adminDongCode != null && !adminDongCode.isBlank(),
+                    ErrorCode.VALIDATION_ERROR,
+                    "행정동 데이터의 adminDongCode가 비어 있습니다. /dongne/data 적재 데이터를 확인하세요.");
             adminDongByCode.put(adminDongCode, adminDong);
             adminDongByDistrictAndName.put(
                     new AdminDongNameKey(
@@ -105,6 +90,14 @@ public class ActivityMobilityEntityMapper {
                             normalizeDongName(adminDong.getAdminDongName())),
                     adminDong);
         }
+        log.info(
+                "ActivityMobility admin dong index loaded: byCode={}, byDistrictAndName={}",
+                    adminDongByCode.size(),
+                    adminDongByDistrictAndName.size());
+        Preconditions.validate(
+                !adminDongByCode.isEmpty(),
+                ErrorCode.VALIDATION_ERROR,
+                "행정동 기준 데이터가 비어 있습니다. /dongne/data를 먼저 호출한 뒤 /mobility/data를 호출하세요.");
         return new AdminDongIndex(adminDongByCode, adminDongByDistrictAndName);
     }
 
@@ -150,14 +143,51 @@ public class ActivityMobilityEntityMapper {
 
         ActivityMobilityCodebookRow codebookRow =
                 codebookByMobilityCode.get(normalizedMobilityDongCode);
-        Preconditions.validate(codebookRow != null, ErrorCode.VALIDATION_ERROR);
+        if (codebookRow == null) {
+            log.warn(
+                    "ActivityMobility codebook mapping missing: fieldName={}, mobilityDongCode={},"
+                            + " normalizedMobilityDongCode={}",
+                    fieldName,
+                    mobilityDongCode,
+                    normalizedMobilityDongCode);
+        }
+        Preconditions.validate(
+                codebookRow != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북에 행정동 코드가 없습니다: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", normalizedMobilityDongCode="
+                        + normalizedMobilityDongCode);
 
         String districtName =
                 extractDistrictName(codebookRow.fullName(), normalizedMobilityDongCode, fieldName);
         AdminDongNameKey key =
                 new AdminDongNameKey(districtName, normalizeDongName(codebookRow.name()));
         AdminDong adminDong = adminDongIndex.byDistrictAndName().get(key);
-        Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
+        if (adminDong == null) {
+            log.warn(
+                    "ActivityMobility admin dong mapping missing: fieldName={}, mobilityDongCode={},"
+                            + " districtName={}, dongName={}, normalizedDongName={}",
+                    fieldName,
+                    mobilityDongCode,
+                    districtName,
+                    codebookRow.name(),
+                    key.normalizedAdminDongName());
+        }
+        Preconditions.validate(
+                adminDong != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 매핑 실패: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", districtName="
+                        + districtName
+                        + ", dongName="
+                        + codebookRow.name()
+                        + ". /dongne/data 적재 데이터와 생활이동 코드북을 확인하세요.");
         return adminDong;
     }
 
@@ -167,20 +197,63 @@ public class ActivityMobilityEntityMapper {
             String mobilityDongCode,
             String fieldName) {
         AdminDong adminDong = adminDongIndex.byCode().get(adminDongCode);
-        Preconditions.validate(adminDong != null, ErrorCode.VALIDATION_ERROR);
+        if (adminDong == null) {
+            log.warn(
+                    "ActivityMobility admin dong override missing: fieldName={}, mobilityDongCode={},"
+                            + " overrideAdminDongCode={}",
+                    fieldName,
+                    mobilityDongCode,
+                    adminDongCode);
+        }
+        Preconditions.validate(
+                adminDong != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 override 매핑 실패: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", overrideAdminDongCode="
+                        + adminDongCode
+                        + ". /dongne/data 적재 데이터에 해당 행정동 코드가 있는지 확인하세요.");
         return adminDong;
     }
 
     private Map<String, ActivityMobilityCodebookRow> loadCodebookByMobilityCode() {
-        ClassPathResource resource = new ClassPathResource(CODEBOOK_PATH);
-        try (InputStream inputStream = resource.getInputStream()) {
+        long start = System.currentTimeMillis();
+        log.info(
+                "ActivityMobility codebook read started: source={}/{}",
+                S3_DOMAIN,
+                CODEBOOK_FILENAME);
+        try (InputStream inputStream = s3CsvReaderService.readFile(S3_DOMAIN, CODEBOOK_FILENAME)) {
             Map<String, byte[]> entries = readXlsxEntries(inputStream);
             List<String> sharedStrings = readSharedStrings(entries);
             List<List<String>> sheetRows = readSheetRows(entries, sharedStrings);
-            return toCodebookByMobilityCode(sheetRows);
+            Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode =
+                    toCodebookByMobilityCode(sheetRows);
+            log.info(
+                    "ActivityMobility codebook read completed: sheetRows={}, codebookRows={}, elapsedMs={}",
+                    sheetRows.size(),
+                    codebookByMobilityCode.size(),
+                    System.currentTimeMillis() - start);
+            return codebookByMobilityCode;
         } catch (IOException exception) {
             throw new IllegalStateException(
-                    CODEBOOK_READ_FAILURE_MESSAGE_FORMAT.formatted(CODEBOOK_PATH), exception);
+                    "Failed to read activity mobility codebook: "
+                            + S3_DOMAIN
+                            + "/"
+                            + CODEBOOK_FILENAME,
+                    exception);
+        } catch (RuntimeException exception) {
+            log.error(
+                    "ActivityMobility codebook read failed: source={}/{}, elapsedMs={}, errorType={},"
+                            + " message={}",
+                    S3_DOMAIN,
+                    CODEBOOK_FILENAME,
+                    System.currentTimeMillis() - start,
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception);
+            throw exception;
         }
     }
 
@@ -198,7 +271,11 @@ public class ActivityMobilityEntityMapper {
         }
         Preconditions.validate(
                 entries.containsKey(SHARED_STRINGS_ENTRY) && entries.containsKey(SHEET_ENTRY),
-                ErrorCode.VALIDATION_ERROR);
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 xlsx에 필요한 entry가 없습니다: required="
+                        + List.of(SHARED_STRINGS_ENTRY, SHEET_ENTRY)
+                        + ", actual="
+                        + entries.keySet());
         return entries;
     }
 
@@ -274,7 +351,11 @@ public class ActivityMobilityEntityMapper {
             int sharedStringIndex = Integer.parseInt(rawValue);
             Preconditions.validate(
                     sharedStringIndex >= 0 && sharedStringIndex < sharedStrings.size(),
-                    ErrorCode.VALIDATION_ERROR);
+                    ErrorCode.VALIDATION_ERROR,
+                    "생활이동 코드북 shared string index가 범위를 벗어났습니다: index="
+                            + sharedStringIndex
+                            + ", size="
+                            + sharedStrings.size());
             return sharedStrings.get(sharedStringIndex);
         }
         return rawValue;
@@ -291,18 +372,26 @@ public class ActivityMobilityEntityMapper {
             factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
             return factory.newDocumentBuilder().parse(new ByteArrayInputStream(xmlBytes));
         } catch (IOException | ParserConfigurationException | SAXException exception) {
-            throw new IllegalStateException(CODEBOOK_XML_PARSE_FAILURE_MESSAGE, exception);
+            throw new IllegalStateException("Failed to parse activity mobility codebook XML.", exception);
         }
     }
 
     private Map<String, ActivityMobilityCodebookRow> toCodebookByMobilityCode(
             List<List<String>> sheetRows) {
-        Preconditions.validate(!sheetRows.isEmpty(), ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                !sheetRows.isEmpty(),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 sheet row가 비어 있습니다.");
 
         List<String> headers =
                 sheetRows.get(0).stream().map(ActivityMobilityEntityMapper::normalize).toList();
         Preconditions.validate(
-                headers.equals(EXPECTED_CODEBOOK_HEADERS), ErrorCode.VALIDATION_ERROR);
+                headers.equals(EXPECTED_CODEBOOK_HEADERS),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 헤더가 예상과 다릅니다: expected="
+                        + EXPECTED_CODEBOOK_HEADERS
+                        + ", actual="
+                        + headers);
 
         Map<String, ActivityMobilityCodebookRow> codebookByMobilityCode = new LinkedHashMap<>();
         for (int i = 1; i < sheetRows.size(); i++) {
@@ -320,28 +409,40 @@ public class ActivityMobilityEntityMapper {
                     codebookByMobilityCode.putIfAbsent(
                             normalizeMobilityDongCode(mobilityDongCode),
                             new ActivityMobilityCodebookRow(
-                                    mobilityDongCode,
-                                    normalize(row.get(3)),
-                                    normalize(row.get(4))));
-            Preconditions.validate(previous == null, ErrorCode.VALIDATION_ERROR);
+                                    mobilityDongCode, normalize(row.get(3)), normalize(row.get(4))));
+            Preconditions.validate(
+                    previous == null,
+                    ErrorCode.VALIDATION_ERROR,
+                    "생활이동 코드북에 중복 행정동 코드가 있습니다: mobilityDongCode=" + mobilityDongCode);
         }
         return codebookByMobilityCode;
     }
 
     String normalizeMobilityDongCode(String mobilityDongCode) {
-        Preconditions.validate(mobilityDongCode != null, ErrorCode.VALIDATION_ERROR);
+        Preconditions.validate(
+                mobilityDongCode != null,
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 코드가 null입니다.");
         String normalized = normalize(mobilityDongCode);
         Preconditions.validate(
                 normalized.length() == CSV_DONG_CODE_LENGTH
                         && normalized.chars().allMatch(Character::isDigit),
-                ErrorCode.VALIDATION_ERROR);
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 행정동 코드는 7자리 숫자여야 합니다: mobilityDongCode=" + mobilityDongCode);
         return normalized;
     }
 
     private String extractDistrictName(String fullName, String mobilityDongCode, String fieldName) {
         String[] parts = normalize(fullName).split(" ");
         Preconditions.validate(
-                parts.length >= 3 && "서울특별시".equals(parts[0]), ErrorCode.VALIDATION_ERROR);
+                parts.length >= 3 && SEOUL_CITY_NAME.equals(parts[0]),
+                ErrorCode.VALIDATION_ERROR,
+                "생활이동 코드북 fullName 형식이 올바르지 않습니다: fieldName="
+                        + fieldName
+                        + ", mobilityDongCode="
+                        + mobilityDongCode
+                        + ", fullName="
+                        + fullName);
         return parts[1];
     }
 
@@ -350,7 +451,12 @@ public class ActivityMobilityEntityMapper {
     }
 
     private static String normalizeDongName(String value) {
-        return normalize(value).replace("제", "").replace(".", "").replace("·", "").replace(" ", "");
+        return normalize(value)
+                .replace("동", "")
+                .replace(".", "")
+                .replace("·", "")
+                .replace(" ", "")
+                .replaceAll("제(?=\\d)", "");
     }
 
     private record ActivityMobilityCodebookRow(

@@ -6,13 +6,18 @@ import com.example.padong_server.domain.dongneLike.dto.DongneLikeToggleResponse;
 import com.example.padong_server.domain.dongneLike.dto.LikedDongneResponse;
 import com.example.padong_server.domain.dongneLike.entity.DongneLike;
 import com.example.padong_server.domain.dongneLike.repository.DongneLikeRepository;
-import com.example.padong_server.global.PageResponse;
+import com.example.padong_server.domain.population.entity.PopulationDensity;
+import com.example.padong_server.domain.population.repository.PopulationDensityRepository;
+import com.example.padong_server.domain.rentPrice.entity.RentPrice;
+import com.example.padong_server.domain.rentPrice.repository.RentPriceRepository;
+import com.example.padong_server.global.CursorPageResponse;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +27,8 @@ public class DongneLikeService {
 
     private final DongneLikeRepository dongneLikeRepository;
     private final AdminDongRepository adminDongRepository;
+    private final PopulationDensityRepository populationDensityRepository;
+    private final RentPriceRepository rentPriceRepository;
 
     @Transactional
     public DongneLikeToggleResponse toggleLike(String adminDongCode, Long userId) {
@@ -62,12 +69,48 @@ public class DongneLikeService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<LikedDongneResponse> getMyLikes(Long userId, Pageable pageable) {
-        Page<DongneLike> page =
-                dongneLikeRepository.findByUserIdOrderByIdDesc(userId, pageable);
-        List<LikedDongneResponse> content =
-                page.getContent().stream().map(LikedDongneResponse::from).toList();
-        return PageResponse.from(page, content);
+    public CursorPageResponse<LikedDongneResponse> getMyLikes(
+            Long userId, Long cursor, int size, String q) {
+        int cappedSize = Math.min(Math.max(size, 1), 50);
+        String normalizedQ = (q == null || q.isBlank()) ? null : q.trim();
+
+        List<DongneLike> fetched =
+                dongneLikeRepository.findMyLikesCursor(
+                        userId, cursor, normalizedQ, PageRequest.of(0, cappedSize + 1));
+
+        List<Long> adminDongIds = fetched.stream().map(dl -> dl.getAdminDong().getId()).toList();
+        List<String> adminDongCodes =
+                fetched.stream().map(dl -> dl.getAdminDong().getAdminDongCode()).toList();
+
+        Map<Long, PopulationDensity> densityByDongId =
+                adminDongIds.isEmpty()
+                        ? Map.of()
+                        : populationDensityRepository
+                                .findAllByAdminDongIdIn(adminDongIds)
+                                .stream()
+                                .collect(
+                                        Collectors.toMap(
+                                                p -> p.getAdminDong().getId(), p -> p));
+        Map<String, List<RentPrice>> rentByDongCode =
+                adminDongCodes.isEmpty()
+                        ? Map.of()
+                        : rentPriceRepository
+                                .findAllByAdminDongAdminDongCodeIn(adminDongCodes)
+                                .stream()
+                                .collect(
+                                        Collectors.groupingBy(
+                                                rp -> rp.getAdminDong().getAdminDongCode()));
+
+        return CursorPageResponse.from(
+                fetched,
+                cappedSize,
+                DongneLike::getId,
+                dl ->
+                        LikedDongneResponse.from(
+                                dl,
+                                densityByDongId.get(dl.getAdminDong().getId()),
+                                rentByDongCode.getOrDefault(
+                                        dl.getAdminDong().getAdminDongCode(), List.of())));
     }
 
     @Transactional(readOnly = true)

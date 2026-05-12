@@ -4,7 +4,10 @@ import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongneLike.repository.DongneLikeRepository;
 import com.example.padong_server.domain.storeLike.repository.StoreLikeRepository;
+import com.example.padong_server.domain.upload.service.S3FileUploader;
+import org.springframework.web.multipart.MultipartFile;
 import com.example.padong_server.domain.oauth.dto.request.AdminUpgradeRequest;
+import com.example.padong_server.domain.oauth.dto.request.UpdateProfileRequest;
 import com.example.padong_server.domain.oauth.dto.request.UserSignUpRequest;
 import com.example.padong_server.domain.oauth.dto.response.AdminUpgradeResponse;
 import com.example.padong_server.domain.oauth.dto.response.SignUpResponse;
@@ -30,6 +33,7 @@ public class AuthService {
     private final AdminDongRepository adminDongRepository;
     private final DongneLikeRepository dongneLikeRepository;
     private final StoreLikeRepository storeLikeRepository;
+    private final S3FileUploader s3FileUploader;
 
     public JwtToken reissue(String refreshToken) {
 
@@ -70,6 +74,17 @@ public class AuthService {
     }
 
     @Transactional
+    public void approveAdmin(Long userId) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        // role 무관: USER 였으면 ADMIN 으로 승격까지 한 번에 처리. 이미 ADMIN 이면 approve 만.
+        user.promoteToAdmin();
+        refreshTokenService.delete(userId); // 재로그인 시 새 토큰에 role/approved 반영
+    }
+
+    @Transactional
     public void withdraw(Long userId) {
         User user =
                 userRepository
@@ -95,7 +110,12 @@ public class AuthService {
     }
 
     @Transactional
-    public AdminUpgradeResponse upgradeAdmin(Long userId, AdminUpgradeRequest request) {
+    public AdminUpgradeResponse upgradeAdmin(
+            Long userId, AdminUpgradeRequest request, MultipartFile businessLicense) {
+        if (businessLicense == null || businessLicense.isEmpty()) {
+            throw new CustomException(
+                    ErrorCode.INVALID_SIGNUP_REQUEST, "사업자등록증 파일은 필수입니다.");
+        }
         User user =
                 userRepository
                         .findById(userId)
@@ -111,9 +131,30 @@ public class AuthService {
                             .orElseThrow(
                                     () -> new CustomException(ErrorCode.ADMIN_DONG_NOT_FOUND));
         }
-        user.upgradeToAdmin(request.businessLicenseImageUrl(), adminDong);
+        String url = s3FileUploader.uploadBusinessLicense(businessLicense, userId);
+        user.upgradeToAdmin(url, adminDong);
         refreshTokenService.delete(userId);
         return AdminUpgradeResponse.from(user);
+    }
+
+    @Transactional
+    public UserDetailResponse updateMyProfile(
+            Long userId, UpdateProfileRequest request, MultipartFile picture) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        user.updateNickname(request.nickname().trim());
+
+        if (picture != null && !picture.isEmpty()) {
+            String previous = user.getPicture();
+            String newUrl = s3FileUploader.uploadProfilePicture(picture, userId);
+            user.updatePicture(newUrl);
+            s3FileUploader.deleteIfOwned(previous);
+        }
+
+        return UserDetailResponse.from(user);
     }
 
     @Transactional
@@ -131,8 +172,8 @@ public class AuthService {
     }
 
     @Transactional
-    public SignUpResponse signUp(UserSignUpRequest request) {
-        validateSignUpRequest(request);
+    public SignUpResponse signUp(UserSignUpRequest request, MultipartFile businessLicense) {
+        validateSignUpRequest(request, businessLicense);
 
         AdminDong adminDong = null;
         if (request.role() == Role.USER) {
@@ -140,7 +181,13 @@ public class AuthService {
                     .orElseThrow(() -> new CustomException(ErrorCode.ADMIN_DONG_NOT_FOUND));
         }
 
-        User user = userRepository.findByKakaoIdAndDeletedFalse(request.kakaoId())
+        User user = userRepository.findByKakaoId(request.kakaoId())
+                .map(existing -> {
+                    if (existing.isDeleted()) {
+                        existing.reactivate();
+                    }
+                    return existing;
+                })
                 .orElseGet(() -> userRepository.save(
                         User.builder()
                                 .kakaoId(request.kakaoId())
@@ -151,8 +198,14 @@ public class AuthService {
                                 .build()
                 ));
 
+        // ADMIN 이면 user 가 영속화된 후 (id 확보) S3 업로드 — 실패 시 tx 롤백으로 user 도 정리됨
+        String businessLicenseUrl = null;
+        if (request.role() == Role.ADMIN) {
+            businessLicenseUrl = s3FileUploader.uploadBusinessLicense(businessLicense, user.getId());
+        }
+
         user.updateProfile(request.nickname(), request.picture(), request.email(), adminDong);
-        user.completeSignUp(request.role(), adminDong, request.businessLicenseImageUrl());
+        user.completeSignUp(request.role(), adminDong, businessLicenseUrl);
 
         JwtToken token = null;
         if (user.getRole() == Role.USER) {
@@ -176,7 +229,7 @@ public class AuthService {
         );
     }
 
-    private void validateSignUpRequest(UserSignUpRequest request) {
+    private void validateSignUpRequest(UserSignUpRequest request, MultipartFile businessLicense) {
         if (request.role() == null) {
             throw new CustomException(ErrorCode.INVALID_SIGNUP_REQUEST, "role은 필수입니다.");
         }
@@ -185,12 +238,10 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_SIGNUP_REQUEST, "USER 회원가입에는 adminDongId가 필요합니다.");
         }
 
-        if (request.role() == Role.ADMIN && isBlank(request.businessLicenseImageUrl())) {
-            throw new CustomException(ErrorCode.INVALID_SIGNUP_REQUEST, "ADMIN 회원가입에는 businessLicenseImageUrl이 필요합니다.");
+        if (request.role() == Role.ADMIN
+                && (businessLicense == null || businessLicense.isEmpty())) {
+            throw new CustomException(
+                    ErrorCode.INVALID_SIGNUP_REQUEST, "ADMIN 회원가입에는 사업자등록증 파일이 필요합니다.");
         }
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }

@@ -4,6 +4,9 @@ import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.oauth.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,12 +14,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @Table(name = "store_registrations")
@@ -24,6 +32,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
+@SQLRestriction("deleted_at IS NULL")
 public class Store {
 
     @Id
@@ -31,17 +41,14 @@ public class Store {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "admin_dong_id")
+    @JoinColumn(name = "admin_dong_id", nullable = false)
     private AdminDong adminDong;
 
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 255)
-    private String roadAddress;
-
-    @Column(length = 255)
-    private String detailAddress;
+    @Column(nullable = false, length = 500)
+    private String address;
 
     @Column(nullable = false, length = 30)
     private String phoneNumber;
@@ -52,29 +59,12 @@ public class Store {
     @Column(nullable = false)
     private LocalTime closeTime;
 
-    @Column(length = 100)
-    private String category;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private StoreCategory category;
 
     @Column(length = 1000)
     private String description;
-
-    @Column
-    private Integer originalPrice;
-
-    @Column
-    private Integer discountPrice;
-
-    @Column
-    private Integer maxParticipants;
-
-    @Column
-    private Integer currentParticipants;
-
-    @Column(length = 100)
-    private String recruitmentDeadline;
-
-    @Column(length = 100)
-    private String paymentMethod;
 
     @Column
     private Double latitude;
@@ -82,64 +72,64 @@ public class Store {
     @Column
     private Double longitude;
 
-    @Column(length = 1000)
-    private String imageUrl;
+    @Column(name = "thumbnail_url", length = 1000)
+    private String thumbnailUrl;
+
+    /** 영업 요일 비트마스크. bit0=MON ... bit6=SUN. 0~127. */
+    @Column(name = "weekday_mask", nullable = false)
+    @Builder.Default
+    private int weekdayMask = 0;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_user_id", nullable = false)
     private User owner;
 
-    public void update(
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    /** 부분 수정 — 비어있지 않은 필드만 갱신. PATCH 시맨틱. */
+    public void patch(
             String name,
-            String roadAddress,
-            String detailAddress,
+            StoreCategory category,
+            String address,
             String phoneNumber,
+            String description,
             LocalTime openTime,
             LocalTime closeTime,
-            String category,
-            String description,
-            Integer originalPrice,
-            Integer discountPrice,
-            Integer maxParticipants,
-            Integer currentParticipants,
-            String recruitmentDeadline,
-            String paymentMethod,
+            Integer weekdayMask,
             Double latitude,
             Double longitude,
-            String imageUrl,
-            AdminDong adminDong
-    ) {
-        this.name = name;
-        this.roadAddress = roadAddress;
-        this.detailAddress = detailAddress;
-        this.phoneNumber = phoneNumber;
-        this.openTime = openTime;
-        this.closeTime = closeTime;
-        this.category = category;
-        this.description = description;
-        this.originalPrice = originalPrice;
-        this.discountPrice = discountPrice;
-        this.maxParticipants = maxParticipants;
-        this.currentParticipants = currentParticipants;
-        this.recruitmentDeadline = recruitmentDeadline;
-        this.paymentMethod = paymentMethod;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.imageUrl = imageUrl;
-        this.adminDong = adminDong;
+            AdminDong adminDong) {
+        if (name != null) this.name = name;
+        if (category != null) this.category = category;
+        if (address != null) this.address = address;
+        if (phoneNumber != null) this.phoneNumber = phoneNumber;
+        if (description != null) this.description = description;
+        if (openTime != null) this.openTime = openTime;
+        if (closeTime != null) this.closeTime = closeTime;
+        if (weekdayMask != null) this.weekdayMask = weekdayMask;
+        if (latitude != null) this.latitude = latitude;
+        if (longitude != null) this.longitude = longitude;
+        if (adminDong != null) this.adminDong = adminDong;
     }
 
-    public void updateBasicInfo(
-            String name,
-            String roadAddress,
-            String phoneNumber,
-            LocalTime openTime,
-            LocalTime closeTime
-    ) {
-        this.name = name;
-        this.roadAddress = roadAddress;
-        this.phoneNumber = phoneNumber;
-        this.openTime = openTime;
-        this.closeTime = closeTime;
+    public void changeThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

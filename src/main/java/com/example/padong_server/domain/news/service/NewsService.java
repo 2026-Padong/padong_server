@@ -6,6 +6,8 @@ import com.example.padong_server.domain.news.dto.NewsResponse;
 import com.example.padong_server.domain.news.entity.NewsArticle;
 import com.example.padong_server.domain.news.repository.NewsArticleRepository;
 import com.example.padong_server.global.ResponseDTO;
+import com.example.padong_server.global.exception.CustomException;
+import com.example.padong_server.global.exception.ErrorCode;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -30,24 +31,43 @@ public class NewsService {
     private final NewsArticleRepository newsArticleRepository;
     private final NewsPersistenceService newsPersistenceService;
     private final WebClient.Builder webClientBuilder;
+    private final NaverNewsProperties naverNewsProperties;
 
-    @Value("${naver.news.client-id}")
-    private String clientId;
+    /** adminDongId 기준 뉴스 조회. 없으면 외부 API 로 새로 가져와 저장 후 반환. */
+    public ResponseDTO<NewsResponse> getNewsByAdminDongId(Long adminDongId) {
+        if (adminDongId == null) {
+            throw new CustomException(ErrorCode.VALIDATION_ERROR, "adminDongId 는 필수입니다.");
+        }
+        AdminDong adminDong = adminDongRepository
+                .findById(adminDongId)
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.VALIDATION_ERROR,
+                        "존재하지 않는 행정동 PK 입니다: " + adminDongId));
+        ensureNewsExists(adminDong);
+        List<NewsArticle> articles =
+                newsArticleRepository.findTop20ByAdminDongOrderByFetchedAtDescIdDesc(adminDong);
+        return ResponseDTO.res(HttpStatus.OK, "news 조회 성공", NewsResponse.fromEntities(articles));
+    }
 
-    @Value("${naver.news.client-secret}")
-    private String clientSecret;
-
+    /** legacy 호환 — dongne 이름 기반 (스케줄러/refresh 흐름이 사용). */
     public ResponseDTO<NewsResponse> getNews(String dongne) {
         AdminDong adminDong = findAdminDongByNameContaining(dongne);
         ensureNewsExists(adminDong);
-
-        List<NewsArticle> articles = newsArticleRepository.findTop20ByAdminDongOrderByFetchedAtDescIdDesc(adminDong);
+        List<NewsArticle> articles =
+                newsArticleRepository.findTop20ByAdminDongOrderByFetchedAtDescIdDesc(adminDong);
         return ResponseDTO.res(HttpStatus.OK, "news 조회 성공", NewsResponse.fromEntities(articles));
     }
 
     public ResponseDTO<NewsResponse> getGeneralNews(String query) {
         NewsResponse response = requestNews(query);
         return ResponseDTO.res(HttpStatus.OK, "news 조회 성공", response);
+    }
+
+    /** 전체 저장된 뉴스에서 무작위 size 개 (기본 3, 최대 20). */
+    public ResponseDTO<NewsResponse> getRandomNews(int size) {
+        int capped = Math.min(Math.max(size, 1), 20);
+        List<NewsArticle> articles = newsArticleRepository.findRandom(capped);
+        return ResponseDTO.res(HttpStatus.OK, "랜덤 뉴스 조회 성공", NewsResponse.fromEntities(articles));
     }
 
     public void refreshNewsForAllAdminDongs() {
@@ -76,11 +96,12 @@ public class NewsService {
 
     private AdminDong findAdminDongByNameContaining(String dongne) {
         if (dongne == null || dongne.isBlank()) {
-            throw new IllegalArgumentException("동 이름은 비어 있을 수 없습니다.");
+            throw new CustomException(ErrorCode.VALIDATION_ERROR, "동 이름은 비어 있을 수 없습니다.");
         }
 
         return adminDongRepository.findFirstByAdminDongNameContainingOrderByIdAsc(dongne.trim())
-                .orElseThrow(() -> new IllegalArgumentException("일치하는 행정동이 없습니다: " + dongne));
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.VALIDATION_ERROR, "일치하는 행정동이 없습니다: " + dongne));
     }
 
     private void saveLatestNews(AdminDong adminDong) {
@@ -121,8 +142,8 @@ public class NewsService {
     private WebClient buildWebClient() {
         return webClientBuilder
                 .baseUrl(BASE_URL)
-                .defaultHeader("X-Naver-Client-Id", clientId)
-                .defaultHeader("X-Naver-Client-Secret", clientSecret)
+                .defaultHeader("X-Naver-Client-Id", naverNewsProperties.clientId())
+                .defaultHeader("X-Naver-Client-Secret", naverNewsProperties.clientSecret())
                 .build();
     }
 

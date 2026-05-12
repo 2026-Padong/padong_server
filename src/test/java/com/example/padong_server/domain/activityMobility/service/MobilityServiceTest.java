@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,7 @@ import com.example.padong_server.domain.activityMobility.dto.MobilityFilterReque
 import com.example.padong_server.domain.activityMobility.dto.MobilitySimpleResponse;
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
+import com.example.padong_server.domain.activityMobility.service.SafetyIndexService;
 import com.example.padong_server.domain.dongne.dto.AdminDongCsvRow;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.service.DongneService;
@@ -58,7 +60,15 @@ class MobilityServiceTest {
 
     @Mock private RentPriceService rentPriceService;
 
+    @Mock private SafetyIndexService safetyIndexService;
+
     @Mock private ScoreCalculator scoreCalculator;
+
+    @Mock
+    private com.example.padong_server.domain.dongne.boundary.AdminDongBoundaryService boundaryService;
+
+    @Mock
+    private com.example.padong_server.domain.dongneLike.service.DongneLikeService dongneLikeService;
 
     @InjectMocks private MobilityService mobilityService;
 
@@ -82,6 +92,8 @@ class MobilityServiceTest {
                         selectedRentPriceMap(
                                 defaultRentPriceDetail("1162069500", 500L, 45L),
                                 defaultRentPriceDetail("1121571000", 700L, 55L)));
+        when(safetyIndexService.getOverallGrade(anyString(), eq("관악구"))).thenReturn("B");
+        when(safetyIndexService.getOverallGrade(anyString(), eq("광진구"))).thenReturn("C");
 
         ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", pageable);
@@ -92,8 +104,11 @@ class MobilityServiceTest {
                 .hasSize(2)
                 .extracting(
                         MobilitySimpleResponse::getTotalMobility,
-                        MobilitySimpleResponse::getAvgTime)
-                .containsExactly(tuple(18432.27, 42.75), tuple(15231.89, 38.44));
+                        MobilitySimpleResponse::getAvgTime,
+                        MobilitySimpleResponse::getSafetyGrade)
+                .containsExactly(
+                        tuple(18432.27, 42.75, "B"),
+                        tuple(15231.89, 38.44, "C"));
         assertThat(response.getData().content())
                 .extracting(responseItem -> responseItem.getDepartureDong().getAdminDongCode())
                 .containsExactly("1162069500", "1121571000");
@@ -135,7 +150,7 @@ class MobilityServiceTest {
         assertThat(response.getMessage()).isEqualTo("해당 생활이동 데이터가 존재하지 않습니다.");
         assertThat(response.getData()).isNull();
         verify(mobilityRepository).findByArrivalDong(arrivalDong, pageable);
-        verifyNoInteractions(populationService, rentPriceService, scoreCalculator);
+        verifyNoInteractions(populationService, rentPriceService, safetyIndexService, scoreCalculator);
     }
 
     @Test
@@ -164,6 +179,7 @@ class MobilityServiceTest {
         when(rentPriceService.getSelectedRentPrices(
                         eq(List.of("1162069500")), any(RentPriceFilterCriteria.class)))
                 .thenReturn(selectedRentPriceMap(defaultRentPriceDetail("1162069500", 500L, 45L)));
+        when(safetyIndexService.getOverallGrade(anyString(), eq("관악구"))).thenReturn("B");
 
         ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", pageable, filterRequest);
@@ -221,6 +237,7 @@ class MobilityServiceTest {
                                         null,
                                         null,
                                         monthlyRent(3_000L, 70L))));
+        when(safetyIndexService.getOverallGrade(anyString(), eq("관악구"))).thenReturn("B");
 
         ResponseDTO<PageResponse<MobilitySimpleResponse>> response =
                 mobilityService.searchByArrivalDongCode("1168064000", pageable, filterRequest);

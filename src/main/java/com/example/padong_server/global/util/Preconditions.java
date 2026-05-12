@@ -12,4 +12,10 @@ public final class Preconditions {
             throw new CustomException(errorCode);
         }
     }
+
+    public static void validate(boolean expression, ErrorCode errorCode, String message) {
+        if (!expression) {
+            throw new CustomException(errorCode, message);
+        }
+    }
 }

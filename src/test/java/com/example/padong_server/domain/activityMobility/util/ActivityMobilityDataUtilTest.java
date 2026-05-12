@@ -2,25 +2,25 @@ package com.example.padong_server.domain.activityMobility.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import com.example.padong_server.domain.activityMobility.dto.ActivityMobilityCsvRow;
+import com.example.padong_server.global.client.s3.S3CsvReaderService;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class ActivityMobilityDataUtilTest {
 
     private final ActivityMobilityDataUtil activityMobilityDataUtil =
-            new ActivityMobilityDataUtil();
+            new ActivityMobilityDataUtil(mock(S3CsvReaderService.class));
 
     @Test
-    @DisplayName("생활이동 월별 CSV row를 읽고 BOM, 공백, 숫자 값을 정규화한다")
+    @DisplayName("Reads activity-mobility CSV rows and normalizes BOM, blanks, and numeric fields")
     void readsActivityMobilityCsvRows() {
         String csv =
                 "\uFEFF기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,퇴근인구,평균이동시간\n"
@@ -46,7 +46,7 @@ class ActivityMobilityDataUtilTest {
     }
 
     @Test
-    @DisplayName("CSV 헤더가 기대 스키마와 다르면 실패한다")
+    @DisplayName("Rejects unexpected CSV headers")
     void rejectsUnexpectedHeaders() {
         String csv =
                 "기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,평균이동시간\n"
@@ -62,7 +62,7 @@ class ActivityMobilityDataUtilTest {
     }
 
     @Test
-    @DisplayName("파일 기준월과 row 기준년월이 다르면 실패한다")
+    @DisplayName("Rejects rows whose month does not match the expected file month")
     void rejectsUnexpectedMonth() {
         String csv =
                 "기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,퇴근인구,평균이동시간\n"
@@ -78,7 +78,7 @@ class ActivityMobilityDataUtilTest {
     }
 
     @Test
-    @DisplayName("직장/거주 행정동 코드가 비어 있으면 실패한다")
+    @DisplayName("Rejects blank admin-dong codes")
     void rejectsBlankAdminDongCodes() {
         String csv =
                 "기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,퇴근인구,평균이동시간\n"

@@ -5,7 +5,7 @@ import com.example.padong_server.domain.path.entity.PathSource;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import tools.jackson.core.JacksonException;
 
 @Component
 @RequiredArgsConstructor
@@ -80,7 +81,7 @@ public class GoogleRoutesClient {
         payload.put("units", "METRIC");
         try {
             return OBJECT_MAPPER.writeValueAsString(payload);
-        } catch (IOException exception) {
+        } catch (JacksonException exception) {
             throw new CustomException(ErrorCode.GOOGLE_ROUTES_API_CALL_FAILED, exception);
         }
     }
@@ -120,7 +121,7 @@ public class GoogleRoutesClient {
         Map<String, Object> parsed;
         try {
             parsed = OBJECT_MAPPER.readValue(body, Map.class);
-        } catch (IOException exception) {
+        } catch (JacksonException exception) {
             throw new CustomException(ErrorCode.GOOGLE_ROUTES_API_CALL_FAILED, exception);
         }
 

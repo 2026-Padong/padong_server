@@ -3,13 +3,14 @@ package com.example.padong_server.global.client.odsay;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import tools.jackson.core.JacksonException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -95,7 +96,7 @@ public class OdsayClient {
     private Map<String, Object> parseJson(String body) {
         try {
             return OBJECT_MAPPER.readValue(body, Map.class);
-        } catch (IOException exception) {
+        } catch (JacksonException exception) {
             throw new CustomException(ErrorCode.ODSAY_API_CALL_FAILED, exception);
         }
     }

@@ -31,7 +31,7 @@ import com.example.padong_server.global.client.sk.SkCarRouteClient;
 import com.example.padong_server.global.client.sk.SkPedestrianRouteClient;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

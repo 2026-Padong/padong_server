@@ -48,3 +48,21 @@ app:
     front-redirect: "http://localhost:5173/auth/kakao/callback"
   cors:
     allowed-origins: "http://localhost:5173"
+
+aws:
+  region: ap-northeast-2
+  access-key: test-access-key
+  secret-key: test-secret-key
+  s3:
+    bucket: test-bucket
+    upload:
+      max-size-mb: 10
+      allowed-content-types: image/jpeg,image/png,image/webp,application/pdf
+
+cloud:
+  aws:
+    region: ap-northeast-2
+
+s3:
+  bucket: padong
+  prefix: padongBE

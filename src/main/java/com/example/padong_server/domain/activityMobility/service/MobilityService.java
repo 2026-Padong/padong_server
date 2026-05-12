@@ -9,6 +9,7 @@ import com.example.padong_server.domain.activityMobility.dto.MultiMobilityRespon
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.repository.MobilityRepository;
 import com.example.padong_server.domain.activityMobility.support.CommonDepartureAccumulator;
+import com.example.padong_server.domain.dongne.boundary.AdminDongBoundaryService;
 import com.example.padong_server.domain.dongne.dto.AdminDongDto;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.service.DongneService;
@@ -29,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,7 +59,11 @@ public class MobilityService {
     private final DongneService dongneService;
     private final PopulationService populationService;
     private final RentPriceService rentPriceService;
+    private final SafetyIndexService safetyIndexService;
     private final ScoreCalculator scoreCalculator;
+    private final AdminDongBoundaryService boundaryService;
+    private final com.example.padong_server.domain.dongneLike.service.DongneLikeService
+            dongneLikeService;
 
     public ResponseDTO<PageResponse<MobilitySimpleResponse>> searchByArrivalDongCode(
             String adminDongCode, Pageable pageable) {
@@ -304,17 +310,25 @@ public class MobilityService {
                                         .map(CommonDepartureAccumulator::departureDong)
                                         .toList()),
                         filter.toRentPriceFilterCriteria());
+        Map<String, JsonNode> boundaryByCode =
+                boundaryService.findFeaturesByCodes(
+                        pageAccumulators.stream()
+                                .map(a -> a.departureDong().getAdminDongCode())
+                                .toList());
+        Long userId = currentUserId();
         List<CommonDepartureMobilityResponse> responses =
                 pageAccumulators.stream()
                         .map(
-                                accumulator ->
-                                        CommonDepartureMobilityResponse.from(
-                                                accumulator.departureDong(),
-                                                accumulator.totalMobility(),
-                                                rentPriceByAdminDongCode.get(
-                                                        accumulator
-                                                                .departureDong()
-                                                                .getAdminDongCode())))
+                                accumulator -> {
+                                    AdminDong dong = accumulator.departureDong();
+                                    return CommonDepartureMobilityResponse.from(
+                                            dong,
+                                            accumulator.totalMobility(),
+                                            rentPriceByAdminDongCode.get(dong.getAdminDongCode()),
+                                            boundaryByCode.get(dong.getAdminDongCode()),
+                                            dongneLikeService.getLikeCount(dong.getId()),
+                                            dongneLikeService.isLikedByUser(dong.getId(), userId));
+                                })
                         .toList();
         return PageResponse.of(responses, pageable, sortedAccumulators.size());
     }
@@ -322,14 +336,44 @@ public class MobilityService {
     private List<MobilitySimpleResponse> mapToSimpleResponses(
             Collection<Mobility> mobilities,
             Map<String, SelectedRentPriceResponse> rentPriceByAdminDongCode) {
+        Map<String, JsonNode> boundaryByCode =
+                boundaryService.findFeaturesByCodes(
+                        mobilities.stream()
+                                .map(m -> m.getDepartureDong().getAdminDongCode())
+                                .toList());
         return mobilities.stream()
                 .map(
-                        mobility ->
-                                MobilitySimpleResponse.from(
-                                        mobility,
-                                        rentPriceByAdminDongCode.get(
-                                                mobility.getDepartureDong().getAdminDongCode())))
+                        mobility -> {
+                            AdminDong departureDong = mobility.getDepartureDong();
+                            return MobilitySimpleResponse.from(
+                                    mobility,
+                                    safetyIndexService.getOverallGrade(
+                                            departureDong.getCityName(),
+                                            departureDong.getDistrictName()),
+                                    rentPriceByAdminDongCode.get(departureDong.getAdminDongCode()),
+                                    boundaryByCode.get(departureDong.getAdminDongCode()),
+                                    dongneLikeService.getLikeCount(departureDong.getId()),
+                                    dongneLikeService.isLikedByUser(
+                                            departureDong.getId(), currentUserId()));
+                        })
                 .toList();
+    }
+
+    /** Spring Security context 에서 현재 사용자 ID 추출. 비로그인은 null. */
+    private Long currentUserId() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        Object principal = auth.getPrincipal();
+        if (principal
+                instanceof com.example.padong_server.domain.oauth.entity.CustomUserDetails details) {
+            return details.getUserId();
+        }
+        return null;
     }
 
     private <T> List<T> listToPage(List<T> list, Pageable pageable) {
@@ -366,9 +410,8 @@ public class MobilityService {
         List<MobilityResponse> responses = new ArrayList<>();
         for (Mobility mobility : mobilities) {
             AdminDong departureDong = mobility.getDepartureDong();
-            // legacy
-            // double safety = departureDong.getSafetyGrade().getAvgGrade();
-            double safety = 0.0;
+            double safety = safetyIndexService.getAverageScore(
+                    departureDong.getCityName(), departureDong.getDistrictName());
             double density = populationService.getPopulationByAdmin(departureDong).getDensity();
             double avgTime = mobility.getAvgTime();
             double totalMobility = mobility.getTotalMobility();

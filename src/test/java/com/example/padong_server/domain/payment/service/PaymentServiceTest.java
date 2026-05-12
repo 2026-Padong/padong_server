@@ -199,7 +199,8 @@ class PaymentServiceTest {
                 "tx-123",
                 new PortOnePaymentResponse.Amount(3000L, 0L, 0L, 0L, 0L, 3000L, 0L, 0L),
                 "pg-123",
-                OffsetDateTime.parse("2026-05-08T12:00:00+09:00")
+                OffsetDateTime.parse("2026-05-08T12:00:00+09:00"),
+                null
         ));
         when(groupOrderRepository.increaseParticipantsIfAvailable(groupOrder.getId(), order.getTotalPrice()))
                 .thenReturn(0);
@@ -230,7 +231,7 @@ class PaymentServiceTest {
         return Store.builder()
                 .id(id)
                 .name("테스트 가게")
-                .roadAddress("서울시 송파구 테스트로 1")
+                .address("서울시 송파구 테스트로 1")
                 .phoneNumber("010-0000-0000")
                 .openTime(LocalTime.of(9, 0))
                 .closeTime(LocalTime.of(18, 0))
@@ -253,12 +254,8 @@ class PaymentServiceTest {
         return Menu.builder()
                 .id(id)
                 .store(store)
-                .menuInfo(name)
-                .originalPrice(originalPrice)
-                .discountPrice(discountPrice)
-                .pickupAvailableTime("12:00")
-                .recruitmentDeadline("11:00")
-                .paymentMethod("CARD")
+                .name(name)
+                .price(discountPrice)
                 .build();
     }
 }

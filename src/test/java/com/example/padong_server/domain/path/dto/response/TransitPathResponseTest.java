@@ -9,7 +9,7 @@ import com.example.padong_server.domain.path.dto.internal.PathSummary;
 import com.example.padong_server.domain.path.entity.PathSource;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

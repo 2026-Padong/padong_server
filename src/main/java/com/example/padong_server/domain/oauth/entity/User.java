@@ -114,6 +114,14 @@ public class User {
         this.adminDong = adminDong;
     }
 
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updatePicture(String picture) {
+        this.picture = picture;
+    }
+
     public void completeSignUp(Role role, AdminDong adminDong, String businessLicenseImageUrl) {
         this.role = role;
         this.adminDong = adminDong;
@@ -139,5 +147,22 @@ public class User {
         this.email = "deleted-" + this.id + "@padong.local";
         this.registered = false;
         this.approved = false;
+    }
+
+    public void reactivate() {
+        this.deleted = false;
+        this.deletedAt = null;
+        this.registered = false;
+        this.approved = false;
+        // role, adminDong, businessLicenseImageUrl 은 후속 completeSignUp 가 덮어씀
+    }
+
+    public void approve() {
+        this.approved = true;
+    }
+
+    public void promoteToAdmin() {
+        this.role = Role.ADMIN;
+        this.approved = true;
     }
 }

@@ -8,6 +8,7 @@ import com.example.padong_server.domain.activityMobility.dto.MultiMobilityRespon
 import com.example.padong_server.domain.activityMobility.entity.Mobility;
 import com.example.padong_server.domain.activityMobility.service.MobilityImportService;
 import com.example.padong_server.domain.activityMobility.service.MobilityService;
+import com.example.padong_server.domain.activityMobility.service.SafetyIndexService;
 import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 
@@ -20,9 +21,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.PageRequest;
@@ -40,9 +43,11 @@ import java.util.List;
 @RequestMapping("/mobility")
 @Tag(name = "생활이동", description = "서울시 생활이동 데이터 관리 API")
 @RequiredArgsConstructor
+@Slf4j
 public class MobilityController {
     private final MobilityService mobilityService;
     private final MobilityImportService mobilityImportService;
+    private final SafetyIndexService safetyIndexService;
 
     @GetMapping("/arrival/multi")
     @Operation(
@@ -75,7 +80,6 @@ public class MobilityController {
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = ResponseDTO.class),
                                 examples =
                                         @ExampleObject(
                                                 value =
@@ -173,7 +177,6 @@ public class MobilityController {
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = ResponseDTO.class),
                                 examples =
                                         @ExampleObject(
                                                 value =
@@ -239,8 +242,30 @@ public class MobilityController {
 
     @PostMapping("/data")
     @Operation(summary = "서울시 생활이동 데이터 저장")
-    public ResponseEntity<ResponseDTO<Void>> fetchData() {
+    public ResponseEntity<ResponseDTO<Void>> fetchData(HttpServletRequest request) {
+        long start = System.currentTimeMillis();
+        log.info(
+                "Mobility data import request received: method={}, uri={}, origin={}, contentType={},"
+                        + " remoteAddr={}, authorizationPresent={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                request.getHeader("Origin"),
+                request.getContentType(),
+                request.getRemoteAddr(),
+                request.getHeader("Authorization") != null);
         String message = mobilityImportService.importData();
+        log.info(
+                "Mobility data import request completed: uri={}, elapsedMs={}, message={}",
+                request.getRequestURI(),
+                System.currentTimeMillis() - start,
+                message);
+        return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, message));
+    }
+
+    @PostMapping("/safety/data")
+    @Operation(summary = "서울시 안전지수 데이터 적재")
+    public ResponseEntity<ResponseDTO<Void>> fetchSafetyData() {
+        String message = safetyIndexService.importData();
         return ResponseEntity.ok(ResponseDTO.res(HttpStatus.OK, message));
     }
 

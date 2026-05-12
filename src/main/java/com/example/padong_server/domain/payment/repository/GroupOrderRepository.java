@@ -2,12 +2,25 @@ package com.example.padong_server.domain.payment.repository;
 
 import com.example.padong_server.domain.payment.entity.GroupOrder;
 import com.example.padong_server.domain.payment.entity.GroupOrderStatus;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface GroupOrderRepository extends JpaRepository<GroupOrder, Long> {
+
+    /** 한 가게의 가장 최근 active(=OPEN) 공구 1개. */
+    Optional<GroupOrder> findTopByStoreIdAndStatusOrderByIdDesc(Long storeId, GroupOrderStatus status);
+
+    /** 한 가게의 가장 최근 공구 1개 (status 무관). */
+    Optional<GroupOrder> findTopByStoreIdOrderByIdDesc(Long storeId);
+
+    /** 여러 가게의 active 공구 일괄 조회 (목록 화면 N+1 회피용). */
+    List<GroupOrder> findByStoreIdInAndStatus(Collection<Long> storeIds, GroupOrderStatus status);
+
 
     @Modifying(flushAutomatically = true)
     @Query("""

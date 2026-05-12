@@ -4,14 +4,15 @@ import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentRow;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.RentType;
 import com.example.padong_server.domain.rentPrice.dto.internal.RentPriceRawData.SaleRow;
+import com.example.padong_server.global.client.s3.S3CsvReaderService;
 import com.example.padong_server.global.exception.ErrorCode;
 import com.example.padong_server.global.util.Preconditions;
 
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +26,7 @@ import java.util.Optional;
 @Component
 public class RentPriceDataUtil {
 
-    private static final String RESOURCE_ROOT = "data/residence";
+    private static final String S3_DOMAIN_ROOT = "residence";
     private static final String CSV_READ_FAILURE_MESSAGE_FORMAT = "주거 실거래가 CSV를 읽을 수 없습니다: %s";
     private static final String CSV_COLUMN_COUNT_MISMATCH_MESSAGE_FORMAT =
             "CSV 컬럼 수가 헤더와 다릅니다: %s:%d expected=%d actual=%d";
@@ -117,10 +118,16 @@ public class RentPriceDataUtil {
                             "연립다세대(전월세)_실거래가_20250418_ 20260417_with_법정동코드.csv",
                             "전용면적(㎡)"));
 
+    private final S3CsvReaderService s3CsvReaderService;
+
+    public RentPriceDataUtil(S3CsvReaderService s3CsvReaderService) {
+        this.s3CsvReaderService = s3CsvReaderService;
+    }
+
     public RentPriceRawData readRows() {
         RawDataBuilder builder = new RawDataBuilder();
         for (RentPriceCsvFile file : DEFAULT_FILES) {
-            readClasspathFile(file, builder);
+            readS3File(file, builder);
         }
         return builder.toRawData();
     }
@@ -131,16 +138,20 @@ public class RentPriceDataUtil {
         return builder.toRawData();
     }
 
-    private void readClasspathFile(RentPriceCsvFile file, RawDataBuilder builder) {
-        ClassPathResource resource = new ClassPathResource(file.resourcePath());
+    private void readS3File(RentPriceCsvFile file, RawDataBuilder builder) {
         try (BufferedReader reader =
                 new BufferedReader(
-                        new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+                        new InputStreamReader(openFile(file), StandardCharsets.UTF_8))) {
             readReader(file, reader, builder);
         } catch (IOException exception) {
             throw new IllegalStateException(
-                    CSV_READ_FAILURE_MESSAGE_FORMAT.formatted(file.resourcePath()), exception);
+                    CSV_READ_FAILURE_MESSAGE_FORMAT.formatted(file.domain() + "/" + file.fileName()),
+                    exception);
         }
+    }
+
+    private InputStream openFile(RentPriceCsvFile file) {
+        return s3CsvReaderService.readFile(file.domain(), file.fileName());
     }
 
     private void readReader(RentPriceCsvFile file, BufferedReader reader, RawDataBuilder builder)
@@ -341,7 +352,8 @@ public class RentPriceDataUtil {
     private static RentPriceCsvFile saleFile(
             String folderName, String buildingType, String fileName, String areaColumn) {
         return new RentPriceCsvFile(
-                RESOURCE_ROOT + "/" + folderName + "/" + fileName,
+                S3_DOMAIN_ROOT + "/" + folderName,
+                fileName,
                 buildingType,
                 SourceType.SALE,
                 areaColumn);
@@ -350,14 +362,19 @@ public class RentPriceDataUtil {
     private static RentPriceCsvFile rentFile(
             String folderName, String buildingType, String fileName, String areaColumn) {
         return new RentPriceCsvFile(
-                RESOURCE_ROOT + "/" + folderName + "/" + fileName,
+                S3_DOMAIN_ROOT + "/" + folderName,
+                fileName,
                 buildingType,
                 SourceType.RENT,
                 areaColumn);
     }
 
     record RentPriceCsvFile(
-            String resourcePath, String buildingType, SourceType sourceType, String areaColumn) {}
+            String domain,
+            String fileName,
+            String buildingType,
+            SourceType sourceType,
+            String areaColumn) {}
 
     enum SourceType {
         SALE,

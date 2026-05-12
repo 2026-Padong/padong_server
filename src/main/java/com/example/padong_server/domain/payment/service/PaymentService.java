@@ -73,6 +73,7 @@ public class PaymentService {
                 .orderStatus(OrderStatus.READY)
                 .paymentStatus(PaymentStatus.READY)
                 .build());
+        order.assignOrderNumber(java.time.LocalDate.now());
 
         for (GroupOrderMenu groupOrderMenu : groupOrderMenus) {
             int quantity = quantities.get(groupOrderMenu.getMenu().getId());
@@ -80,7 +81,7 @@ public class PaymentService {
                     .order(order)
                     .menu(groupOrderMenu.getMenu())
                     .quantity(quantity)
-                    .price(groupOrderMenu.getMenu().getDiscountPrice() * quantity)
+                    .price(groupOrderMenu.getMenu().getPrice() * quantity)
                     .build());
         }
 
@@ -130,7 +131,10 @@ public class PaymentService {
 
         try {
             payment.updateConfirmRequest(portOnePayment.transactionId());
-            payment.markPaid(portOnePayment.pgTxId(), portOnePayment.paidAtLocalDateTime());
+            payment.markPaid(
+                    portOnePayment.pgTxId(),
+                    portOnePayment.paidAtLocalDateTime(),
+                    portOnePayment.resolvedMethod());
             order.markPaid();
             return PaymentResponse.from(payment);
         } catch (RuntimeException exception) {
@@ -186,6 +190,10 @@ public class PaymentService {
         if (groupOrder.getCurrentParticipants() >= groupOrder.getMaxParticipants()) {
             throw new CustomException(ErrorCode.GROUP_ORDER_FULL);
         }
+        if (groupOrder.getRecruitmentDeadline() != null
+                && !groupOrder.getRecruitmentDeadline().isAfter(java.time.LocalDateTime.now())) {
+            throw new CustomException(ErrorCode.GROUP_ORDER_RECRUITMENT_CLOSED);
+        }
     }
 
     private Map<Long, Integer> aggregateQuantities(List<OrderMenuRequest> orderMenus) {
@@ -212,11 +220,12 @@ public class PaymentService {
     private int calculateAndValidateMenus(List<GroupOrderMenu> groupOrderMenus, Map<Long, Integer> quantities) {
         int totalAmount = 0;
         for (GroupOrderMenu groupOrderMenu : groupOrderMenus) {
-            if (groupOrderMenu.isSoldOut()) {
+            // 모임 단위(GroupOrderMenu.soldOut) + 메뉴 단위(Menu.soldOut) 양쪽 모두 가드.
+            if (groupOrderMenu.isSoldOut() || groupOrderMenu.getMenu().isSoldOut()) {
                 throw new CustomException(ErrorCode.SOLD_OUT_MENU);
             }
             int quantity = quantities.get(groupOrderMenu.getMenu().getId());
-            totalAmount += groupOrderMenu.getMenu().getDiscountPrice() * quantity;
+            totalAmount += groupOrderMenu.getMenu().getPrice() * quantity;
         }
         return totalAmount;
     }

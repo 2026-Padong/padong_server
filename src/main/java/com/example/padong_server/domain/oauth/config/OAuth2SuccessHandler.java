@@ -6,8 +6,10 @@ import com.example.padong_server.domain.oauth.jwt.JwtProvider;
 import com.example.padong_server.domain.oauth.jwt.JwtToken;
 import com.example.padong_server.domain.oauth.repository.UserRepository;
 import com.example.padong_server.domain.oauth.service.RefreshTokenService;
+import com.example.padong_server.global.config.AppProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -27,6 +29,11 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
     private final RefreshTokenService refreshTokenService;
+    private final AppProperties appProperties;
+
+    private String frontRedirect() {
+        return appProperties.oauth2().frontRedirect();
+    }
 
     @Override
     public void onAuthenticationSuccess(
@@ -49,11 +56,14 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String picture = (String) profile.get("profile_image_url");
         String email = (String) kakaoAccount.get("email");
 
-        User user = userRepository.findByKakaoId(kakaoId).orElse(null);
+        Role requestedRole = consumeRequestedRole(request);
+
+        User user = userRepository.findByKakaoIdAndDeletedFalse(kakaoId).orElse(null);
 
         if (user == null || !user.isRegistered()) {
-            String redirectUrl = "http://localhost:3000/oauth/callback"
+            String redirectUrl = frontRedirect()
                     + "?signupRequired=true"
+                    + "&requestedRole=" + requestedRole.name()
                     + "&kakaoId=" + encode(String.valueOf(kakaoId))
                     + "&nickname=" + encode(nickname)
                     + "&picture=" + encode(picture)
@@ -63,8 +73,18 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             return;
         }
 
+        if (user.getRole() != requestedRole) {
+            String redirectUrl = frontRedirect()
+                    + "?roleMismatch=true"
+                    + "&actualRole=" + user.getRole().name()
+                    + "&requestedRole=" + requestedRole.name();
+
+            response.sendRedirect(redirectUrl);
+            return;
+        }
+
         if (user.getRole() == Role.ADMIN && !user.isApproved()) {
-            String redirectUrl = "http://localhost:3000/oauth/callback"
+            String redirectUrl = frontRedirect()
                     + "?pendingApproval=true"
                     + "&approved=false";
 
@@ -79,9 +99,12 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 jwtProvider.getRefreshTokenExpireTime()
         );
 
-        String redirectUrl = "http://localhost:3000/oauth/callback"
+        String redirectUrl = frontRedirect()
                 + "?accessToken=" + encode(token.getAccessToken())
-                + "&refreshToken=" + encode(token.getRefreshToken());
+                + "&refreshToken=" + encode(token.getRefreshToken())
+                + "&userId=" + encode(String.valueOf(user.getId()))
+                + "&nickname=" + encode(user.getNickname())
+                + "&role=" + encode(user.getRole().name());
 
         response.sendRedirect(redirectUrl);
     }
@@ -93,6 +116,19 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private String encode(String value) {
         return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
+    }
+
+    private Role consumeRequestedRole(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return Role.USER;
+        }
+        Object stored =
+                session.getAttribute(
+                        RoleAwareAuthorizationRequestResolver.REQUESTED_ROLE_SESSION_ATTR);
+        session.removeAttribute(
+                RoleAwareAuthorizationRequestResolver.REQUESTED_ROLE_SESSION_ATTR);
+        return "ADMIN".equals(stored) ? Role.ADMIN : Role.USER;
     }
 
 }

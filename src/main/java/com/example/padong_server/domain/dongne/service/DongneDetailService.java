@@ -20,11 +20,14 @@ import com.example.padong_server.global.ResponseDTO;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
+import com.example.padong_server.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DongneDetailService {
@@ -37,7 +40,9 @@ public class DongneDetailService {
     private final PathService pathService;
     private final SafetyIndexService safetyIndexService;
 
-    @Transactional(readOnly = true)
+    // PathService.searchAll 이 path_record 캐시 upsert 를 수행하므로 readOnly 트랜잭션으로 묶을 수 없음.
+    // 캐시 쓰기를 trigger 하는 read 라 사실상 read-only 아님.
+    @Transactional
     public ResponseDTO<DongneDetailResponse> getDetail(
             String adminDongCode,
             String arrivalAdminDongCode,
@@ -115,12 +120,25 @@ public class DongneDetailService {
                 || workDong.getAdminDongCode().equals(selectedDong.getAdminDongCode())) {
             return null;
         }
-        return pathService
-                .searchAll(
-                        PathAllRequest.builder()
-                                .departureDongCode(selectedDong.getAdminDongCode())
-                                .arrivalDongCode(workDong.getAdminDongCode())
-                                .build())
-                .getPaths();
+        // PathService 가 외부 인프라 예외를 CustomException 으로 정규화해서 던짐.
+        // 키 미설정·700m 이내·결과 없음·외부 4xx/5xx 등 어떤 실패든 paths 만 null 로 떨어뜨리고
+        // detail 의 나머지 필드 (인구·임대료·안전·좋아요) 는 그대로 살림.
+        try {
+            return pathService
+                    .searchAll(
+                            PathAllRequest.builder()
+                                    .departureDongCode(selectedDong.getAdminDongCode())
+                                    .arrivalDongCode(workDong.getAdminDongCode())
+                                    .build())
+                    .getPaths();
+        } catch (CustomException e) {
+            log.warn(
+                    "동네 상세 paths 조회 실패 — paths=null 로 대체. departure={}, arrival={}, code={}, msg={}",
+                    selectedDong.getAdminDongCode(),
+                    workDong.getAdminDongCode(),
+                    e.getErrorCode(),
+                    e.getMessage());
+            return null;
+        }
     }
 }

@@ -7,8 +7,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,10 +17,14 @@ import com.example.padong_server.domain.oauth.entity.Role;
 import com.example.padong_server.domain.oauth.entity.User;
 import com.example.padong_server.domain.storeLike.dto.StoreLikeToggleResponse;
 import com.example.padong_server.domain.storeLike.service.StoreLikeService;
+import com.example.padong_server.domain.storeRegistration.dto.ShopDetailResponse;
 import com.example.padong_server.domain.storeRegistration.dto.StoreRegistrationResponse;
+import com.example.padong_server.domain.storeRegistration.entity.StoreCategory;
+import com.example.padong_server.domain.storeRegistration.service.StoreImageService;
 import com.example.padong_server.domain.storeRegistration.service.StoreRegistrationService;
 import com.example.padong_server.global.exception.GlobalExceptionHandler;
 import java.time.LocalTime;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,16 +44,16 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 @ExtendWith(MockitoExtension.class)
 class StoreControllerTest {
 
-    @Mock
-    private StoreRegistrationService storeRegistrationService;
+    @Mock private StoreRegistrationService storeRegistrationService;
+    @Mock private StoreLikeService storeLikeService;
+    @Mock private StoreImageService storeImageService;
 
-    @Mock
-    private StoreLikeService storeLikeService;
-
-    @InjectMocks
-    private StoreRegistrationController storeRegistrationController;
+    @InjectMocks private StoreRegistrationController storeRegistrationController;
 
     private MockMvc mockMvc;
+    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
+            new com.fasterxml.jackson.databind.ObjectMapper()
+                    .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     @BeforeEach
     void setUp() {
@@ -65,66 +69,87 @@ class StoreControllerTest {
     }
 
     @Test
-    @DisplayName("getStore returns like fields")
-    void getStore_returnsLikeFields() throws Exception {
-        StoreRegistrationResponse response = StoreRegistrationResponse.builder()
-                .id(1L)
-                .name("Padong")
-                .address("Seoul")
-                .phoneNumber("02-1234-5678")
-                .openTime(LocalTime.of(10, 0))
-                .closeTime(LocalTime.of(20, 0))
-                .likeCount(7L)
-                .likedByCurrentUser(true)
-                .build();
-        given(storeRegistrationService.getStore(1L, 99L)).willReturn(response);
+    @DisplayName("GET /stores/{id} 가 ShopDetailResponse 반환")
+    void getStoreDetail_returnsResponse() throws Exception {
+        authenticatedUser(7L);
+        ShopDetailResponse response = new ShopDetailResponse(
+                1L,
+                "Padong",
+                StoreCategory.BAKERY,
+                "베이커리",
+                null,
+                true,
+                "동네 빵집",
+                "Seoul",
+                "02-1234-5678",
+                "10:00",
+                "20:00",
+                127,
+                List.of(),
+                List.of(),
+                0,
+                null,
+                null,
+                null,
+                null,
+                com.example.padong_server.domain.storeRegistration.entity.RecruitmentStatus.NO_FLOW);
+        given(storeRegistrationService.getStoreDetail(1L, 7L)).willReturn(response);
 
-        mockMvc.perform(get("/stores")
-                        .param("storeId", "1")
-                        .param("userId", "99")
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/stores/1").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.likeCount").value(7))
-                .andExpect(jsonPath("$.data.likedByCurrentUser").value(true))
-                .andExpect(jsonPath("$.data.openTime").value("10:00:00"))
-                .andExpect(jsonPath("$.data.closeTime").value("20:00:00"));
+                .andExpect(jsonPath("$.data.name").value("Padong"))
+                .andExpect(jsonPath("$.data.category").value("BAKERY"))
+                .andExpect(jsonPath("$.data.categoryLabel").value("베이커리"))
+                .andExpect(jsonPath("$.data.weekdayMask").value(127))
+                .andExpect(jsonPath("$.data.likedByCurrentUser").value(true));
     }
 
     @Test
-    @DisplayName("createStore forwards authenticated owner")
-    void createStore_usesAuthenticatedOwner() throws Exception {
+    @DisplayName("POST /stores: JSON body 로 등록")
+    void createStore_acceptsJsonBody() throws Exception {
         User user = authenticatedUser(11L);
         StoreRegistrationResponse response = StoreRegistrationResponse.builder()
                 .id(5L)
                 .name("Padong")
+                .category(StoreCategory.BAKERY)
+                .categoryLabel("베이커리")
                 .address("Seoul")
                 .phoneNumber("02-9999-9999")
                 .openTime(LocalTime.of(9, 0))
                 .closeTime(LocalTime.of(18, 0))
+                .weekdayMask(62)
                 .likeCount(0L)
                 .likedByCurrentUser(false)
                 .build();
         given(storeRegistrationService.createStore(same(user), any())).willReturn(response);
 
+        String body = MAPPER.writeValueAsString(
+                java.util.Map.of(
+                        "adminDongCode", "1162069500",
+                        "name", "Padong",
+                        "category", "BAKERY",
+                        "address", "Seoul",
+                        "phoneNumber", "02-9999-9999",
+                        "openTime", "09:00",
+                        "closeTime", "18:00",
+                        "weekdayMask", 62));
+
         mockMvc.perform(post("/stores")
-                        .param("name", "Padong")
-                        .param("address", "Seoul")
-                        .param("phoneNumber", "02-9999-9999")
-                        .param("openTime", "09:00")
-                        .param("closeTime", "18:00")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").value(5))
                 .andExpect(jsonPath("$.data.name").value("Padong"))
-                .andExpect(jsonPath("$.data.openTime").value("09:00:00"))
-                .andExpect(jsonPath("$.data.closeTime").value("18:00:00"));
+                .andExpect(jsonPath("$.data.category").value("BAKERY"));
 
         verify(storeRegistrationService).createStore(same(user), any());
     }
 
     @Test
-    @DisplayName("toggleStoreLike returns current like state")
+    @DisplayName("POST /stores/likes: JWT userId 사용")
     void toggleStoreLike_returnsCurrentLikeState() throws Exception {
+        authenticatedUser(99L);
         StoreLikeToggleResponse response = StoreLikeToggleResponse.builder()
                 .storeId(1L)
                 .userId(99L)
@@ -135,56 +160,41 @@ class StoreControllerTest {
 
         mockMvc.perform(post("/stores/likes")
                         .param("storeId", "1")
-                        .param("userId", "99")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.storeId").value(1))
-                .andExpect(jsonPath("$.data.userId").value(99))
-                .andExpect(jsonPath("$.data.liked").value(true))
-                .andExpect(jsonPath("$.data.likeCount").value(3));
+                .andExpect(jsonPath("$.data.liked").value(true));
     }
 
     @Test
-    @DisplayName("updateStore returns updated store")
-    void updateStore_returnsUpdatedStore() throws Exception {
+    @DisplayName("PATCH /stores/{id}: 부분 수정 반환")
+    void patchStore_returnsUpdatedStore() throws Exception {
+        authenticatedUser(11L);
         StoreRegistrationResponse response = StoreRegistrationResponse.builder()
                 .id(3L)
-                .name("Updated Store")
+                .name("Updated")
                 .address("New Address")
-                .phoneNumber("02-2222-2222")
-                .openTime(LocalTime.of(10, 0))
-                .closeTime(LocalTime.of(19, 0))
-                .likeCount(0L)
-                .likedByCurrentUser(false)
                 .build();
-        given(storeRegistrationService.updateStore(eq(3L), any())).willReturn(response);
+        given(storeRegistrationService.patchStore(eq(3L), eq(11L), any())).willReturn(response);
 
-        mockMvc.perform(put("/stores")
-                        .param("storeId", "3")
-                        .param("name", "Updated Store")
-                        .param("address", "New Address")
-                        .param("phoneNumber", "02-2222-2222")
-                        .param("openTime", "10:00")
-                        .param("closeTime", "19:00")
+        String body = MAPPER.writeValueAsString(java.util.Map.of("name", "Updated"));
+
+        mockMvc.perform(patch("/stores/3")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(3))
-                .andExpect(jsonPath("$.data.name").value("Updated Store"))
-                .andExpect(jsonPath("$.data.openTime").value("10:00:00"))
-                .andExpect(jsonPath("$.data.closeTime").value("19:00:00"));
+                .andExpect(jsonPath("$.data.name").value("Updated"));
 
-        verify(storeRegistrationService).updateStore(eq(3L), any());
+        verify(storeRegistrationService).patchStore(eq(3L), eq(11L), any());
     }
 
     @Test
-    @DisplayName("deleteStore returns ok")
-    void deleteStore_returnsOk() throws Exception {
-        mockMvc.perform(delete("/stores")
-                        .param("storeId", "4")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-
-        verify(storeRegistrationService).deleteStore(4L);
+    @DisplayName("DELETE /stores/{id}: 204 No Content")
+    void deleteStore_returnsNoContent() throws Exception {
+        authenticatedUser(11L);
+        mockMvc.perform(delete("/stores/4")).andExpect(status().isNoContent());
+        verify(storeRegistrationService).deleteStore(4L, 11L);
     }
 
     private User authenticatedUser(Long id) {
@@ -192,7 +202,7 @@ class StoreControllerTest {
                 .kakaoId(1000L + id)
                 .email("store" + id + "@example.com")
                 .nickname("store-user")
-                .role(Role.USER)
+                .role(Role.ADMIN)
                 .registered(true)
                 .approved(true)
                 .build();

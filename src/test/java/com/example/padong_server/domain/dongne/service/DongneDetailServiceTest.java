@@ -53,6 +53,9 @@ class DongneDetailServiceTest {
     @Mock
     private SafetyIndexService safetyIndexService;
 
+    @Mock
+    private com.example.padong_server.domain.dongne.boundary.AdminDongBoundaryService boundaryService;
+
     @InjectMocks
     private DongneDetailService dongneDetailService;
 

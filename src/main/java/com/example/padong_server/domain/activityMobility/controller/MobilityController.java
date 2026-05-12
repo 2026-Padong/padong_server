@@ -80,7 +80,6 @@ public class MobilityController {
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = ResponseDTO.class),
                                 examples =
                                         @ExampleObject(
                                                 value =
@@ -178,7 +177,6 @@ public class MobilityController {
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = ResponseDTO.class),
                                 examples =
                                         @ExampleObject(
                                                 value =

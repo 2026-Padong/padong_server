@@ -1,11 +1,15 @@
 package com.example.padong_server.domain.dongne.controller;
 
+import com.example.padong_server.domain.dongne.boundary.AdminDongBoundaryLoader;
 import com.example.padong_server.domain.dongne.dto.DongneDetailResponse;
+import com.example.padong_server.domain.dongne.dto.response.DistrictWithDongs;
 import com.example.padong_server.domain.dongne.service.DongneDetailService;
 import com.example.padong_server.domain.dongne.service.DongneService;
 import com.example.padong_server.domain.dongneLike.dto.DongneLikeToggleResponse;
+import com.example.padong_server.domain.dongneLike.dto.LikedDongneResponse;
 import com.example.padong_server.domain.dongneLike.service.DongneLikeService;
 import com.example.padong_server.domain.oauth.entity.CustomUserDetails;
+import com.example.padong_server.global.PageResponse;
 import com.example.padong_server.global.ResponseDTO;
 import com.example.padong_server.global.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,7 +19,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +43,7 @@ public class DongneController {
     private final DongneService dongneService;
     private final DongneDetailService dongneDetailService;
     private final DongneLikeService dongneLikeService;
+    private final AdminDongBoundaryLoader boundaryLoader;
 
     @Operation(
             summary = "동네 기초 데이터 적재",
@@ -76,6 +85,60 @@ public class DongneController {
         return ResponseEntity.ok("동네 데이터 추가 완료");
     }
 
+    @Operation(
+            summary = "행정동 경계 데이터 적재",
+            description =
+                    "classpath 의 admin_dong_boundary_seoul.geojson 을 admin_dong_boundary "
+                            + "테이블로 import. idempotent — 이미 데이터 있으면 0 반환. 동네 기준 데이터(/dongne/data) "
+                            + "적재 후에 한 번 호출.")
+    @PostMapping("/boundaries")
+    public ResponseEntity<String> importBoundaries() {
+        int inserted = boundaryLoader.importIfEmpty();
+        return ResponseEntity.ok("행정동 경계 적재 완료. inserted=" + inserted);
+    }
+
+    @GetMapping("/admin-dongs")
+    @Operation(
+            summary = "자치구 + 행정동 트리 조회",
+            description = "회원가입 cascading dropdown 용. 자치구·행정동 모두 가나다순. 인증 불필요.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "행정동 트리 조회 성공",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array = @io.swagger.v3.oas.annotations.media.ArraySchema(
+                                    schema = @Schema(implementation = DistrictWithDongs.class)),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "statusCode": "200",
+                                      "message": "행정동 트리 조회 성공",
+                                      "data": [
+                                        {
+                                          "guName": "강남구",
+                                          "dongs": [
+                                            { "id": 12, "name": "역삼1동", "adminDongCode": "1168064000" },
+                                            { "id": 13, "name": "역삼2동", "adminDongCode": "1168065000" }
+                                          ]
+                                        },
+                                        {
+                                          "guName": "관악구",
+                                          "dongs": [
+                                            { "id": 80, "name": "신림동",   "adminDongCode": "1162069500" }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                    """)
+                    )
+            )
+    })
+    public ResponseEntity<ResponseDTO<List<DistrictWithDongs>>> getAdminDongTree() {
+        return ResponseEntity.ok(
+                ResponseDTO.res(
+                        HttpStatus.OK, "행정동 트리 조회 성공", dongneService.getAdminDongTree()));
+    }
+
     @GetMapping("/detail")
     @Operation(
             summary = "동네 상세 조회",
@@ -92,7 +155,7 @@ public class DongneController {
                     description = "동네 상세 조회 성공",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ResponseDTO.class),
+                            schema = @Schema(implementation = DongneDetailResponse.class),
                             examples = @ExampleObject(value = """
                                     {
                                       "statusCode": "200",
@@ -175,16 +238,51 @@ public class DongneController {
     }
 
     @PostMapping("/likes")
-    @Operation(summary = "동네 좋아요 토글")
+    @Operation(
+            summary = "동네 좋아요 토글",
+            description = "JWT 의 userId 로 토글 처리. userId 위변조 방지를 위해 쿼리로 받지 않음.")
+    @SecurityRequirement(name = "bearer-jwt")
     public ResponseEntity<ResponseDTO<DongneLikeToggleResponse>> toggleDongneLike(
-            @RequestParam String adminDongCode,
-            @RequestParam(required = false) Long userId,
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam String adminDongCode
     ) {
-        Long resolvedUserId = userDetails != null ? userDetails.getUserId() : userId;
         DongneLikeToggleResponse response =
-                dongneLikeService.toggleLike(adminDongCode, resolvedUserId);
+                dongneLikeService.toggleLike(adminDongCode, userDetails.getUserId());
         return ResponseEntity.ok(
                 ResponseDTO.res(HttpStatus.OK, "동네 좋아요 상태가 변경되었습니다.", response));
+    }
+
+    @GetMapping("/likes/me")
+    @Operation(
+            summary = "내가 좋아요한 동네 목록 (커서)",
+            description =
+                    "마이페이지 '좋아요한 동네' 용. 최신 좋아요순(DongneLike PK DESC) 커서 페이징. "
+                            + "tags 는 행정동 통계(인구/밀도/월세) 로만 구성 — 사용자별 라이프스타일 무관. "
+                            + "q 매칭 룰은 /dongs/search 와 동일 — 행정동명·자치구명·전체주소. "
+                            + "정렬은 prefix 우선.")
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ResponseDTO<com.example.padong_server.global.CursorPageResponse<LikedDongneResponse>>>
+            getMyDongneLikes(
+                    @AuthenticationPrincipal CustomUserDetails userDetails,
+                    @io.swagger.v3.oas.annotations.Parameter(
+                                    description = "직전 페이지 마지막 likeId. 첫 페이지는 생략",
+                                    example = "42")
+                            @org.springframework.web.bind.annotation.RequestParam(required = false)
+                            Long cursor,
+                    @io.swagger.v3.oas.annotations.Parameter(
+                                    description = "페이지 크기 (기본 20, 최대 50)", example = "20")
+                            @org.springframework.web.bind.annotation.RequestParam(
+                                    required = false,
+                                    defaultValue = "20")
+                            int size,
+                    @io.swagger.v3.oas.annotations.Parameter(
+                                    description = "검색어 (행정동명·자치구명·전체주소)", example = "연남")
+                            @org.springframework.web.bind.annotation.RequestParam(required = false)
+                            String q) {
+        return ResponseEntity.ok(
+                ResponseDTO.res(
+                        HttpStatus.OK,
+                        "좋아요한 동네 조회 성공",
+                        dongneLikeService.getMyLikes(userDetails.getUserId(), cursor, size, q)));
     }
 }

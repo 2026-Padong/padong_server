@@ -2,9 +2,10 @@ package com.example.padong_server.global.client.seoul;
 
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -19,6 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SeoulRealtimeClient {
@@ -38,8 +40,14 @@ public class SeoulRealtimeClient {
         try {
             String responseBody = seoulRealtimeWebClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/{apiKey}/json/citydata/1/5/{areaNm}")
-                            .build(properties.apiKey(), areaNm))
+                            .pathSegment(
+                                    properties.apiKey(),
+                                    "json",
+                                    "citydata",
+                                    "1",
+                                    "5",
+                                    areaNm)
+                            .build())
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, response ->
                             response.bodyToMono(String.class)
@@ -55,77 +63,111 @@ public class SeoulRealtimeClient {
 
             JsonNode rootNode = responseBody == null ? null : OBJECT_MAPPER.readTree(responseBody);
             if (rootNode == null || rootNode.isNull()) {
-                throw new CustomException(ErrorCode.SEOUL_REALTIME_DATA_NOT_FOUND);
+                throw new CustomException(
+                        ErrorCode.SEOUL_REALTIME_DATA_NOT_FOUND,
+                        "서울시 실시간 API 빈 응답. areaNm=" + areaNm);
             }
 
             JsonNode targetNode = findTargetAreaNode(rootNode, areaNm);
             if (targetNode == null) {
-                throw new CustomException(ErrorCode.SEOUL_REALTIME_DATA_NOT_FOUND);
+                // 서울 API 는 200 OK 라도 RESULT.CODE 로 실패 알려줌 — 사람이 볼 수 있게 본문 포함
+                String resultCode = readResultText(rootNode, "RESULT.CODE");
+                String resultMsg = readResultText(rootNode, "RESULT.MESSAGE");
+                throw new CustomException(
+                        ErrorCode.SEOUL_REALTIME_DATA_NOT_FOUND,
+                        "서울시 실시간 API 응답에 AREA_NM 매칭 없음. areaNm="
+                                + areaNm
+                                + ", RESULT.CODE="
+                                + resultCode
+                                + ", RESULT.MESSAGE="
+                                + resultMsg);
             }
 
             JsonNode weatherNode = extractWeatherNode(targetNode);
             JsonNode forecastNode = extractForecastNode(weatherNode);
 
-            return SeoulRealtimeData.builder()
-                    .areaCd(readText(targetNode, "AREA_CD", null))
-                    .areaNm(readText(targetNode, "AREA_NM", areaNm))
-                    .thumbnail(readText(targetNode, "THUMBNAIL", null))
-                    .roadAddr(resolveAddress(targetNode))
-                    .areaPpltnMin(readDouble(targetNode, "AREA_PPLTN_MIN"))
-                    .areaPpltnMax(readDouble(targetNode, "AREA_PPLTN_MAX"))
-                    .areaCongestLvl(readText(targetNode, "AREA_CONGEST_LVL", DEFAULT_CONGEST_LEVEL))
-                    .areaCongestMsg(readText(targetNode, "AREA_CONGEST_MSG", DEFAULT_CONGEST_MESSAGE))
-                    .fcstYn(readText(targetNode, "FCST_YN", null))
-                    .fcstPpltnMin(readDouble(targetNode, "FCST_PPLTN_MIN"))
-                    .fcstPpltnMax(readDouble(targetNode, "FCST_PPLTN_MAX"))
-                    .fcstTime(readText(targetNode, "FCST_TIME", null))
-                    .malePpltnRate(readDouble(targetNode, "MALE_PPLTN_RATE"))
-                    .femalePpltnRate(readDouble(targetNode, "FEMALE_PPLTN_RATE"))
-                    .ppltnRate10(readDouble(targetNode, "PPLTN_RATE_10"))
-                    .ppltnRate20(readDouble(targetNode, "PPLTN_RATE_20"))
-                    .ppltnRate30(readDouble(targetNode, "PPLTN_RATE_30"))
-                    .ppltnRate40(readDouble(targetNode, "PPLTN_RATE_40"))
-                    .ppltnRate50(readDouble(targetNode, "PPLTN_RATE_50"))
-                    .ppltnRate60(readDouble(targetNode, "PPLTN_RATE_60"))
-                    .ppltnRate70(readDouble(targetNode, "PPLTN_RATE_70"))
-                    .roadTrafficIdx(readText(targetNode, "ROAD_TRAFFIC_IDX", null))
-                    .roadTrafficSpd(readDouble(targetNode, "ROAD_TRAFFIC_SPD"))
-                    .weatherStatus(extractWeatherStatus(weatherNode, forecastNode))
-                    .temperature(readDouble(weatherNode, "TEMP"))
-                    .sensibleTemperature(readDouble(weatherNode, "SENSIBLE_TEMP"))
-                    .humidity(readDouble(weatherNode, "HUMIDITY"))
-                    .pm10(readDouble(weatherNode, "PM10"))
-                    .pm10Status(readText(weatherNode, "PM10_INDEX", DEFAULT_CONGEST_LEVEL))
-                    .rainChance(readDouble(forecastNode, "RAIN_CHANCE"))
-                    .eventNm(readText(targetNode, "EVENT_NM", null))
-                    .subwayStationNames(extractDistinctTexts(targetNode, "SUB_STTS", "SUB_STN_NM"))
-                    .subwayLines(extractDistinctTexts(targetNode, "SUB_STTS", "SUB_LINE"))
-                    .busStopNames(extractDistinctTexts(targetNode, "BUS_STN_STTS", "BUS_STN_NM"))
-                    .bikeStationNames(extractDistinctTexts(targetNode, "SBIKE_STTS", "SBIKE_SPOT_NM"))
-                    .build();
+            return new SeoulRealtimeData(
+                    readText(targetNode, "AREA_CD", null),
+                    readText(targetNode, "AREA_NM", areaNm),
+                    readText(targetNode, "THUMBNAIL", null),
+                    resolveAddress(targetNode),
+                    readDouble(targetNode, "AREA_PPLTN_MIN"),
+                    readDouble(targetNode, "AREA_PPLTN_MAX"),
+                    readText(targetNode, "AREA_CONGEST_LVL", DEFAULT_CONGEST_LEVEL),
+                    readText(targetNode, "AREA_CONGEST_MSG", DEFAULT_CONGEST_MESSAGE),
+                    readText(targetNode, "FCST_YN", null),
+                    readDouble(targetNode, "FCST_PPLTN_MIN"),
+                    readDouble(targetNode, "FCST_PPLTN_MAX"),
+                    readText(targetNode, "FCST_TIME", null),
+                    readDouble(targetNode, "MALE_PPLTN_RATE"),
+                    readDouble(targetNode, "FEMALE_PPLTN_RATE"),
+                    readDouble(targetNode, "PPLTN_RATE_10"),
+                    readDouble(targetNode, "PPLTN_RATE_20"),
+                    readDouble(targetNode, "PPLTN_RATE_30"),
+                    readDouble(targetNode, "PPLTN_RATE_40"),
+                    readDouble(targetNode, "PPLTN_RATE_50"),
+                    readDouble(targetNode, "PPLTN_RATE_60"),
+                    readDouble(targetNode, "PPLTN_RATE_70"),
+                    readText(targetNode, "ROAD_TRAFFIC_IDX", null),
+                    readDouble(targetNode, "ROAD_TRAFFIC_SPD"),
+                    extractWeatherStatus(weatherNode, forecastNode),
+                    readDouble(weatherNode, "TEMP"),
+                    readDouble(weatherNode, "SENSIBLE_TEMP"),
+                    readDouble(weatherNode, "HUMIDITY"),
+                    readDouble(weatherNode, "PM10"),
+                    readText(weatherNode, "PM10_INDEX", DEFAULT_CONGEST_LEVEL),
+                    readDouble(forecastNode, "RAIN_CHANCE"),
+                    readText(targetNode, "EVENT_NM", null),
+                    extractDistinctTexts(targetNode, "SUB_STTS", "SUB_STN_NM"),
+                    extractDistinctTexts(targetNode, "SUB_STTS", "SUB_LINE"),
+                    extractDistinctTexts(targetNode, "BUS_STN_STTS", "BUS_STN_NM"),
+                    extractDistinctTexts(targetNode, "SBIKE_STTS", "SBIKE_SPOT_NM"));
         } catch (CustomException exception) {
             throw exception;
         } catch (WebClientResponseException exception) {
+            log.warn(
+                    "[SeoulRealtime] HTTP error. areaNm={}, status={}, body={}",
+                    areaNm,
+                    exception.getStatusCode(),
+                    exception.getResponseBodyAsString());
             throw new CustomException(
                     ErrorCode.SEOUL_REALTIME_API_CALL_FAILED,
                     "서울시 실시간 도시데이터 API 호출에 실패했습니다. areaNm=" + areaNm,
                     exception
             );
         } catch (Exception exception) {
+            log.warn(
+                    "[SeoulRealtime] 처리 실패. areaNm={}, ex={}, msg={}",
+                    areaNm,
+                    exception.getClass().getSimpleName(),
+                    exception.getMessage(),
+                    exception);
             throw new CustomException(
                     ErrorCode.SEOUL_REALTIME_API_CALL_FAILED,
-                    "서울시 실시간 도시데이터 API 처리 중 오류가 발생했습니다. areaNm=" + areaNm,
+                    "서울시 실시간 도시데이터 API 처리 중 오류가 발생했습니다. areaNm=" + areaNm
+                            + ", cause=" + exception.getClass().getSimpleName() + ": "
+                            + exception.getMessage(),
                     exception
             );
         }
     }
 
     private void validateProperties() {
-        if (!StringUtils.hasText(properties.baseUrl()) || !StringUtils.hasText(properties.apiKey())) {
+        String baseUrl = properties.baseUrl();
+        String apiKey = properties.apiKey();
+        if (!StringUtils.hasText(baseUrl) || !StringUtils.hasText(apiKey)) {
             throw new CustomException(
                     ErrorCode.SEOUL_REALTIME_API_CALL_FAILED,
                     "seoul-open-api.base-url 또는 seoul-open-api.api-key 설정이 비어 있습니다."
             );
+        }
+        // env 가 resolve 안 돼서 `${VAR}` 리터럴이 박혀 있으면 WebClient 가 URI placeholder 로 오인 → 미리 차단
+        if (baseUrl.contains("${") || apiKey.contains("${")) {
+            throw new CustomException(
+                    ErrorCode.SEOUL_REALTIME_API_CALL_FAILED,
+                    "seoul-open-api 설정에 미해결 환경변수 placeholder 가 남아 있습니다. "
+                            + "SEOUL_OPEN_API_BASE_URL / SEOUL_OPEN_API_KEY 환경변수를 확인하세요. "
+                            + "baseUrl=" + baseUrl);
         }
     }
 
@@ -140,7 +182,7 @@ public class SeoulRealtimeClient {
                 return node;
             }
 
-            Iterator<JsonNode> children = node.elements();
+            Iterator<JsonNode> children = node.iterator();
             while (children.hasNext()) {
                 JsonNode found = findTargetAreaNode(children.next(), areaNm);
                 if (found != null) {
@@ -165,6 +207,21 @@ public class SeoulRealtimeClient {
         JsonNode fieldNode = findField(targetNode, fieldName);
         String value = asText(fieldNode);
         return StringUtils.hasText(value) ? value : defaultValue;
+    }
+
+    /** 서울 API 의 RESULT.CODE / RESULT.MESSAGE 같이 점 포함 필드명을 안전하게 읽어옴. */
+    private String readResultText(JsonNode root, String dottedKey) {
+        if (root == null) {
+            return null;
+        }
+        JsonNode resultNode = root.get("RESULT");
+        if (resultNode == null || resultNode.isNull()) {
+            // RESULT 가 root 가 아니라 그 안 어딘가에 있을 수 있음 — 재귀 탐색
+            JsonNode found = findField(root, dottedKey);
+            return asText(found);
+        }
+        JsonNode value = resultNode.get(dottedKey);
+        return asText(value);
     }
 
     private String resolveAddress(JsonNode targetNode) {
@@ -280,7 +337,7 @@ public class SeoulRealtimeClient {
                 return current;
             }
 
-            Iterator<JsonNode> children = node.elements();
+            Iterator<JsonNode> children = node.iterator();
             while (children.hasNext()) {
                 JsonNode found = findField(children.next(), fieldName);
                 if (found != null) {

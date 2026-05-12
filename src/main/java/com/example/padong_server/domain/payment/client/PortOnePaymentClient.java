@@ -3,7 +3,6 @@ package com.example.padong_server.domain.payment.client;
 import com.example.padong_server.domain.payment.dto.PortOneCancelResponse;
 import com.example.padong_server.domain.payment.dto.PortOnePaymentResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -12,15 +11,18 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class PortOnePaymentClient {
 
     private final WebClient.Builder webClientBuilder;
+    private final PortoneProperties props;
 
-    @Value("${portone.base-url:https://api.portone.io}")
-    private String baseUrl;
+    private String baseUrl() {
+        return props.baseUrl();
+    }
 
-    @Value("${portone.api-secret}")
-    private String apiSecret;
+    private String apiSecret() {
+        return props.apiSecret();
+    }
 
     public PortOnePaymentResponse getPayment(String paymentId) {
-        return webClientBuilder.baseUrl(baseUrl)
+        return webClientBuilder.baseUrl(baseUrl())
                 .build()
                 .get()
                 .uri("/payments/{paymentId}", paymentId)
@@ -31,7 +33,7 @@ public class PortOnePaymentClient {
     }
 
     public PortOneCancelResponse cancel(String paymentId, String cancelReason) {
-        return webClientBuilder.baseUrl(baseUrl)
+        return webClientBuilder.baseUrl(baseUrl())
                 .build()
                 .post()
                 .uri("/payments/{paymentId}/cancel", paymentId)
@@ -47,7 +49,7 @@ public class PortOnePaymentClient {
     }
 
     private String getAuthorizationHeader() {
-        return "PortOne " + apiSecret;
+        return "PortOne " + apiSecret();
     }
 
     private record CancelPayload(String reason) {

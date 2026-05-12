@@ -1,36 +1,50 @@
 package com.example.padong_server.global.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@RequiredArgsConstructor
 public class OpenApiConfig {
 
-    @Value("${swagger-config.server-url-http:http://localhost:8080}")
-    private String swaggerServerUrlHttp;
-
-    @Value("${swagger-config.server-url-https:http://localhost:8080}")
-    private String swaggerServerUrlHttps;
+    private final SwaggerProperties swaggerProperties;
 
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
+                .info(
+                        new Info()
+                                .title("Padong API")
+                                .description("파동 백엔드 API 명세")
+                                .version("v1"))
                 .servers(swaggerServerUrls().stream()
                         .map(url -> new Server().url(url))
-                        .toList());
+                        .toList())
+                .components(
+                        new Components()
+                                .addSecuritySchemes(
+                                        "bearer-jwt",
+                                        new SecurityScheme()
+                                                .type(SecurityScheme.Type.HTTP)
+                                                .scheme("bearer")
+                                                .bearerFormat("JWT")
+                                                .in(SecurityScheme.In.HEADER)
+                                                .name("Authorization")));
     }
 
     private List<String> swaggerServerUrls() {
         Set<String> serverUrls = new LinkedHashSet<>();
-        addServerUrl(serverUrls, swaggerServerUrlHttps);
-        addServerUrl(serverUrls, swaggerServerUrlHttp);
+        addServerUrl(serverUrls, swaggerProperties.serverUrlHttps());
+        addServerUrl(serverUrls, swaggerProperties.serverUrlHttp());
         return List.copyOf(serverUrls);
     }
 

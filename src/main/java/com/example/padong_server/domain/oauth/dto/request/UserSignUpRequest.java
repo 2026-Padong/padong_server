@@ -8,7 +8,6 @@ public record UserSignUpRequest(
         String email,
         String picture,
         Role role,
-        Long adminDongId,
-        String businessLicenseImageUrl
-) {
+        Long adminDongId) {
+    // businessLicenseImageUrl 은 multipart 의 businessLicense file part 로부터 서버가 채움
 }

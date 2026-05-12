@@ -21,34 +21,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Make application-prod.yml from secret
-        env:
-          APPLICATION_PROD_YML: ${{ secrets.APPLICATION_PROD_YML }}
-        run: |
-          PROD_YML_PATH="./src/main/resources/application-prod.yml"
-
-          if [ -n "$APPLICATION_PROD_YML" ]; then
-            mkdir -p "$(dirname "$PROD_YML_PATH")"
-            printf '%s\n' "$APPLICATION_PROD_YML" > "$PROD_YML_PATH"
-          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "APPLICATION_PROD_YML secret is empty or unavailable."
-            exit 1
-          else
-            echo "APPLICATION_PROD_YML secret is unavailable for this event. Keeping repository application-prod.yml."
-          fi
-
-          if ! grep -q '^cloud:' "$PROD_YML_PATH"; then
-            printf '\ncloud:\n  aws:\n    region: ${AWS_REGION:ap-northeast-2}\n' >> "$PROD_YML_PATH"
-          fi
-
-          if ! grep -q '^s3:' "$PROD_YML_PATH"; then
-            printf '\ns3:\n  bucket: ${S3_BUCKET:padong}\n  prefix: ${S3_PREFIX:padongBE}\n' >> "$PROD_YML_PATH"
-          fi
-
-          test -s "$PROD_YML_PATH"
-          echo "application-prod.yml size: $(wc -c < "$PROD_YML_PATH") bytes"
-        shell: bash
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -118,42 +90,54 @@ jobs:
 
       - name: Create runtime env file
         env:
-          RDS_URL: ${{ secrets.RDS_URL }}
-          RDS_USERNAME: ${{ secrets.RDS_USERNAME }}
-          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
           KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
-          AI_DB_JDBC_URL: ${{ secrets.AI_DB_JDBC_URL }}
-          AI_DB_USERNAME: ${{ secrets.AI_DB_USERNAME }}
-          AI_DB_PASSWORD: ${{ secrets.AI_DB_PASSWORD }}
+          SWAGGER_SERVER_URL_HTTP: ${{ secrets.SWAGGER_SERVER_URL_HTTP }}
+          SWAGGER_SERVER_URL_HTTPS: ${{ secrets.SWAGGER_SERVER_URL_HTTPS }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
+          OPEN_SEARCH_URL: ${{ secrets.OPEN_SEARCH_URL }}
+          OPEN_SEARCH_USERNAME: ${{ secrets.OPEN_SEARCH_USERNAME }}
+          OPEN_SEARCH_PASSWORD: ${{ secrets.OPEN_SEARCH_PASSWORD }}
           SEOUL_OPEN_API_BASE_URL: ${{ secrets.SEOUL_OPEN_API_BASE_URL }}
           SEOUL_OPEN_API_KEY: ${{ secrets.SEOUL_OPEN_API_KEY }}
+          TOUR_API_BASE_URL: ${{ secrets.TOUR_API_BASE_URL }}
           TOUR_API_SERVICE_KEY: ${{ secrets.TOUR_API_SERVICE_KEY }}
           NAVER_NEWS_CLIENT_ID: ${{ secrets.NAVER_NEWS_CLIENT_ID }}
           NAVER_NEWS_CLIENT_SECRET: ${{ secrets.NAVER_NEWS_CLIENT_SECRET }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORTONE_BASE_URL: ${{ secrets.PORTONE_BASE_URL }}
           PORTONE_API_SECRET: ${{ secrets.PORTONE_API_SECRET }}
+          SK_ADDRESS_API_BASE_URL: ${{ secrets.SK_ADDRESS_API_BASE_URL }}
           SK_OPEN_API_KEY: ${{ secrets.SK_OPEN_API_KEY }}
+          ODSAY_API_BASE_URL: ${{ secrets.ODSAY_API_BASE_URL }}
           ODSAY_API_KEY: ${{ secrets.ODSAY_API_KEY }}
+          GOOGLE_ROUTES_API_BASE_URL: ${{ secrets.GOOGLE_ROUTES_API_BASE_URL }}
           GOOGLE_ROUTES_API_KEY: ${{ secrets.GOOGLE_ROUTES_API_KEY }}
+          AI_SERVER_URL: ${{ secrets.AI_SERVER_URL }}
+          AI_DB_JDBC_URL: ${{ secrets.AI_DB_JDBC_URL }}
+          AI_DB_USERNAME: ${{ secrets.AI_DB_USERNAME }}
+          AI_DB_PASSWORD: ${{ secrets.AI_DB_PASSWORD }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_PREFIX: ${{ secrets.S3_PREFIX }}
         run: |
           set -euo pipefail
 
           required_vars=(
-            RDS_URL
-            RDS_USERNAME
-            RDS_PASSWORD
+            DB_URL
+            DB_USERNAME
+            DB_PASSWORD
             KAKAO_CLIENT_ID
             KAKAO_CLIENT_SECRET
-            AI_DB_JDBC_URL
-            AI_DB_USERNAME
-            AI_DB_PASSWORD
             SEOUL_OPEN_API_BASE_URL
             SEOUL_OPEN_API_KEY
             TOUR_API_SERVICE_KEY
             NAVER_NEWS_CLIENT_ID
             NAVER_NEWS_CLIENT_SECRET
-            JWT_SECRET
             PORTONE_API_SECRET
             SK_OPEN_API_KEY
             ODSAY_API_KEY
@@ -172,27 +156,42 @@ jobs:
           fi
 
           {
-            printf 'SPRING_PROFILES_ACTIVE=prod\n'
-            printf 'RDS_URL=%s\n' "$RDS_URL"
-            printf 'RDS_USERNAME=%s\n' "$RDS_USERNAME"
-            printf 'RDS_PASSWORD=%s\n' "$RDS_PASSWORD"
+            printf 'SPRING_PROFILES_ACTIVE=dev\n'
+            printf 'DB_URL=%s\n' "$DB_URL"
+            printf 'DB_USERNAME=%s\n' "$DB_USERNAME"
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
             printf 'REDIS_HOST=%s\n' "$REDIS_CONTAINER_NAME"
-            printf 'REDIS_PORT=6379\n'
+            printf 'REDIS_PORT=%s\n' "${REDIS_PORT:-6379}"
             printf 'KAKAO_CLIENT_ID=%s\n' "$KAKAO_CLIENT_ID"
             printf 'KAKAO_CLIENT_SECRET=%s\n' "$KAKAO_CLIENT_SECRET"
-            printf 'AI_DB_JDBC_URL=%s\n' "$AI_DB_JDBC_URL"
-            printf 'AI_DB_USERNAME=%s\n' "$AI_DB_USERNAME"
-            printf 'AI_DB_PASSWORD=%s\n' "$AI_DB_PASSWORD"
+            printf 'SWAGGER_SERVER_URL_HTTP=%s\n' "${SWAGGER_SERVER_URL_HTTP:-http://localhost:8080}"
+            printf 'SWAGGER_SERVER_URL_HTTPS=%s\n' "${SWAGGER_SERVER_URL_HTTPS:-http://localhost:8080}"
+            printf 'CORS_ALLOWED_ORIGINS=%s\n' "${CORS_ALLOWED_ORIGINS:-http://localhost:8080,http://localhost:3000}"
+            printf 'OPEN_SEARCH_URL=%s\n' "${OPEN_SEARCH_URL:-}"
+            printf 'OPEN_SEARCH_USERNAME=%s\n' "${OPEN_SEARCH_USERNAME:-}"
+            printf 'OPEN_SEARCH_PASSWORD=%s\n' "${OPEN_SEARCH_PASSWORD:-}"
             printf 'SEOUL_OPEN_API_BASE_URL=%s\n' "$SEOUL_OPEN_API_BASE_URL"
             printf 'SEOUL_OPEN_API_KEY=%s\n' "$SEOUL_OPEN_API_KEY"
+            printf 'TOUR_API_BASE_URL=%s\n' "${TOUR_API_BASE_URL:-https://apis.data.go.kr}"
             printf 'TOUR_API_SERVICE_KEY=%s\n' "$TOUR_API_SERVICE_KEY"
             printf 'NAVER_NEWS_CLIENT_ID=%s\n' "$NAVER_NEWS_CLIENT_ID"
             printf 'NAVER_NEWS_CLIENT_SECRET=%s\n' "$NAVER_NEWS_CLIENT_SECRET"
-            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            printf 'JWT_SECRET=%s\n' "${JWT_SECRET:-}"
+            printf 'PORTONE_BASE_URL=%s\n' "${PORTONE_BASE_URL:-https://api.portone.io}"
             printf 'PORTONE_API_SECRET=%s\n' "$PORTONE_API_SECRET"
+            printf 'SK_ADDRESS_API_BASE_URL=%s\n' "${SK_ADDRESS_API_BASE_URL:-https://apis.openapi.sk.com}"
             printf 'SK_OPEN_API_KEY=%s\n' "$SK_OPEN_API_KEY"
+            printf 'ODSAY_API_BASE_URL=%s\n' "${ODSAY_API_BASE_URL:-https://api.odsay.com}"
             printf 'ODSAY_API_KEY=%s\n' "$ODSAY_API_KEY"
-            printf 'GOOGLE_ROUTES_API_KEY=%s\n' "$GOOGLE_ROUTES_API_KEY"
+            printf 'GOOGLE_ROUTES_API_BASE_URL=%s\n' "${GOOGLE_ROUTES_API_BASE_URL:-https://routes.googleapis.com}"
+            printf 'GOOGLE_ROUTES_API_KEY=%s\n' "${GOOGLE_ROUTES_API_KEY:-}"
+            printf 'AI_SERVER_URL=%s\n' "${AI_SERVER_URL:-}"
+            printf 'AI_DB_JDBC_URL=%s\n' "${AI_DB_JDBC_URL:-}"
+            printf 'AI_DB_USERNAME=%s\n' "${AI_DB_USERNAME:-}"
+            printf 'AI_DB_PASSWORD=%s\n' "${AI_DB_PASSWORD:-}"
+            printf 'AWS_REGION=%s\n' "${AWS_REGION:-ap-northeast-2}"
+            printf 'S3_BUCKET=%s\n' "${S3_BUCKET:-padong}"
+            printf 'S3_PREFIX=%s\n' "${S3_PREFIX:-padongBE}"
           } > artifact/padong-server.env
 
           chmod 600 artifact/padong-server.env

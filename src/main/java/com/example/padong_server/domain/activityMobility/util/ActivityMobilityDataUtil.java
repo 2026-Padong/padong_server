@@ -24,7 +24,7 @@ public class ActivityMobilityDataUtil {
     private static final String CSV_READ_FAILURE_MESSAGE = "Failed to read activity mobility CSV";
 
     private static final List<String> EXPECTED_CSV_HEADERS =
-            List.of("기준월", "직장행정동코드", "거주행정동코드", "출퇴근유동인구", "출근인구", "퇴근인구", "평균이동시간");
+            List.of("기준년월", "직장행정동코드", "거주행정동코드", "출퇴근가중치", "출근인구", "퇴근인구", "평균이동시간");
 
     private static final List<ActivityMobilityCsvFile> CSV_FILES =
             List.of(
@@ -95,14 +95,14 @@ public class ActivityMobilityDataUtil {
 
     private ActivityMobilityCsvRow toCsvRow(
             String expectedMonth, String sourceName, int lineNumber, Map<String, String> row) {
-        String month = requireNonBlank(row, "기준월");
+        String month = requireNonBlank(row, "기준년월");
         Preconditions.validate(month.equals(expectedMonth), ErrorCode.VALIDATION_ERROR);
 
         return new ActivityMobilityCsvRow(
                 month,
                 requireNonBlank(row, "직장행정동코드"),
                 requireNonBlank(row, "거주행정동코드"),
-                parseDouble(row.get("출퇴근유동인구"), "출퇴근유동인구", sourceName, lineNumber),
+                parseDouble(row.get("출퇴근가중치"), "출퇴근가중치", sourceName, lineNumber),
                 parseDouble(row.get("출근인구"), "출근인구", sourceName, lineNumber),
                 parseDouble(row.get("퇴근인구"), "퇴근인구", sourceName, lineNumber),
                 parseDouble(row.get("평균이동시간"), "평균이동시간", sourceName, lineNumber));

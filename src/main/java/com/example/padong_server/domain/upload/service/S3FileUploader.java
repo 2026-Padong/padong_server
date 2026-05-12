@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -41,54 +42,45 @@ public class S3FileUploader {
 
     public String uploadBusinessLicense(MultipartFile file, Long userId) {
         validate(file);
-        String key =
-                BUSINESS_LICENSE_PREFIX
-                        + "/"
-                        + userId
-                        + "/"
-                        + UUID.randomUUID()
-                        + extOf(file.getContentType());
+        String key = buildKey(BUSINESS_LICENSE_PREFIX, userId, file.getContentType());
         putObject(key, file);
         return publicUrl(key);
     }
 
     public String uploadProfilePicture(MultipartFile file, Long userId) {
         validateProfilePicture(file);
-        String key =
-                PROFILE_PICTURE_PREFIX
-                        + "/"
-                        + userId
-                        + "/"
-                        + UUID.randomUUID()
-                        + extOf(file.getContentType());
+        String key = buildKey(PROFILE_PICTURE_PREFIX, userId, file.getContentType());
         putObject(key, file);
         return publicUrl(key);
     }
 
     public String uploadStoreThumbnail(MultipartFile file, Long storeId) {
         validateStoreImage(file);
-        String key =
-                STORE_THUMBNAIL_PREFIX
-                        + "/"
-                        + storeId
-                        + "/"
-                        + UUID.randomUUID()
-                        + extOf(file.getContentType());
+        String key = buildKey(STORE_THUMBNAIL_PREFIX, storeId, file.getContentType());
         putObject(key, file);
         return publicUrl(key);
     }
 
     public String uploadStoreImage(MultipartFile file, Long storeId) {
         validateStoreImage(file);
-        String key =
-                STORE_IMAGE_PREFIX
-                        + "/"
-                        + storeId
-                        + "/"
-                        + UUID.randomUUID()
-                        + extOf(file.getContentType());
+        String key = buildKey(STORE_IMAGE_PREFIX, storeId, file.getContentType());
         putObject(key, file);
         return publicUrl(key);
+    }
+
+    /**
+     * S3 key 통합 빌더 — aws.s3.prefix 가 설정돼 있으면 항상 prepend.
+     * 결과: {aws.s3.prefix}/{kind}/{ownerId}/{uuid}{ext}
+     */
+    private String buildKey(String kind, Long ownerId, String contentType) {
+        String tail = kind + "/" + ownerId + "/" + UUID.randomUUID() + extOf(contentType);
+        String prefix = stripSlashes(props.s3().prefix());
+        return StringUtils.hasText(prefix) ? prefix + "/" + tail : tail;
+    }
+
+    private String stripSlashes(String value) {
+        if (!StringUtils.hasText(value)) return "";
+        return value.trim().replaceAll("^/+", "").replaceAll("/+$", "");
     }
 
     /** URL 이 우리 S3 버킷 객체면 삭제. 외부 CDN (카카오 등) URL 이면 무시. */

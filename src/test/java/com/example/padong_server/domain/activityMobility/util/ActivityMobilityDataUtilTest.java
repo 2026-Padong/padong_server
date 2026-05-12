@@ -23,7 +23,7 @@ class ActivityMobilityDataUtilTest {
     @DisplayName("Reads activity-mobility CSV rows and normalizes BOM, blanks, and numeric fields")
     void readsActivityMobilityCsvRows() {
         String csv =
-                "\uFEFF기준월,직장행정동코드,거주행정동코드,출퇴근유동인구,출근인구,퇴근인구,평균이동시간\n"
+                "\uFEFF기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,퇴근인구,평균이동시간\n"
                         + "202603,1113075,1121058,41449.31,45053.56,27032.30,172.30\n"
                         + "\n"
                         + "202603,1119054,1113075,123.45,100,50,42\n";
@@ -49,7 +49,7 @@ class ActivityMobilityDataUtilTest {
     @DisplayName("Rejects unexpected CSV headers")
     void rejectsUnexpectedHeaders() {
         String csv =
-                "기준월,직장행정동코드,거주행정동코드,출퇴근유동인구,출근인구,평균이동시간\n"
+                "기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,평균이동시간\n"
                         + "202603,1113075,1121058,41449.31,45053.56,172.30\n";
 
         assertThatThrownBy(
@@ -65,7 +65,7 @@ class ActivityMobilityDataUtilTest {
     @DisplayName("Rejects rows whose month does not match the expected file month")
     void rejectsUnexpectedMonth() {
         String csv =
-                "기준월,직장행정동코드,거주행정동코드,출퇴근유동인구,출근인구,퇴근인구,평균이동시간\n"
+                "기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,퇴근인구,평균이동시간\n"
                         + "202602,1113075,1121058,41449.31,45053.56,27032.30,172.30\n";
 
         assertThatThrownBy(
@@ -81,7 +81,7 @@ class ActivityMobilityDataUtilTest {
     @DisplayName("Rejects blank admin-dong codes")
     void rejectsBlankAdminDongCodes() {
         String csv =
-                "기준월,직장행정동코드,거주행정동코드,출퇴근유동인구,출근인구,퇴근인구,평균이동시간\n"
+                "기준년월,직장행정동코드,거주행정동코드,출퇴근가중치,출근인구,퇴근인구,평균이동시간\n"
                         + "202603,,1121058,41449.31,45053.56,27032.30,172.30\n";
 
         assertThatThrownBy(

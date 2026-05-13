@@ -18,6 +18,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException exception) {
         ErrorCode errorCode = exception.getErrorCode();
+        log.warn("[CustomException] code={} status={} msg={}",
+                errorCode.getCode(), errorCode.getStatus(), exception.getMessage());
         return ResponseEntity.status(errorCode.getStatus())
                 .body(
                         ErrorResponse.builder()

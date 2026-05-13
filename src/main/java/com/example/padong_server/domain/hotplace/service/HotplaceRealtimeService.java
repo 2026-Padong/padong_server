@@ -210,6 +210,7 @@ public class HotplaceRealtimeService {
                 .gender(toGender(realtimeData))
                 .transport(toTransport(realtimeData))
                 .roadTraffic(toRoadTraffic(realtimeData))
+                .dataTime(realtimeData.ppltnTime())
                 .build();
     }
 

@@ -40,6 +40,8 @@ public interface AdminDongRepository extends JpaRepository<AdminDong, Long> {
 
     Optional<AdminDong> findByAdminDongCode(String adminDongCode);
 
+    List<AdminDong> findByAdminDongCodeIn(Collection<String> adminDongCodes);
+
     default AdminDong getByAdminDongCode(String adminDongCode) {
         Preconditions.validate(
                 adminDongCode != null && !adminDongCode.trim().isEmpty(),

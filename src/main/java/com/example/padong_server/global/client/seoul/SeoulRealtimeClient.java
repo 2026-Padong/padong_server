@@ -121,7 +121,8 @@ public class SeoulRealtimeClient {
                     extractDistinctTexts(targetNode, "SUB_STTS", "SUB_STN_NM"),
                     extractDistinctTexts(targetNode, "SUB_STTS", "SUB_LINE"),
                     extractDistinctTexts(targetNode, "BUS_STN_STTS", "BUS_STN_NM"),
-                    extractDistinctTexts(targetNode, "SBIKE_STTS", "SBIKE_SPOT_NM"));
+                    extractDistinctTexts(targetNode, "SBIKE_STTS", "SBIKE_SPOT_NM"),
+                    readText(targetNode, "PPLTN_TIME", null));
         } catch (CustomException exception) {
             throw exception;
         } catch (WebClientResponseException exception) {

@@ -6,5 +6,5 @@ import java.util.List;
 public record AiDongneRecommendationResponse(
         @JsonProperty("user_type")
         String userType,
-        List<Long> recommendations
+        List<String> recommendations
 ) {}

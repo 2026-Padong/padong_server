@@ -18,4 +18,5 @@ public class HotplaceRealtimeItem {
     private final HotplaceGender gender;
     private final HotplaceTransport transport;
     private final RoadTrafficInfo roadTraffic;
+    private final String dataTime;
 }

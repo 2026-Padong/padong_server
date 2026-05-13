@@ -44,19 +44,19 @@ public class DongneRecommendationService {
 
         AiDongneRecommendationResponse aiResponse =
                 aiRecommendationClient.getPersonalRecommendations(request);
-        List<Long> recommendationIds =
+        List<String> recommendationCodes =
                 aiResponse == null || aiResponse.recommendations() == null
                         ? Collections.emptyList()
                         : aiResponse.recommendations();
 
-        Map<Long, AdminDong> adminDongById =
-                adminDongRepository.findAllById(recommendationIds).stream()
-                        .collect(Collectors.toMap(AdminDong::getId, Function.identity()));
+        Map<String, AdminDong> adminDongByCode =
+                adminDongRepository.findByAdminDongCodeIn(recommendationCodes).stream()
+                        .collect(Collectors.toMap(AdminDong::getAdminDongCode, Function.identity()));
 
-        // 입력 순서 유지하면서 매핑 안 된 ID 는 drop
+        // 입력 순서 유지하면서 매핑 안 된 코드는 drop
         List<AdminDong> orderedDongs =
-                recommendationIds.stream()
-                        .map(adminDongById::get)
+                recommendationCodes.stream()
+                        .map(adminDongByCode::get)
                         .filter(Objects::nonNull)
                         .toList();
 

@@ -37,4 +37,5 @@ public record SeoulRealtimeData(
         List<String> subwayStationNames,
         List<String> subwayLines,
         List<String> busStopNames,
-        List<String> bikeStationNames) {}
+        List<String> bikeStationNames,
+        String ppltnTime) {}

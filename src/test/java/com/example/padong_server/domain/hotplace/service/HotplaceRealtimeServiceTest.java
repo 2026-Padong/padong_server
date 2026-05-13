@@ -238,7 +238,7 @@ class HotplaceRealtimeServiceTest {
                         null, null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null, null, null, null,
-                        List.of(), List.of(), List.of(), List.of()));
+                        List.of(), List.of(), List.of(), List.of(), null));
         given(subwayTransferInfoService.findLinesByStationName("정보 없음")).willReturn(List.of());
 
         DistrictRealtimeResponse response = hotplaceRealtimeService.getDistrictRealtime("종로구");
@@ -340,6 +340,7 @@ class HotplaceRealtimeServiceTest {
                 subwayStationNames,
                 subwayLines,
                 busStopNames,
-                bikeStationNames);
+                bikeStationNames,
+                null);
     }
 }

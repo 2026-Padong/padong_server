@@ -59,7 +59,7 @@ public class AiRecommendationClient {
                 .queryParam("q9", request.getQ9())
                 .queryParam("q10", request.getQ10());
 
-        if (request.getUserId() != null) {
+        if (request.getUserId() != null && request.getUserId() >= 1) {
             builder.queryParam("user_id", request.getUserId());
         }
 

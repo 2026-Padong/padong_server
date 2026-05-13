@@ -100,6 +100,17 @@ ai:
     password: ${AI_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+demo:
+  scheduler:
+    # 시연용 데모 데이터 — 매일 KST 00:00/00:01 자동으로 가게별 모임 갱신.
+    # 운영 시작 시 false 로 변경 권장 (DemoFlowScheduler 참조)
+    enabled: ${DEMO_SCHEDULER_ENABLED:true}
+
+news:
+  scheduler:
+    # 뉴스 자동 갱신 (6시간 주기 — NewsScheduler 참조)
+    enabled: ${NEWS_SCHEDULER_ENABLED:true}
+
 aws:
   region: ${AWS_REGION:ap-northeast-2}
   access-key: ${AWS_ACCESS_KEY_ID:}

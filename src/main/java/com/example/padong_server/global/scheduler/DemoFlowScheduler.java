@@ -1,7 +1,9 @@
 package com.example.padong_server.global.scheduler;
 
 import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
+import com.example.padong_server.domain.orderFlow.entity.OrderFlowMenu;
 import com.example.padong_server.domain.orderFlow.entity.OrderFlowStatus;
+import com.example.padong_server.domain.orderFlow.repository.OrderFlowMenuRepository;
 import com.example.padong_server.domain.orderFlow.repository.OrderFlowRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,6 +45,7 @@ public class DemoFlowScheduler {
             OrderFlowStatus.READY);
 
     private final OrderFlowRepository orderFlowRepository;
+    private final OrderFlowMenuRepository orderFlowMenuRepository;
 
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
     @Transactional
@@ -89,9 +92,29 @@ public class DemoFlowScheduler {
                     .currentParticipants(1)
                     .build();
             orderFlowRepository.save(createdFlow);
+            copyOrderFlowMenus(template, createdFlow);
             created++;
         }
         log.info("[demo-scheduler] created {} new flows for {}", created, today);
+    }
+
+    /**
+     * template flow 의 OrderFlowMenu 들을 새 flow 로 복제 — 안 하면 결제 시
+     * {@code INVALID_GROUP_ORDER_MENU} 발생.
+     */
+    private void copyOrderFlowMenus(OrderFlow template, OrderFlow created) {
+        List<OrderFlowMenu> templates =
+                orderFlowMenuRepository.findByOrderFlowIdOrderBySortOrderAsc(template.getId());
+        for (OrderFlowMenu src : templates) {
+            orderFlowMenuRepository.save(OrderFlowMenu.builder()
+                    .orderFlow(created)
+                    .menu(src.getMenu())
+                    .sortOrder(src.getSortOrder())
+                    .menuInfoSnapshot(src.getMenuInfoSnapshot())
+                    .priceSnapshot(src.getPriceSnapshot())
+                    .soldOut(src.isSoldOut())
+                    .build());
+        }
     }
 
     /** 마감 시각 — 가게 close 30분 전. 자정 넘는 가게는 내일 close - 30분. */

@@ -41,3 +41,5 @@ out/
 .codex/
 artifact/
 src/main/resources/data/
+db/
+*.sql

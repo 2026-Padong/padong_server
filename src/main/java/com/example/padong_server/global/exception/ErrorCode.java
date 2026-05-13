@@ -40,6 +40,8 @@ public enum ErrorCode {
     AI_LOG_DB_ERROR(HttpStatus.BAD_GATEWAY, "AI_LOG_DB_ERROR", "AI 로그 DB 처리 중 오류가 발생했습니다."),
     RECOMMENDATION_LOG_NOT_FOUND(
             HttpStatus.NOT_FOUND, "RECOMMENDATION_LOG_NOT_FOUND", "수정할 추천 로그를 찾을 수 없습니다."),
+    PREFERENCE_ANSWERS_NOT_FOUND(
+            HttpStatus.NOT_FOUND, "PREFERENCE_ANSWERS_NOT_FOUND", "저장된 취향 설문 답변이 없습니다."),
 
     // Dongne
     INVALID_GU_NAME(HttpStatus.BAD_REQUEST, "INVALID_GU_NAME", "존재하지 않는 자치구 이름입니다."),

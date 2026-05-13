@@ -34,10 +34,14 @@ public class DongneRecommendationService {
     private final AdminDongBoundaryService boundaryService;
     private final DongneLikeService dongneLikeService;
     private final SafetyIndexService safetyIndexService;
+    private final UserPreferenceAnswerService userPreferenceAnswerService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DongneRecommendationResponse getPersonalRecommendations(
             PersonalRecommendationRequest request, int page, int size) {
+        // 인증된 유저면 답변 upsert — 결과 페이지 새로고침/공유 시 재호출용
+        userPreferenceAnswerService.upsert(request.getUserId(), request);
+
         AiDongneRecommendationResponse aiResponse =
                 aiRecommendationClient.getPersonalRecommendations(request);
         List<Long> recommendationIds =

@@ -42,14 +42,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * dev 프로필 startup 시 mock 데이터 시드.
+ * dev / prod startup 시 mock 데이터 시드.
  * - 가게 6개 (카테고리 다양, weekdayMask 다양, sold-out 일부)
  * - 각 가게별 메뉴 3개 + GroupOrder + OrderFlow(모임) 자동 생성
  * - 모임은 다양한 OrderFlowStatus 분포로 (PENDING / WAITING_APPROVAL / COMPLETED 등)
  * - 시드 가게 이미 있으면 개별 skip — 재실행 안전
  */
 @Component
-@Profile("dev")
+@Profile({"dev", "prod"})
 @RequiredArgsConstructor
 @Slf4j
 public class DevDataSeeder implements ApplicationRunner {

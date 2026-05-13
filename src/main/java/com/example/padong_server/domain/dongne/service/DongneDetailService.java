@@ -9,6 +9,7 @@ import com.example.padong_server.domain.dongne.dto.DongneMobilityResponse;
 import com.example.padong_server.domain.dongne.dto.DongneSummaryResponse;
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongneLike.service.DongneLikeService;
+import com.example.padong_server.domain.path.dto.internal.PathSummary;
 import com.example.padong_server.domain.path.dto.request.PathAllRequest;
 import com.example.padong_server.domain.path.dto.response.PathAllResponse;
 import com.example.padong_server.domain.path.service.PathService;
@@ -116,9 +117,16 @@ public class DongneDetailService {
     }
 
     private PathAllResponse.Paths resolvePaths(AdminDong selectedDong, AdminDong workDong) {
-        if (workDong == null
-                || workDong.getAdminDongCode().equals(selectedDong.getAdminDongCode())) {
+        if (workDong == null) {
             return null;
+        }
+        if (workDong.getAdminDongCode().equals(selectedDong.getAdminDongCode())) {
+            PathSummary zero = new PathSummary(0, 0, null);
+            return PathAllResponse.Paths.builder()
+                    .transit(zero)
+                    .pedestrian(zero)
+                    .car(zero)
+                    .build();
         }
         // PathService 가 외부 인프라 예외를 CustomException 으로 정규화해서 던짐.
         // 키 미설정·700m 이내·결과 없음·외부 4xx/5xx 등 어떤 실패든 paths 만 null 로 떨어뜨리고

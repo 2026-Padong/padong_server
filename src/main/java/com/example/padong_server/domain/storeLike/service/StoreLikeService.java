@@ -17,6 +17,7 @@ import com.example.padong_server.global.CursorPageResponse;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class StoreLikeService {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private static final List<OrderFlowStatus> ORDER_FLOW_ACTIVE_STATUSES =
             List.copyOf(EnumSet.of(
@@ -112,7 +115,7 @@ public class StoreLikeService {
                     .findTopByStoreIdAndStatusInOrderByIdDesc(sid, ORDER_FLOW_ACTIVE_STATUSES)
                     .ifPresent(f -> activeFlowByStoreId.put(sid, f));
         }
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KST);
 
         return CursorPageResponse.from(
                 fetched,

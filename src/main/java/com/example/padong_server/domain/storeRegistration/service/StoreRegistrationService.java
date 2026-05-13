@@ -32,6 +32,7 @@ import com.example.padong_server.global.client.sk.SkAddressClient;
 import com.example.padong_server.global.exception.CustomException;
 import com.example.padong_server.global.exception.ErrorCode;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -48,6 +49,8 @@ import org.springframework.util.StringUtils;
 @Service
 @RequiredArgsConstructor
 public class StoreRegistrationService {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private static final List<OrderFlowStatus> ORDER_FLOW_ACTIVE_STATUSES =
             List.copyOf(EnumSet.of(
@@ -206,7 +209,7 @@ public class StoreRegistrationService {
         List<StoreImage> galleryImages = storeImageRepository.findByStoreIdOrderBySortOrderAsc(storeId);
         boolean likedByCurrentUser =
                 currentUserId != null && storeLikeService.isLikedByUser(storeId, currentUserId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KST);
         OrderFlow activeFlow = orderFlowRepository
                 .findTopByStoreIdAndStatusInOrderByIdDesc(storeId, ORDER_FLOW_ACTIVE_STATUSES)
                 .orElse(null);
@@ -233,7 +236,7 @@ public class StoreRegistrationService {
                 storeRegistrationRepository.findAll(
                         StoreSpecifications.from(criteria, currentUserId), pageable);
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KST);
         List<Long> storeIds = page.getContent().stream().map(Store::getId).toList();
         Map<Long, GroupOrder> activeByStoreId =
                 storeIds.isEmpty()
@@ -286,7 +289,7 @@ public class StoreRegistrationService {
             return List.of();
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KST);
         List<Long> storeIds = stores.stream().map(Store::getId).toList();
         Map<Long, GroupOrder> activeByStoreId =
                 groupOrderRepository.findByStoreIdInAndStatus(storeIds, GroupOrderStatus.OPEN).stream()

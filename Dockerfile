@@ -4,6 +4,7 @@ WORKDIR /app
 
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV SERVER_PORT=8080
+ENV TZ=Asia/Seoul
 
 COPY artifact/app.jar app.jar
 

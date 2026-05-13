@@ -13,10 +13,11 @@ public record OrderFlowCreateRequest(
         @Schema(description = "가게 ID", example = "12") @NotNull Long storeId,
         @Schema(description = "묶을 메뉴 ID 배열 (1개 이상)", example = "[7, 8]")
                 @NotEmpty List<Long> menuIds,
-        @Schema(description = "모집 시작 시각 (생략 시 현재)") @JsonFormat(shape = JsonFormat.Shape.STRING)
+        @Schema(description = "모집 시작 시각 (생략 시 현재)")
+                @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd[' '][T]HH:mm[:ss]")
                 LocalDateTime recruitmentStart,
         @Schema(description = "모집 마감 시각") @NotNull
-                @JsonFormat(shape = JsonFormat.Shape.STRING)
+                @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd[' '][T]HH:mm[:ss]")
                 LocalDateTime recruitmentDeadline,
         @Schema(description = "1인당 최소 주문 수량", example = "1")
                 @NotNull @Min(1) Integer minOrderPerPerson,

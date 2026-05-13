@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,15 @@ public class NewsController {
     public ResponseEntity<ResponseDTO<NewsResponse>> getNews(
             @Parameter(description = "행정동 PK", example = "12") @RequestParam Long adminDongId) {
         return ResponseEntity.ok(newsService.getNewsByAdminDongId(adminDongId));
+    }
+
+    @PostMapping("/refresh")
+    @Operation(
+            summary = "전체 행정동 뉴스 최신화",
+            description = "모든 행정동에 대해 네이버 뉴스 API 를 호출해 최신 뉴스를 적재. 시간 오래 걸림.")
+    public ResponseEntity<String> refreshNews() {
+        newsService.refreshNewsForAllAdminDongs();
+        return ResponseEntity.ok("뉴스 최신화 완료");
     }
 
     @GetMapping("/random")

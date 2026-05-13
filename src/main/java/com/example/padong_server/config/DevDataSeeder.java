@@ -632,6 +632,7 @@ public class DevDataSeeder implements ApplicationRunner {
 
     /** 기존 가게의 weekday_mask 가 0 이면 127 보정. */
     private void migrateDefaultWeekdayMask() {
+        if (!columnExists("store_registrations", "weekday_mask")) return;
         int updated = jdbcTemplate.update(
                 "UPDATE store_registrations SET weekday_mask = 127 WHERE weekday_mask = 0");
         if (updated > 0) log.info("[DevDataSeeder] weekday_mask 0 → 127 보정 {}건", updated);

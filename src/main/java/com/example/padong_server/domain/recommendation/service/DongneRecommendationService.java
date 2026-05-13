@@ -6,12 +6,17 @@ import com.example.padong_server.domain.dongne.boundary.AdminDongBoundaryService
 import com.example.padong_server.domain.dongne.entity.AdminDong;
 import com.example.padong_server.domain.dongne.repository.AdminDongRepository;
 import com.example.padong_server.domain.dongneLike.service.DongneLikeService;
+import com.example.padong_server.domain.population.entity.Population;
+import com.example.padong_server.domain.population.service.PopulationService;
 import com.example.padong_server.domain.recommendation.client.AiRecommendationClient;
 import com.example.padong_server.domain.recommendation.dto.AiDongneRecommendationResponse;
 import com.example.padong_server.domain.recommendation.dto.DongneRecommendationResponse;
 import com.example.padong_server.domain.recommendation.dto.PersonalRecommendationRequest;
 import com.example.padong_server.domain.recommendationLog.dto.RecommendationResultLogItem;
 import com.example.padong_server.domain.recommendationLog.service.RecommendationLogService;
+import com.example.padong_server.domain.rentPrice.dto.request.RentPriceFilterCriteria;
+import com.example.padong_server.domain.rentPrice.dto.response.SelectedRentPriceResponse;
+import com.example.padong_server.domain.rentPrice.service.RentPriceService;
 import com.example.padong_server.global.PageResponse;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +40,8 @@ public class DongneRecommendationService {
     private final DongneLikeService dongneLikeService;
     private final SafetyIndexService safetyIndexService;
     private final UserPreferenceAnswerService userPreferenceAnswerService;
+    private final RentPriceService rentPriceService;
+    private final PopulationService populationService;
 
     @Transactional
     public DongneRecommendationResponse getPersonalRecommendations(
@@ -73,10 +80,12 @@ public class DongneRecommendationService {
         int to = Math.min(from + cappedSize, total);
         List<AdminDong> pageDongs = from >= total ? List.of() : orderedDongs.subList(from, to);
 
-        // 페이지 행정동만 batch fetch (boundary)
-        Map<String, JsonNode> boundaryByCode =
-                boundaryService.findFeaturesByCodes(
-                        pageDongs.stream().map(AdminDong::getAdminDongCode).toList());
+        // 페이지 행정동만 batch fetch (boundary + rentPrice)
+        List<String> pageDongCodes =
+                pageDongs.stream().map(AdminDong::getAdminDongCode).toList();
+        Map<String, JsonNode> boundaryByCode = boundaryService.findFeaturesByCodes(pageDongCodes);
+        Map<String, SelectedRentPriceResponse> rentPriceByCode =
+                rentPriceService.getSelectedRentPrices(pageDongCodes, RentPriceFilterCriteria.empty());
 
         Long currentUserId = request.getUserId();
         List<MobilitySimpleResponse> content =
@@ -88,7 +97,10 @@ public class DongneRecommendationService {
                                                 safetyIndexService.getOverallGrade(
                                                         dong.getCityName(),
                                                         dong.getDistrictName()),
-                                                null,
+                                                rentPriceByCode.get(dong.getAdminDongCode()),
+                                                populationService.findPopulationByAdmin(dong)
+                                                        .map(Population::getTotalPopulation)
+                                                        .orElse(null),
                                                 boundaryByCode.get(dong.getAdminDongCode()),
                                                 dongneLikeService.getLikeCount(dong.getId()),
                                                 dongneLikeService.isLikedByUser(

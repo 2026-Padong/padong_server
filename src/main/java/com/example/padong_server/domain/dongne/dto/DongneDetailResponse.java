@@ -4,6 +4,7 @@ import com.example.padong_server.domain.activityMobility.dto.SafetyIndexResponse
 import com.example.padong_server.domain.path.dto.response.PathAllResponse;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -35,6 +36,9 @@ public class DongneDetailResponse {
 
     @Schema(description = "선택 동네 와 직장 행정동의 통합 길찾기(대중교통, 보행, 자동차). arrivalAdminDongCode 미입력이거나 출발=도착(같은 행정동)이면 null.")
     private PathAllResponse.Paths paths;
+
+    @Schema(description = "동네 사진 URL 목록 (관광공사 사진). 첫 번째 항목을 대표 이미지로 사용. 없으면 빈 배열")
+    private List<String> images;
 
     @Schema(description = "좋아요 수", example = "23")
     private long likeCount;

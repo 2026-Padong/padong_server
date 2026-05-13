@@ -13,6 +13,8 @@ import com.example.padong_server.domain.path.dto.internal.PathSummary;
 import com.example.padong_server.domain.path.dto.request.PathAllRequest;
 import com.example.padong_server.domain.path.dto.response.PathAllResponse;
 import com.example.padong_server.domain.path.service.PathService;
+import com.example.padong_server.domain.picture.entity.TourPicture;
+import com.example.padong_server.domain.picture.repository.TourPictureRepository;
 import com.example.padong_server.domain.population.entity.Population;
 import com.example.padong_server.domain.population.service.PopulationService;
 import com.example.padong_server.domain.rentPrice.dto.response.AdminDongRentPriceDetailResponse;
@@ -20,6 +22,7 @@ import com.example.padong_server.domain.rentPrice.service.RentPriceService;
 import com.example.padong_server.global.ResponseDTO;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Optional;
 import com.example.padong_server.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +43,7 @@ public class DongneDetailService {
     private final DongneLikeService dongneLikeService;
     private final PathService pathService;
     private final SafetyIndexService safetyIndexService;
+    private final TourPictureRepository tourPictureRepository;
 
     // PathService.searchAll 이 path_record 캐시 upsert 를 수행하므로 readOnly 트랜잭션으로 묶을 수 없음.
     // 캐시 쓰기를 trigger 하는 read 라 사실상 read-only 아님.
@@ -64,6 +68,14 @@ public class DongneDetailService {
         AdminDongRentPriceDetailResponse rentPrice =
                 rentPriceService.getDetail(selectedDong.getAdminDongCode());
         PathAllResponse.Paths paths = resolvePaths(selectedDong, workDong);
+        List<String> images =
+                tourPictureRepository
+                        .findByAdminDongCodeOrderByTitleAscContentIdAsc(
+                                selectedDong.getAdminDongCode())
+                        .stream()
+                        .map(TourPicture::getFirstImageUrl)
+                        .filter(url -> url != null && !url.isBlank())
+                        .toList();
 
         DongneDetailResponse response = DongneDetailResponse.builder()
                 .departureDong(toSummary(selectedDong))
@@ -75,6 +87,7 @@ public class DongneDetailService {
                 .safety(safety)
                 .rentPrice(rentPrice)
                 .paths(paths)
+                .images(images)
                 .likeCount(dongneLikeService.getLikeCount(selectedDong.getId()))
                 .likedByCurrentUser(dongneLikeService.isLikedByUser(selectedDong.getId(), userId))
                 .build();

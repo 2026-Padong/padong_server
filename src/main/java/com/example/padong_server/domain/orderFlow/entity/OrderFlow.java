@@ -72,6 +72,11 @@ public class OrderFlow {
     @Builder.Default
     private Integer currentParticipants = 0;
 
+    /** 현재까지 모인 결제 누적 금액 (원). 결제 성공 시 가산, 취소 시 감산. */
+    @Column(name = "current_amount", nullable = false)
+    @Builder.Default
+    private Integer currentAmount = 0;
+
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
@@ -111,6 +116,17 @@ public class OrderFlow {
 
     public void incrementParticipants() {
         this.currentParticipants = (this.currentParticipants == null ? 0 : this.currentParticipants) + 1;
+    }
+
+    /** 결제 성공 시 누적 금액 가산 — race-condition 회피용 atomic 쿼리는 Repository 측에 있음. */
+    public void addAmount(int amount) {
+        this.currentAmount = (this.currentAmount == null ? 0 : this.currentAmount) + amount;
+    }
+
+    /** 결제 취소 시 누적 금액 감산 — 음수 방지. */
+    public void subtractAmount(int amount) {
+        int cur = this.currentAmount == null ? 0 : this.currentAmount;
+        this.currentAmount = Math.max(0, cur - amount);
     }
 
     /**

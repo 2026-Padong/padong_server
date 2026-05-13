@@ -1,6 +1,7 @@
 package com.example.padong_server.domain.payment.entity;
 
 import com.example.padong_server.domain.oauth.entity.User;
+import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import jakarta.persistence.*;
 import java.time.LocalDate;
@@ -38,8 +39,8 @@ public class Order {
     private PaymentStatus paymentStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_order_id", nullable = false)
-    private GroupOrder groupOrder;
+    @JoinColumn(name = "order_flow_id", nullable = false)
+    private OrderFlow orderFlow;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

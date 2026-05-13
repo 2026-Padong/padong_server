@@ -14,7 +14,6 @@ import com.example.padong_server.domain.orderFlow.repository.OrderFlowRepository
 import com.example.padong_server.domain.payment.entity.Order;
 import com.example.padong_server.domain.payment.entity.OrderMenu;
 import com.example.padong_server.domain.payment.entity.Payment;
-import com.example.padong_server.domain.payment.repository.GroupOrderRepository;
 import com.example.padong_server.domain.payment.repository.OrderMenuRepository;
 import com.example.padong_server.domain.payment.repository.OrderRepository;
 import com.example.padong_server.domain.payment.repository.PaymentRepository;
@@ -48,7 +47,6 @@ public class OrderFlowService {
     private final OrderFlowMenuRepository orderFlowMenuRepository;
     private final MenuRepository menuRepository;
     private final StoreRegistrationRepository storeRepository;
-    private final GroupOrderRepository groupOrderRepository;
     private final OrderRepository orderRepository;
     private final OrderMenuRepository orderMenuRepository;
     private final PaymentRepository paymentRepository;
@@ -186,15 +184,7 @@ public class OrderFlowService {
         if (flow.getStore() == null) {
             return List.of();
         }
-        // 가게의 가장 최근 GroupOrder (active 또는 종료) → 그 PAID Order 들 = 모임 참여자.
-        // 히스토리(COMPLETED) 모임도 참여자 표시 필요.
-        var groupOrder = groupOrderRepository
-                .findTopByStoreIdOrderByIdDesc(flow.getStore().getId())
-                .orElse(null);
-        if (groupOrder == null) {
-            return List.of();
-        }
-        List<Order> orders = orderRepository.findPaidByGroupOrderId(groupOrder.getId());
+        List<Order> orders = orderRepository.findPaidByOrderFlowId(flow.getId());
         if (orders.isEmpty()) return List.of();
 
         List<Long> orderIds = orders.stream().map(Order::getId).toList();

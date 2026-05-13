@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.storeLike.dto;
 
-import com.example.padong_server.domain.payment.entity.GroupOrder;
+import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
 import com.example.padong_server.domain.storeLike.entity.StoreLike;
 import com.example.padong_server.domain.storeRegistration.entity.RecruitmentStatus;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
@@ -28,7 +28,7 @@ public record LikedStoreResponse(
                 Double longitude) {
 
     public static LikedStoreResponse from(
-            StoreLike like, GroupOrder active, RecruitmentStatus recruitmentStatus) {
+            StoreLike like, OrderFlow active, RecruitmentStatus recruitmentStatus) {
         Store s = like.getStore();
         Integer cur = active == null ? null : active.getCurrentParticipants();
         Integer tot = active == null ? null : active.getMaxParticipants();

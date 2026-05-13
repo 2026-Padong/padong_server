@@ -2,7 +2,6 @@ package com.example.padong_server.domain.storeRegistration.dto;
 
 import com.example.padong_server.domain.menu.entity.Menu;
 import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
-import com.example.padong_server.domain.payment.entity.GroupOrder;
 import com.example.padong_server.domain.storeRegistration.entity.RecruitmentStatus;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.entity.StoreCategory;
@@ -43,14 +42,13 @@ public record ShopDetailResponse(
 
     public static ShopDetailResponse from(
             Store store,
-            GroupOrder activeGroupOrder,
             OrderFlow activeOrderFlow,
             List<Menu> menus,
             List<StoreImage> galleryImages,
             boolean likedByCurrentUser,
             RecruitmentStatus recruitmentStatus) {
-        int current = activeGroupOrder == null ? 0 : activeGroupOrder.getCurrentParticipants();
-        Integer total = activeGroupOrder == null ? null : activeGroupOrder.getMaxParticipants();
+        int current = activeOrderFlow == null ? 0 : activeOrderFlow.getCurrentParticipants();
+        Integer total = activeOrderFlow == null ? null : activeOrderFlow.getMaxParticipants();
 
         List<ShopMenuItemResponse> menuResponses =
                 menus.stream().map(ShopMenuItemResponse::from).toList();

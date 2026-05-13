@@ -3,9 +3,6 @@ package com.example.padong_server.domain.storeLike.service;
 import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
 import com.example.padong_server.domain.orderFlow.entity.OrderFlowStatus;
 import com.example.padong_server.domain.orderFlow.repository.OrderFlowRepository;
-import com.example.padong_server.domain.payment.entity.GroupOrder;
-import com.example.padong_server.domain.payment.entity.GroupOrderStatus;
-import com.example.padong_server.domain.payment.repository.GroupOrderRepository;
 import com.example.padong_server.domain.storeLike.dto.LikedStoreResponse;
 import com.example.padong_server.domain.storeLike.dto.StoreLikeToggleResponse;
 import com.example.padong_server.domain.storeLike.entity.StoreLike;
@@ -21,8 +18,6 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -41,7 +36,6 @@ public class StoreLikeService {
 
     private final StoreLikeRepository storeLikeRepository;
     private final StoreRegistrationRepository storeRegistrationRepository;
-    private final GroupOrderRepository groupOrderRepository;
     private final OrderFlowRepository orderFlowRepository;
     private final RecruitmentStatusCalculator recruitmentStatusCalculator;
 
@@ -94,18 +88,6 @@ public class StoreLikeService {
                         userId, cursor, normalizedQ, PageRequest.of(0, cappedSize + 1));
 
         List<Long> storeIds = fetched.stream().map(sl -> sl.getStore().getId()).toList();
-        Map<Long, GroupOrder> activeByStoreId =
-                storeIds.isEmpty()
-                        ? Map.of()
-                        : groupOrderRepository
-                                .findByStoreIdInAndStatus(storeIds, GroupOrderStatus.OPEN)
-                                .stream()
-                                .collect(
-                                        Collectors.toMap(
-                                                go -> go.getStore().getId(),
-                                                Function.identity(),
-                                                (a, b) -> a.getId() > b.getId() ? a : b));
-
         Map<Long, OrderFlow> activeFlowByStoreId = new HashMap<>();
         for (Long sid : storeIds) {
             orderFlowRepository
@@ -121,7 +103,7 @@ public class StoreLikeService {
                 sl ->
                         LikedStoreResponse.from(
                                 sl,
-                                activeByStoreId.get(sl.getStore().getId()),
+                                activeFlowByStoreId.get(sl.getStore().getId()),
                                 recruitmentStatusCalculator.calculate(
                                         sl.getStore(),
                                         activeFlowByStoreId.get(sl.getStore().getId()),

@@ -41,7 +41,7 @@ public class PaymentController {
                     서버 측 가드 (요청이 다음 중 하나면 400 으로 거절):
                     - **GROUP_ORDER_FULL** — 모집 정원 초과 (currentParticipants >= maxParticipants)
                     - **GROUP_ORDER_RECRUITMENT_CLOSED** — 모집 마감 시각 경과
-                    - **SOLD_OUT_MENU** — 요청 메뉴 중 하나라도 sold-out (Menu.soldOut 또는 GroupOrderMenu.soldOut)
+                    - **SOLD_OUT_MENU** — 요청 메뉴 중 하나라도 sold-out (Menu.soldOut 또는 OrderFlowMenu.soldOut)
                     - **INVALID_GROUP_ORDER_MENU** — 공구에 포함되지 않은 메뉴 ID
                     - **MIN_ORDER_AMOUNT_NOT_MET** — 합계가 공구 최소 주문 금액 미달
                     - **INVALID_PAYMENT_REQUEST** — 메뉴/수량 누락 등 요청값 오류

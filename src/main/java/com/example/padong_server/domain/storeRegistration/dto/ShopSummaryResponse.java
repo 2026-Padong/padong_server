@@ -1,6 +1,6 @@
 package com.example.padong_server.domain.storeRegistration.dto;
 
-import com.example.padong_server.domain.payment.entity.GroupOrder;
+import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
 import com.example.padong_server.domain.storeRegistration.entity.RecruitmentStatus;
 import com.example.padong_server.domain.storeRegistration.entity.Store;
 import com.example.padong_server.domain.storeRegistration.entity.StoreCategory;
@@ -34,11 +34,11 @@ public record ShopSummaryResponse(
 
     public static ShopSummaryResponse from(
             Store store,
-            GroupOrder activeGroupOrder,
+            OrderFlow activeFlow,
             boolean likedByCurrentUser,
             RecruitmentStatus recruitmentStatus) {
-        int current = activeGroupOrder == null ? 0 : activeGroupOrder.getCurrentParticipants();
-        Integer total = activeGroupOrder == null ? null : activeGroupOrder.getMaxParticipants();
+        int current = activeFlow == null ? 0 : activeFlow.getCurrentParticipants();
+        Integer total = activeFlow == null ? null : activeFlow.getMaxParticipants();
         return new ShopSummaryResponse(
                 store.getId(),
                 store.getName(),

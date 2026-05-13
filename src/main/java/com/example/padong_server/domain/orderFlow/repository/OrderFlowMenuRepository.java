@@ -11,4 +11,7 @@ public interface OrderFlowMenuRepository extends JpaRepository<OrderFlowMenu, Lo
 
     List<OrderFlowMenu> findByOrderFlowIdInOrderByOrderFlowIdAscSortOrderAsc(
             Collection<Long> orderFlowIds);
+
+    /** 결제 검증용 — 모임에 속한 메뉴 중 사용자가 선택한 메뉴 ID 들만 조회. */
+    List<OrderFlowMenu> findAllByOrderFlowIdAndMenuIdIn(Long orderFlowId, Collection<Long> menuIds);
 }

@@ -9,9 +9,6 @@ import com.example.padong_server.domain.oauth.entity.User;
 import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
 import com.example.padong_server.domain.orderFlow.entity.OrderFlowStatus;
 import com.example.padong_server.domain.orderFlow.repository.OrderFlowRepository;
-import com.example.padong_server.domain.payment.entity.GroupOrder;
-import com.example.padong_server.domain.payment.entity.GroupOrderStatus;
-import com.example.padong_server.domain.payment.repository.GroupOrderRepository;
 import com.example.padong_server.domain.storeLike.service.StoreLikeService;
 import com.example.padong_server.domain.storeRegistration.dto.ShopDetailResponse;
 import com.example.padong_server.domain.storeRegistration.dto.ShopSummaryResponse;
@@ -34,8 +31,6 @@ import com.example.padong_server.global.exception.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -58,7 +53,6 @@ public class StoreRegistrationService {
 
     private final StoreRegistrationRepository storeRegistrationRepository;
     private final StoreLikeService storeLikeService;
-    private final GroupOrderRepository groupOrderRepository;
     private final MenuRepository menuRepository;
     private final StoreImageRepository storeImageRepository;
     private final DongneService dongneService;
@@ -186,8 +180,8 @@ public class StoreRegistrationService {
         ensureOwner(store, currentUserId);
 
         boolean hasActive =
-                groupOrderRepository
-                        .findTopByStoreIdAndStatusOrderByIdDesc(storeId, GroupOrderStatus.OPEN)
+                orderFlowRepository
+                        .findTopByStoreIdAndStatusInOrderByIdDesc(storeId, ORDER_FLOW_ACTIVE_STATUSES)
                         .isPresent();
         if (hasActive) {
             throw new CustomException(ErrorCode.STORE_HAS_ACTIVE_GROUP_ORDER);
@@ -198,10 +192,6 @@ public class StoreRegistrationService {
     @Transactional(readOnly = true)
     public ShopDetailResponse getStoreDetail(Long storeId, Long currentUserId) {
         Store store = findStore(storeId);
-        GroupOrder active =
-                groupOrderRepository
-                        .findTopByStoreIdAndStatusOrderByIdDesc(storeId, GroupOrderStatus.OPEN)
-                        .orElse(null);
         List<Menu> menus = menuRepository.findAllByStoreId(storeId);
         List<StoreImage> galleryImages = storeImageRepository.findByStoreIdOrderBySortOrderAsc(storeId);
         boolean likedByCurrentUser =
@@ -214,7 +204,6 @@ public class StoreRegistrationService {
                 recruitmentStatusCalculator.calculate(store, activeFlow, now);
         return ShopDetailResponse.from(
                 store,
-                active,
                 activeFlow,
                 menus,
                 galleryImages,
@@ -235,29 +224,16 @@ public class StoreRegistrationService {
 
         LocalDateTime now = LocalDateTime.now();
         List<Long> storeIds = page.getContent().stream().map(Store::getId).toList();
-        Map<Long, GroupOrder> activeByStoreId =
-                storeIds.isEmpty()
-                        ? Map.of()
-                        : groupOrderRepository
-                                .findByStoreIdInAndStatus(storeIds, GroupOrderStatus.OPEN)
-                                .stream()
-                                .collect(
-                                        Collectors.toMap(
-                                                go -> go.getStore().getId(),
-                                                Function.identity(),
-                                                (a, b) -> a.getId() > b.getId() ? a : b));
-
         Map<Long, OrderFlow> activeFlowByStoreId = fetchActiveFlowsByStoreIds(storeIds);
 
         List<ShopSummaryResponse> content =
                 page.getContent().stream()
                         .map(
                                 store -> {
-                                    GroupOrder active = activeByStoreId.get(store.getId());
                                     OrderFlow activeFlow = activeFlowByStoreId.get(store.getId());
                                     return ShopSummaryResponse.from(
                                             store,
-                                            active,
+                                            activeFlow,
                                             storeLikeService.isLikedByUser(
                                                     store.getId(), currentUserId),
                                             recruitmentStatusCalculator.calculate(
@@ -288,24 +264,15 @@ public class StoreRegistrationService {
 
         LocalDateTime now = LocalDateTime.now();
         List<Long> storeIds = stores.stream().map(Store::getId).toList();
-        Map<Long, GroupOrder> activeByStoreId =
-                groupOrderRepository.findByStoreIdInAndStatus(storeIds, GroupOrderStatus.OPEN).stream()
-                        .collect(
-                                Collectors.toMap(
-                                        go -> go.getStore().getId(),
-                                        Function.identity(),
-                                        (a, b) -> a.getId() > b.getId() ? a : b));
-
         Map<Long, OrderFlow> activeFlowByStoreId = fetchActiveFlowsByStoreIds(storeIds);
 
         return stores.stream()
                 .map(
                         store -> {
-                            GroupOrder active = activeByStoreId.get(store.getId());
                             OrderFlow activeFlow = activeFlowByStoreId.get(store.getId());
                             return ShopSummaryResponse.from(
                                     store,
-                                    active,
+                                    activeFlow,
                                     storeLikeService.isLikedByUser(store.getId(), currentUserId),
                                     recruitmentStatusCalculator.calculate(
                                             store, activeFlow, now));

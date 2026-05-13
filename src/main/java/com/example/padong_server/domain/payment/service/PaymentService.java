@@ -2,6 +2,11 @@ package com.example.padong_server.domain.payment.service;
 
 import com.example.padong_server.domain.oauth.entity.Role;
 import com.example.padong_server.domain.oauth.entity.User;
+import com.example.padong_server.domain.orderFlow.entity.OrderFlow;
+import com.example.padong_server.domain.orderFlow.entity.OrderFlowMenu;
+import com.example.padong_server.domain.orderFlow.entity.OrderFlowStatus;
+import com.example.padong_server.domain.orderFlow.repository.OrderFlowMenuRepository;
+import com.example.padong_server.domain.orderFlow.repository.OrderFlowRepository;
 import com.example.padong_server.domain.payment.client.PortOnePaymentClient;
 import com.example.padong_server.domain.payment.dto.OrderMenuRequest;
 import com.example.padong_server.domain.payment.dto.PaymentCancelRequest;
@@ -11,16 +16,11 @@ import com.example.padong_server.domain.payment.dto.PaymentPrepareResponse;
 import com.example.padong_server.domain.payment.dto.PaymentResponse;
 import com.example.padong_server.domain.payment.dto.PortOneCancelResponse;
 import com.example.padong_server.domain.payment.dto.PortOnePaymentResponse;
-import com.example.padong_server.domain.payment.entity.GroupOrder;
-import com.example.padong_server.domain.payment.entity.GroupOrderMenu;
-import com.example.padong_server.domain.payment.entity.GroupOrderStatus;
 import com.example.padong_server.domain.payment.entity.Order;
 import com.example.padong_server.domain.payment.entity.OrderMenu;
 import com.example.padong_server.domain.payment.entity.OrderStatus;
 import com.example.padong_server.domain.payment.entity.Payment;
 import com.example.padong_server.domain.payment.entity.PaymentStatus;
-import com.example.padong_server.domain.payment.repository.GroupOrderMenuRepository;
-import com.example.padong_server.domain.payment.repository.GroupOrderRepository;
 import com.example.padong_server.domain.payment.repository.OrderMenuRepository;
 import com.example.padong_server.domain.payment.repository.OrderRepository;
 import com.example.padong_server.domain.payment.repository.PaymentRepository;
@@ -43,8 +43,8 @@ public class PaymentService {
 
     private static final boolean DEFAULT_TEST_PAYMENT = true;
 
-    private final GroupOrderRepository groupOrderRepository;
-    private final GroupOrderMenuRepository groupOrderMenuRepository;
+    private final OrderFlowRepository orderFlowRepository;
+    private final OrderFlowMenuRepository orderFlowMenuRepository;
     private final OrderRepository orderRepository;
     private final OrderMenuRepository orderMenuRepository;
     private final PaymentRepository paymentRepository;
@@ -52,36 +52,36 @@ public class PaymentService {
 
     @Transactional
     public PaymentPrepareResponse prepare(User user, PaymentPrepareRequest request) {
-        GroupOrder groupOrder = findOpenGroupOrder(request.groupOrderId());
-        validateAvailableParticipants(groupOrder);
+        OrderFlow orderFlow = findOpenOrderFlow(request.groupOrderId());
+        validateAvailableParticipants(orderFlow);
 
         Map<Long, Integer> quantities = aggregateQuantities(request.orderMenus());
-        List<GroupOrderMenu> groupOrderMenus = groupOrderMenuRepository.findAllByGroupOrderIdAndMenuIdIn(
-                groupOrder.getId(),
+        List<OrderFlowMenu> orderFlowMenus = orderFlowMenuRepository.findAllByOrderFlowIdAndMenuIdIn(
+                orderFlow.getId(),
                 quantities.keySet()
         );
-        validateAllMenusIncluded(quantities, groupOrderMenus);
+        validateAllMenusIncluded(quantities, orderFlowMenus);
 
-        int totalAmount = calculateAndValidateMenus(groupOrderMenus, quantities);
-        validateMinOrderAmount(groupOrder, totalAmount);
+        int totalAmount = calculateAndValidateMenus(orderFlowMenus, quantities);
+        validateMinOrderAmount(orderFlow, totalAmount);
 
         Order order = orderRepository.save(Order.builder()
                 .user(user)
-                .groupOrder(groupOrder)
-                .store(groupOrder.getStore())
+                .orderFlow(orderFlow)
+                .store(orderFlow.getStore())
                 .totalPrice(totalAmount)
                 .orderStatus(OrderStatus.READY)
                 .paymentStatus(PaymentStatus.READY)
                 .build());
         order.assignOrderNumber(java.time.LocalDate.now());
 
-        for (GroupOrderMenu groupOrderMenu : groupOrderMenus) {
-            int quantity = quantities.get(groupOrderMenu.getMenu().getId());
+        for (OrderFlowMenu orderFlowMenu : orderFlowMenus) {
+            int quantity = quantities.get(orderFlowMenu.getMenu().getId());
             orderMenuRepository.save(OrderMenu.builder()
                     .order(order)
-                    .menu(groupOrderMenu.getMenu())
+                    .menu(orderFlowMenu.getMenu())
                     .quantity(quantity)
-                    .price(groupOrderMenu.getMenu().getPrice() * quantity)
+                    .price(orderFlowMenu.getPriceSnapshot() * quantity)
                     .build());
         }
 
@@ -98,7 +98,7 @@ public class PaymentService {
                 order.getId(),
                 paymentId,
                 (long) totalAmount,
-                buildOrderName(groupOrderMenus, quantities),
+                buildOrderName(orderFlowMenus, quantities),
                 user.getNickname(),
                 DEFAULT_TEST_PAYMENT
         );
@@ -112,19 +112,19 @@ public class PaymentService {
 
         Order order = payment.getOrder();
 
-        GroupOrder groupOrder = findOpenGroupOrder(order.getGroupOrder().getId());
-        validateAvailableParticipants(groupOrder);
+        OrderFlow orderFlow = findOpenOrderFlow(order.getOrderFlow().getId());
+        validateAvailableParticipants(orderFlow);
         validateOrderMenus(order);
 
         PortOnePaymentResponse portOnePayment = portOnePaymentClient.getPayment(payment.getPaymentId());
         validatePortOnePayment(payment, portOnePayment);
 
-        int updatedRows = groupOrderRepository.increaseParticipantsIfAvailable(
-                groupOrder.getId(),
+        int updatedRows = orderFlowRepository.increaseParticipantsIfAvailable(
+                orderFlow.getId(),
                 order.getTotalPrice()
         );
         if (updatedRows != 1) {
-            payment.markFailed("공구 참여 가능 인원이 초과되었습니다.");
+            payment.markFailed("모임 참여 가능 인원이 초과되었습니다.");
             order.markFailed();
             return PaymentResponse.from(payment);
         }
@@ -138,7 +138,7 @@ public class PaymentService {
             order.markPaid();
             return PaymentResponse.from(payment);
         } catch (RuntimeException exception) {
-            groupOrderRepository.decreaseParticipants(groupOrder.getId(), order.getTotalPrice());
+            orderFlowRepository.decreaseParticipants(orderFlow.getId(), order.getTotalPrice());
             payment.markFailed(exception.getMessage());
             order.markFailed();
             return PaymentResponse.from(payment);
@@ -159,7 +159,7 @@ public class PaymentService {
 
         payment.markCanceled(cancelResponse.canceledAt());
         order.markCanceled();
-        groupOrderRepository.decreaseParticipants(order.getGroupOrder().getId(), order.getTotalPrice());
+        orderFlowRepository.decreaseParticipants(order.getOrderFlow().getId(), order.getTotalPrice());
 
         return PaymentResponse.from(payment);
     }
@@ -172,13 +172,13 @@ public class PaymentService {
         return PaymentResponse.from(payment);
     }
 
-    private GroupOrder findOpenGroupOrder(Long groupOrderId) {
-        GroupOrder groupOrder = groupOrderRepository.findById(groupOrderId)
+    private OrderFlow findOpenOrderFlow(Long orderFlowId) {
+        OrderFlow orderFlow = orderFlowRepository.findById(orderFlowId)
                 .orElseThrow(() -> new CustomException(ErrorCode.GROUP_ORDER_NOT_FOUND));
-        if (groupOrder.getStatus() != GroupOrderStatus.OPEN) {
+        if (orderFlow.getStatus() != OrderFlowStatus.PENDING) {
             throw new CustomException(ErrorCode.INVALID_GROUP_ORDER_STATUS);
         }
-        return groupOrder;
+        return orderFlow;
     }
 
     private Payment findPayment(String paymentId) {
@@ -186,12 +186,12 @@ public class PaymentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.PAYMENT_NOT_FOUND));
     }
 
-    private void validateAvailableParticipants(GroupOrder groupOrder) {
-        if (groupOrder.getCurrentParticipants() >= groupOrder.getMaxParticipants()) {
+    private void validateAvailableParticipants(OrderFlow orderFlow) {
+        if (orderFlow.getCurrentParticipants() >= orderFlow.getMaxParticipants()) {
             throw new CustomException(ErrorCode.GROUP_ORDER_FULL);
         }
-        if (groupOrder.getRecruitmentDeadline() != null
-                && !groupOrder.getRecruitmentDeadline().isAfter(java.time.LocalDateTime.now())) {
+        if (orderFlow.getRecruitmentDeadline() != null
+                && !orderFlow.getRecruitmentDeadline().isAfter(java.time.LocalDateTime.now())) {
             throw new CustomException(ErrorCode.GROUP_ORDER_RECRUITMENT_CLOSED);
         }
     }
@@ -211,27 +211,32 @@ public class PaymentService {
         return quantities;
     }
 
-    private void validateAllMenusIncluded(Map<Long, Integer> quantities, List<GroupOrderMenu> groupOrderMenus) {
-        if (groupOrderMenus.size() != quantities.size()) {
+    private void validateAllMenusIncluded(Map<Long, Integer> quantities, List<OrderFlowMenu> orderFlowMenus) {
+        if (orderFlowMenus.size() != quantities.size()) {
             throw new CustomException(ErrorCode.INVALID_GROUP_ORDER_MENU);
         }
     }
 
-    private int calculateAndValidateMenus(List<GroupOrderMenu> groupOrderMenus, Map<Long, Integer> quantities) {
+    private int calculateAndValidateMenus(List<OrderFlowMenu> orderFlowMenus, Map<Long, Integer> quantities) {
         int totalAmount = 0;
-        for (GroupOrderMenu groupOrderMenu : groupOrderMenus) {
-            // 모임 단위(GroupOrderMenu.soldOut) + 메뉴 단위(Menu.soldOut) 양쪽 모두 가드.
-            if (groupOrderMenu.isSoldOut() || groupOrderMenu.getMenu().isSoldOut()) {
+        for (OrderFlowMenu orderFlowMenu : orderFlowMenus) {
+            // 모임 단위(OrderFlowMenu.soldOut) + 메뉴 단위(Menu.soldOut) 양쪽 모두 가드.
+            if (orderFlowMenu.isSoldOut() || orderFlowMenu.getMenu().isSoldOut()) {
                 throw new CustomException(ErrorCode.SOLD_OUT_MENU);
             }
-            int quantity = quantities.get(groupOrderMenu.getMenu().getId());
-            totalAmount += groupOrderMenu.getMenu().getPrice() * quantity;
+            int quantity = quantities.get(orderFlowMenu.getMenu().getId());
+            totalAmount += orderFlowMenu.getPriceSnapshot() * quantity;
         }
         return totalAmount;
     }
 
-    private void validateMinOrderAmount(GroupOrder groupOrder, int totalAmount) {
-        if (totalAmount < groupOrder.getMinOrderAmount()) {
+    /**
+     * 1인 최소 주문 금액 검증 — OrderFlow.minOrderPerPerson 기준.
+     * GroupOrder 의 모임 총 minOrderAmount 와 달리 "1인당" 기준이라는 점에 주의.
+     */
+    private void validateMinOrderAmount(OrderFlow orderFlow, int totalAmount) {
+        Integer min = orderFlow.getMinOrderPerPerson();
+        if (min != null && totalAmount < min) {
             throw new CustomException(ErrorCode.MIN_ORDER_AMOUNT_NOT_MET);
         }
     }
@@ -239,14 +244,14 @@ public class PaymentService {
     private void validateOrderMenus(Order order) {
         Map<Long, Integer> quantities = orderMenuRepository.findAllByOrderId(order.getId()).stream()
                 .collect(Collectors.toMap(orderMenu -> orderMenu.getMenu().getId(), OrderMenu::getQuantity));
-        List<GroupOrderMenu> groupOrderMenus = groupOrderMenuRepository.findAllByGroupOrderIdAndMenuIdIn(
-                order.getGroupOrder().getId(),
+        List<OrderFlowMenu> orderFlowMenus = orderFlowMenuRepository.findAllByOrderFlowIdAndMenuIdIn(
+                order.getOrderFlow().getId(),
                 quantities.keySet()
         );
-        validateAllMenusIncluded(quantities, groupOrderMenus);
+        validateAllMenusIncluded(quantities, orderFlowMenus);
 
-        int recalculatedAmount = calculateAndValidateMenus(groupOrderMenus, quantities);
-        validateMinOrderAmount(order.getGroupOrder(), recalculatedAmount);
+        int recalculatedAmount = calculateAndValidateMenus(orderFlowMenus, quantities);
+        validateMinOrderAmount(order.getOrderFlow(), recalculatedAmount);
         if (recalculatedAmount != order.getTotalPrice()) {
             throw new CustomException(ErrorCode.INVALID_PAYMENT_AMOUNT);
         }
@@ -294,11 +299,11 @@ public class PaymentService {
         validatePaymentOwner(payment, user);
     }
 
-    private String buildOrderName(List<GroupOrderMenu> groupOrderMenus, Map<Long, Integer> quantities) {
-        Map<Long, GroupOrderMenu> menuById = groupOrderMenus.stream()
-                .collect(Collectors.toMap(groupOrderMenu -> groupOrderMenu.getMenu().getId(), Function.identity()));
+    private String buildOrderName(List<OrderFlowMenu> orderFlowMenus, Map<Long, Integer> quantities) {
+        Map<Long, OrderFlowMenu> menuById = orderFlowMenus.stream()
+                .collect(Collectors.toMap(orderFlowMenu -> orderFlowMenu.getMenu().getId(), Function.identity()));
         Long firstMenuId = quantities.keySet().iterator().next();
-        String firstMenuName = menuById.get(firstMenuId).getMenu().getMenuInfo();
+        String firstMenuName = menuById.get(firstMenuId).getMenuInfoSnapshot();
         if (quantities.size() == 1) {
             return firstMenuName;
         }

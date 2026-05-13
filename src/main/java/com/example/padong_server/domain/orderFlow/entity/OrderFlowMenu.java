@@ -52,4 +52,13 @@ public class OrderFlowMenu {
     /** 모임 생성 시점의 메뉴 가격 스냅샷 (원). */
     @Column(name = "price_snapshot", nullable = false)
     private Integer priceSnapshot;
+
+    /** 모임 단위 품절 — Menu.soldOut 과 독립적으로 운영. */
+    @Column(name = "sold_out", nullable = false)
+    @Builder.Default
+    private boolean soldOut = false;
+
+    public void markSoldOut(boolean soldOut) {
+        this.soldOut = soldOut;
+    }
 }

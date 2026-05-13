@@ -20,14 +20,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findMyOrdersCursor(
             @Param("userId") Long userId, @Param("cursor") Long cursor, Pageable pageable);
 
-    /** 가게 + groupOrder + payment 상태 기반 참여자 조회 (OrderFlow.getParticipants 용). */
+    /** 가게 + orderFlow + payment 상태 기반 참여자 조회 (OrderFlow.getParticipants 용). */
     @Query(
             """
             SELECT o FROM Order o
             JOIN FETCH o.user
-            WHERE o.groupOrder.id = :groupOrderId
+            WHERE o.orderFlow.id = :orderFlowId
               AND o.paymentStatus = com.example.padong_server.domain.payment.entity.PaymentStatus.PAID
             ORDER BY o.id ASC
             """)
-    List<Order> findPaidByGroupOrderId(@Param("groupOrderId") Long groupOrderId);
+    List<Order> findPaidByOrderFlowId(@Param("orderFlowId") Long orderFlowId);
 }
